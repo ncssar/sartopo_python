@@ -5,6 +5,9 @@
 #   developed for Nevada County Sheriff's Search and Rescue
 #    Copyright (c) 2018 Tom Grundy
 #
+#   Sartopo / Caltopo currently does not have a publically available API;
+#    this code calls the non-publicized API that could change at any time.
+#
 #   This python code is in no way supported or maintained by caltopo LLC
 #    or the authors of caltopo.com or sartopo.com.
 #
@@ -24,13 +27,17 @@ import requests
 import json
     
 class SartopoSession():
-    def __init__(self):
+    def __init__(self,mapID=None):
         self.s=requests.session()
-        self.mapID="178U"
+        self.apiVersion=-1
+        if not mapID or not isinstance(mapID,str) or len(mapID)!=4:
+            print("ERROR: you must specify a four-character sartopo map ID string (end of the URL) when opening a SartopoSession object.")
+            return
+        self.mapID=mapID
         self.domainAndPort="localhost:8080"
-        self.determineAPIVersion()
+        self.setupSession()
         
-    def determineAPIVersion(self):
+    def setupSession(self):
         # by default, do not assume any sartopo session is running;
         # send a GET request to http://localhost:8080/api/v1/map/
         #  response code 200 = new API
@@ -38,14 +45,13 @@ class SartopoSession():
         #    send a GET request to http://localhost:8080/rest/
         #     response code 200 = old API
         
-        self.apiVersion=-1
         self.apiUrlMid="/invalid/"
         url="http://"+self.domainAndPort+"/api/v1/map/"
         print("searching for API v1: sending get to "+url)
         try:
             r=self.s.get(url,timeout=2)
         except:
-            print("no response from first get request")
+            print("no response from first get request; aborting; should get a response of 400 at this point for api v0")
         else:
             print("response code = "+str(r.status_code))
             if r.status_code==200:
@@ -76,22 +82,40 @@ class SartopoSession():
                                 print("API v0 session is now authenticated")
         print("API version:"+str(self.apiVersion))
     
-    def post(self,apiUrlEnd,j):
-        url="http://"+self.domainAndPort+self.apiUrlMid+apiUrlEnd
+    def post(self,apiUrlEnd,j,returnJsonResponse=False):
+        apiUrlEnd=apiUrlEnd.lower()
+        if self.apiVersion>0:
+            apiUrlEnd=apiUrlEnd.capitalize()
+        url="http://"+self.domainAndPort+self.apiUrlMid+apiUrlEnd+"/"
         url=url.replace("[MAPID]",self.mapID)
         print("sending post to "+url)
         r=self.s.post(url,data={'json':json.dumps(j)},timeout=2)
         print("response code = "+str(r.status_code))
         print("response text = "+r.text)
+        if returnJsonResponse:
+            return r.json()
+    
+    def addFolder(self,label="New Folder"):
+        if self.apiVersion<0:
+            print("sartopo session is invalid; addFolder aborted")
+            return -1
+        j={}
+        j['label']=label
+        rj=self.post("folder",j,True)
+        if 'id' in rj:
+            return rj['id']
         
     def addMarker(self,lat,lon,label="New Marker",folderId=None,url="",comments=""):
+        if self.apiVersion<0:
+            print("sartopo session is invalid; addMarker aborted")
+            return -1
         j={}
         j['label']=label
         j['folderId']=folderId
         j['url']=url
         j['comments']=comments
         j['position']={"lat":lat,"lng":lon}
-        self.post("marker/",j)
+        self.post("marker",j)
         
 # def getMapJson(mapID):
 #     domainAndPort="localhost:8080"
@@ -123,8 +147,9 @@ class SartopoSession():
 # def getMapObjectInfo(label):
 
 def main():
-    sts=SartopoSession()
-    sts.addMarker(39,-120)
+    sts=SartopoSession("178U")
+    fid=sts.addFolder("MyFolder")
+    sts.addMarker(39,-120,"MyMarker",fid)
     
 if __name__ == '__main__':
     main()
