@@ -8,6 +8,12 @@
 #   Sartopo / Caltopo currently does not have a publically available API;
 #    this code calls the non-publicized API that could change at any time.
 #
+#   This module is intended to provide a simple, API-version-agnostic sartopo
+#    interface to other appliactions.
+#
+#   Initially, this is just a module and not a package, so, just place this
+#    file directly in your module search path (not in a subdirectory).
+#    
 #   This python code is in no way supported or maintained by caltopo LLC
 #    or the authors of caltopo.com or sartopo.com.
 #
@@ -20,7 +26,7 @@
 #-----------------------------------------------------------------------------
 #   DATE   |  AUTHOR  |  NOTES
 #-----------------------------------------------------------------------------
-#
+#  8-29-18    TMG        First version - creates folders and markers
 #-----------------------------------------------------------------------------
 
 import requests
