@@ -27,20 +27,26 @@
 #   DATE   |  AUTHOR  |  NOTES
 #-----------------------------------------------------------------------------
 #  8-29-18    TMG        First version - creates folders and markers
+#  10-7-18    TMG        allow session on network other than localhost; allow
+#                           three-character mapID; overhaul to work with
+#                           significant api changes in v4151 of sar.jar -
+#                           probably not backwards compatible; will require
+#                           changes to code that calls these functions
+#
 #-----------------------------------------------------------------------------
 
 import requests
 import json
     
 class SartopoSession():
-    def __init__(self,mapID=None):
+    def __init__(self,domainAndPort="localhost:8080",mapID=None):
         self.s=requests.session()
         self.apiVersion=-1
-        if not mapID or not isinstance(mapID,str) or len(mapID)!=4:
-            print("ERROR: you must specify a four-character sartopo map ID string (end of the URL) when opening a SartopoSession object.")
+        if not mapID or not isinstance(mapID,str) or len(mapID)<3:
+            print("ERROR: you must specify a three-or-more-character sartopo map ID string (end of the URL) when opening a SartopoSession object.")
             return
         self.mapID=mapID
-        self.domainAndPort="localhost:8080"
+        self.domainAndPort=domainAndPort
         self.setupSession()
         
     def setupSession(self):
@@ -106,21 +112,34 @@ class SartopoSession():
             print("sartopo session is invalid; addFolder aborted")
             return -1
         j={}
-        j['label']=label
+        j['properties']={}
+        j['properties']['title']=label
         rj=self.post("folder",j,True)
-        if 'id' in rj:
-            return rj['id']
-        
-    def addMarker(self,lat,lon,label="New Marker",folderId=None,url="",comments=""):
+        id=None
+        if 'result' in rj and 'id' in rj['result']:
+            id=rj['result']['id']
+        elif 'id' in rj:
+            id=rj['id']
+        else:
+            print("No valid folder ID was returned from the request.")
+        return id
+    
+    def addMarker(self,lat,lon,title="New Marker",description="",color="FF0000",symbol="point",rotation=None,folderId=None):
         if self.apiVersion<0:
             print("sartopo session is invalid; addMarker aborted")
             return -1
         j={}
-        j['label']=label
-        j['folderId']=folderId
-        j['url']=url
-        j['comments']=comments
-        j['position']={"lat":lat,"lng":lon}
+        jp={}
+        jg={}
+        jp['marker-color']=color
+        jp['marker-symbol']=symbol
+        jp['title']=title
+        jp['folderId']=folderId
+        jp['description']=description
+        jg['coordinates']=[lon,lat]
+        j['properties']=jp
+        j['geometry']=jg
+#         print("sending json: "+str(j))
         self.post("marker",j)
         
 # def getMapJson(mapID):
@@ -152,13 +171,6 @@ class SartopoSession():
 # getMapObjectInfo - return a table of 
 # def getMapObjectInfo(label):
 
-def main():
-    sts=SartopoSession("178U")
-    fid=sts.addFolder("MyFolder")
-    sts.addMarker(39,-120,"MyMarker",fid)
-    
-if __name__ == '__main__':
-    main()
 
     
     
