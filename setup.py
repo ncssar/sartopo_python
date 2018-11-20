@@ -18,7 +18,6 @@ setuptools.setup(
     download_url="https://github.com/ncssar/sartopo_python/archive/1.0.tar.gz",
     install_requires=[
         'requests',
-        'json',
     ],
     classifiers=[
         "Programming Language :: Python :: 3",

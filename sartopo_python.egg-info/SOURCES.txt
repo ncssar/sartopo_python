@@ -1,4 +1,5 @@
 README.md
+setup.cfg
 setup.py
 sartopo_python/__init__.py
 sartopo_python.egg-info/PKG-INFO

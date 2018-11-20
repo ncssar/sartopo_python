@@ -6,6 +6,7 @@ Home-page: https://github.com/ncssar/sartopo_python
 Author: Tom Grundy
 Author-email: nccaves@yahoo.com
 License: UNKNOWN
+Download-URL: https://github.com/ncssar/sartopo_python/archive/1.0.tar.gz
 Description: # sartopo_python
         
         Sartopo / Caltopo currently does not have a publically available API;
