@@ -1,1 +1,1 @@
-from sartopo_python.sartopo_pythin import SartopoSession
+from sartopo_python.sartopo_python import SartopoSession
