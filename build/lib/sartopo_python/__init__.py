@@ -1,1 +1,1 @@
-name="sartopo_python"
+from sartopo_python.sartopo_pythin import SartopoSession

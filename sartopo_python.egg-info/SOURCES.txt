@@ -2,6 +2,7 @@ README.md
 setup.cfg
 setup.py
 sartopo_python/__init__.py
+sartopo_python/sartopo_python.py
 sartopo_python.egg-info/PKG-INFO
 sartopo_python.egg-info/SOURCES.txt
 sartopo_python.egg-info/dependency_links.txt
