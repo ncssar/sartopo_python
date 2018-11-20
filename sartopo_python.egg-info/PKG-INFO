@@ -7,13 +7,46 @@ Author: Tom Grundy
 Author-email: nccaves@yahoo.com
 License: UNKNOWN
 Description: # sartopo_python
-        Python calls for the caltopo / sartopo API
         
-        Initially, this is just a module and not a package, so, just place this file directly in your module search path (not in a subdirectory).
+        Sartopo / Caltopo currently does not have a publically available API;
+         this code calls the non-publicized API that could change at any time.
         
-        In the first half of 2018, the caltopo / sartopo http-request-based API changed.  This requires a rewrite of various python applications that call the API.
+        This module is intended to provide a simple, API-version-agnostic sartopo
+         interface to other appliactions.
         
-        This was a good motivation to finally create a separate python project to interact with caltopo / sartopo.  The calls in this project are version-agnostic: the process of openening a session automatically determines the appropriate API version, so that the end application which calls the functions in this project does not need to know which API version is running.
+        This python code is in no way supported or maintained by caltopo LLC
+         or the authors of caltopo.com or sartopo.com.
+        
+        ## Installation:
+        ```
+        pip intall sartopo_python
+        ```
+        
+        ## Provided functions in class SartopoSession:
+        ### \_\_init\_\_ - create a new session
+        domainAndPort="localhost:8080"
+        mapID=None
+        ### addFolder - create a SARTopo folder
+        label="New Folder"
+        ### addMarker - create a SARTopo marker
+        lat
+        lon
+        title="New Marker"
+        description=""
+        color="FF0000"
+        symbol="point"
+        rotation=None
+        folderId=None
+        ## Typical usage:
+        
+        ```
+        from sartopo_python import SartopoSession
+        
+        sts=SartopoSession(domainAndPort=domainAndPort,mapID=mapID)
+        
+        fid=sts.addFolder("Buckshot")
+        sts.addMarker(lat,lon,title,description,color,symbol,None,fid)
+        ```
         
 Platform: UNKNOWN
 Classifier: Programming Language :: Python :: 3

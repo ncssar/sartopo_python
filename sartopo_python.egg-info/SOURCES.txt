@@ -4,4 +4,5 @@ sartopo_python/__init__.py
 sartopo_python.egg-info/PKG-INFO
 sartopo_python.egg-info/SOURCES.txt
 sartopo_python.egg-info/dependency_links.txt
+sartopo_python.egg-info/requires.txt
 sartopo_python.egg-info/top_level.txt
