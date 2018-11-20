@@ -11,7 +11,7 @@ This python code is in no way supported or maintained by caltopo LLC
 
 ## Installation:
 ```
-pip intall sartopo_python
+pip install sartopo_python
 ```
 
 ## Provided functions in class SartopoSession:
