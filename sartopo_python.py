@@ -11,9 +11,6 @@
 #   This module is intended to provide a simple, API-version-agnostic sartopo
 #    interface to other appliactions.
 #
-#   Initially, this is just a module and not a package, so, just place this
-#    file directly in your module search path (not in a subdirectory).
-#    
 #   This python code is in no way supported or maintained by caltopo LLC
 #    or the authors of caltopo.com or sartopo.com.
 #
@@ -32,6 +29,7 @@
 #                           significant api changes in v4151 of sar.jar -
 #                           probably not backwards compatible; will require
 #                           changes to code that calls these functions
+# 11-19-18    TMG        clean up for first package release
 #
 #-----------------------------------------------------------------------------
 
@@ -142,35 +140,6 @@ class SartopoSession():
 #         print("sending json: "+str(j))
         self.post("marker",j)
         
-# def getMapJson(mapID):
-#     domainAndPort="localhost:8080"
-# #     url="http://"+domainAndPort+"/m/"+mapID
-#     # new API: send a GET to domainAndPort/api/v1/map/<mapID>/since/<timestamp>
-#     url="http://"+domainAndPort+"/api/v1/map/"+mapID+"/since/"+ts
-#     s=requests.session()
-#     try:
-#         r=s.get(url)
-#     except:
-#         return("ERROR: did not get any resposnse from a GET request to "+url)
-#     else:
-#         # OLD API: the response is a bunch of HTML including the json;
-#         #   get the whole thing and find org.sarsoft.preload
-#         # pattern explanation: get the largest complete { } set following
-#         #   (but not including) org.sarsoft.preload
-#         # (?<=  -  positive lookbehind assertion: the pattern until close
-#         #   parens must exist in order to match, but will not be part of the
-#         #   return value
-#         # .*?   -  any characters, non-greedy (i.e. match until the first semicolon;
-#         #            normally this is greedy and will match until the last semicolon
-#         # (?=   -  positive lookahead assertion: the pattern until close parens
-#         #   must exist in order to match, but will not be part of the return value
-# #         re.search("(?<=org.sarsoft.preload = ).*?(?=;)",str(r.content)).group()
-#         # new API: the response is json
-#         return(json.loads(r.content.decode(encoding='UTF-8')))
-    
-# getMapObjectInfo - return a table of 
-# def getMapObjectInfo(label):
-
 
     
     

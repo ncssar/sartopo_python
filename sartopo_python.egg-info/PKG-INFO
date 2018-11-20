@@ -1,0 +1,23 @@
+Metadata-Version: 2.1
+Name: sartopo-python
+Version: 1.0
+Summary: Python interface to unofficial SARTopo API
+Home-page: https://github.com/ncssar/sartopo_python
+Author: Tom Grundy
+Author-email: nccaves@yahoo.com
+License: UNKNOWN
+Description: # sartopo_python
+        Python calls for the caltopo / sartopo API
+        
+        Initially, this is just a module and not a package, so, just place this file directly in your module search path (not in a subdirectory).
+        
+        In the first half of 2018, the caltopo / sartopo http-request-based API changed.  This requires a rewrite of various python applications that call the API.
+        
+        This was a good motivation to finally create a separate python project to interact with caltopo / sartopo.  The calls in this project are version-agnostic: the process of openening a session automatically determines the appropriate API version, so that the end application which calls the functions in this project does not need to know which API version is running.
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: GNU General Public License v3 (GPLv3)
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 4 - Beta
+Description-Content-Type: text/markdown
