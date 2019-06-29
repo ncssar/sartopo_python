@@ -30,6 +30,8 @@
 #                           probably not backwards compatible; will require
 #                           changes to code that calls these functions
 # 11-19-18    TMG        clean up for first package release
+#  6-29-18    TMG        add getFeatures to return a list of map features with IDs;
+#                          move an existing marker by specifying existing marker ID
 #
 #-----------------------------------------------------------------------------
 
@@ -108,11 +110,8 @@ class SartopoSession():
 #             print("SENDING POST:")
 #             print(json.dumps(j,indent=3))
             r=self.s.post(url,data={'json':json.dumps(j)},timeout=2)
-        elif type is "get":
-            if j:
-                r=self.s.get(url,data={'json':json.dumps(j)},timeout=2)
-            else:
-                r=self.s.get(url,timeout=2)
+        elif type is "get": # no need for json in GET; sending null JSON causes downstream error
+            r=self.s.get(url,timeout=2)
         else:
             print("Unrecognized request type:"+str(type))
             return -1
@@ -168,7 +167,7 @@ class SartopoSession():
             j['id']=existingId
 #         print("sending json: "+json.dumps(j.json(),indent=3))
         return self.sendRequest("post","marker",j,id=existingId,returnJson="ID")
-    
+
     def getFeatures(self,featureClass=None,since=0):
         rj=self.sendRequest("get","since/"+str(since),None,returnJson="ALL")
         if not featureClass:
