@@ -5,11 +5,11 @@
 #   developed for Nevada County Sheriff's Search and Rescue
 #    Copyright (c) 2018 Tom Grundy
 #
-#   Sartopo / Caltopo currently does not have a publically available API;
+#   Sartopo / Caltopo currently does not have a publicly available API;
 #    this code calls the non-publicized API that could change at any time.
 #
 #   This module is intended to provide a simple, API-version-agnostic sartopo
-#    interface to other appliactions.
+#    interface to other applications.
 #
 #   This python code is in no way supported or maintained by caltopo LLC
 #    or the authors of caltopo.com or sartopo.com.
@@ -30,6 +30,8 @@
 #                           probably not backwards compatible; will require
 #                           changes to code that calls these functions
 # 11-19-18    TMG        clean up for first package release
+#  6-29-18    TMG        add getFeatures to return a list of map features with IDs;
+#                          move an existing marker by specifying existing marker ID
 #
 #-----------------------------------------------------------------------------
 
@@ -92,54 +94,103 @@ class SartopoSession():
                                 print("API v0 session is now authenticated")
         print("API version:"+str(self.apiVersion))
     
-    def post(self,apiUrlEnd,j,returnJsonResponse=False):
+    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None):
+        if self.apiVersion<0:
+            print("sartopo session is invalid; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
+            return -1
         apiUrlEnd=apiUrlEnd.lower()
         if self.apiVersion>0:
             apiUrlEnd=apiUrlEnd.capitalize()
-        url="http://"+self.domainAndPort+self.apiUrlMid+apiUrlEnd+"/"
+        if apiUrlEnd.startswith("Since"): # 'since' must be lowercase even in API v1
+            apiUrlEnd=apiUrlEnd.lower()
+        url="http://"+self.domainAndPort+self.apiUrlMid+apiUrlEnd+"/"+id
         url=url.replace("[MAPID]",self.mapID)
-        print("sending post to "+url)
-        r=self.s.post(url,data={'json':json.dumps(j)},timeout=2)
-        print("response code = "+str(r.status_code))
-        print("response text = "+r.text)
-        if returnJsonResponse:
-            return r.json()
-    
-    def addFolder(self,label="New Folder"):
-        if self.apiVersion<0:
-            print("sartopo session is invalid; addFolder aborted")
+#         print("sending "+str(type)+" to "+url)
+        if type is "post":
+#             print("SENDING POST:")
+#             print(json.dumps(j,indent=3))
+            r=self.s.post(url,data={'json':json.dumps(j)},timeout=2)
+        elif type is "get": # no need for json in GET; sending null JSON causes downstream error
+            r=self.s.get(url,timeout=2)
+        else:
+            print("Unrecognized request type:"+str(type))
             return -1
+#         print("response code = "+str(r.status_code))
+#         print("response:")
+#         try:
+#             print(json.dumps(r.json(),indent=3))
+#         except:
+#             print(r.text)
+        if returnJson:
+            try:
+                rj=r.json()
+            except:
+                print("response had no decodable json")
+                return -1
+            else:
+                if returnJson=="ID":
+                    id=None
+                    if 'result' in rj and 'id' in rj['result']:
+                        id=rj['result']['id']
+                    elif 'id' in rj:
+                        id=rj['id']
+                    else:
+                        print("No valid folder ID was returned from the request.")
+                    return id
+                if returnJson=="ALL":
+                    return rj
+        
+    def addFolder(self,label="New Folder"):
         j={}
         j['properties']={}
         j['properties']['title']=label
-        rj=self.post("folder",j,True)
-        id=None
-        if 'result' in rj and 'id' in rj['result']:
-            id=rj['result']['id']
-        elif 'id' in rj:
-            id=rj['id']
-        else:
-            print("No valid folder ID was returned from the request.")
-        return id
+        return self.sendRequest("post","folder",j,returnJson="ID")
     
-    def addMarker(self,lat,lon,title="New Marker",description="",color="FF0000",symbol="point",rotation=None,folderId=None):
-        if self.apiVersion<0:
-            print("sartopo session is invalid; addMarker aborted")
-            return -1
+    def addMarker(self,lat,lon,title="New Marker",description="",color="#FF0000",symbol="point",rotation=None,folderId=None,existingId=""):
         j={}
         jp={}
         jg={}
+        jp['class']='Marker'
+        jp['updated']=0
         jp['marker-color']=color
         jp['marker-symbol']=symbol
         jp['title']=title
-        jp['folderId']=folderId
+        if folderId:
+            jp['folderId']=folderId
         jp['description']=description
-        jg['coordinates']=[lon,lat]
+        jg['type']='Point'
+        jg['coordinates']=[float(lon),float(lat)]
         j['properties']=jp
         j['geometry']=jg
-#         print("sending json: "+str(j))
-        self.post("marker",j)
-        
+        j['type']='Feature'
+        if existingId:
+            j['id']=existingId
+#         print("sending json: "+json.dumps(j.json(),indent=3))
+        return self.sendRequest("post","marker",j,id=existingId,returnJson="ID")
 
+    def getFeatures(self,featureClass=None,since=0):
+        rj=self.sendRequest("get","since/"+str(since),None,returnJson="ALL")
+        if not featureClass:
+            return rj # if no feature class is specified, return the entire json response
+        else:
+            rval=[]
+            if 'result' in rj and 'state' in rj['result'] and 'features' in rj['result']['state']:
+                features=rj['result']['state']['features']
+                for feature in features:
+                    id=feature['id']
+                    prop=feature['properties']
+                    if prop['class']==featureClass:
+                        title=prop['title']
+#                         print(featureClass+": title='"+title+"'  id="+str(id))
+                        rval.append([title,id])
+            return rval
     
-    
+
+if __name__ == "__main__":
+    sts=SartopoSession("localhost:8080","SBH")
+    fid=sts.addFolder("MyFolder")
+    sts.addMarker(39,-120,"stuff")
+    sts.addMarker(39,-121,"myStuff",folderId=fid)
+    r=sts.getFeatures("Marker")
+    print("sending with id:"+r[0][1])
+    sts.addMarker(39.2536,-121.0267,r[0][0],existingId=r[0][1])
