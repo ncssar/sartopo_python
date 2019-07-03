@@ -30,8 +30,12 @@
 #                           probably not backwards compatible; will require
 #                           changes to code that calls these functions
 # 11-19-18    TMG        clean up for first package release
-#  6-29-18    TMG        add getFeatures to return a list of map features with IDs;
+#  6-29-19    TMG        add getFeatures to return a list of map features with IDs;
 #                          move an existing marker by specifying existing marker ID
+#   7-3-19    TMG        return folderId, if it exists, with each feature returned
+#                          by getFeatures, to allow filtering by folder; modify
+#                          setupSession to only return API version 1 if the
+#                          API is version 1 AND the map ID is valid
 #
 #-----------------------------------------------------------------------------
 
@@ -67,8 +71,19 @@ class SartopoSession():
         else:
             print("response code = "+str(r.status_code))
             if r.status_code==200:
-                self.apiVersion=1
-                self.apiUrlMid="/api/v1/map/[MAPID]/"
+                # now validate the mapID, since the initial test doesn't care about mapID
+                mapUrl="http://"+self.domainAndPort+"/m/"+self.mapID
+                try:
+                    r=self.s.get(mapUrl,timeout=2)
+                except:
+                    print("API version 1 detected, but the mapID is not valid.")
+                else:
+                    if r.status_code==200:
+                        # now we know the API is valid and the mapID is valid
+                        self.apiVersion=1
+                        self.apiUrlMid="/api/v1/map/[MAPID]/"
+                    else:
+                        print("API version 1 detected, but the map-specific URL returned a code of "+str(r.status_code)+" so this session is not valid.")
             else:
                 url="http://"+self.domainAndPort+"/rest/marker/"
                 print("searching for API v0: sending get to "+url)
@@ -93,6 +108,7 @@ class SartopoSession():
                             if r.status_code==200:
                                 print("API v0 session is now authenticated")
         print("API version:"+str(self.apiVersion))
+        
     
     def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None):
         if self.apiVersion<0:
@@ -182,15 +198,19 @@ class SartopoSession():
                     if prop['class']==featureClass:
                         title=prop['title']
 #                         print(featureClass+": title='"+title+"'  id="+str(id))
-                        rval.append([title,id])
+                        if 'folderId' in prop:
+                            folderId=prop['folderId']
+                            rval.append([title,id,folderId])
+                        else:
+                            rval.append([title,id])
             return rval
     
 
-if __name__ == "__main__":
-    sts=SartopoSession("localhost:8080","SBH")
-    fid=sts.addFolder("MyFolder")
-    sts.addMarker(39,-120,"stuff")
-    sts.addMarker(39,-121,"myStuff",folderId=fid)
-    r=sts.getFeatures("Marker")
-    print("sending with id:"+r[0][1])
-    sts.addMarker(39.2536,-121.0267,r[0][0],existingId=r[0][1])
+# if __name__ == "__main__":
+#     sts=SartopoSession("localhost:8080","SBH")
+#     fid=sts.addFolder("MyFolder")
+#     sts.addMarker(39,-120,"stuff")
+#     sts.addMarker(39,-121,"myStuff",folderId=fid)
+#     r=sts.getFeatures("Marker")
+#     print("sending with id:"+r[0][1])
+#     sts.addMarker(39.2536,-121.0267,r[0][0],existingId=r[0][1])
