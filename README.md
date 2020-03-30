@@ -45,8 +45,8 @@ fid=sts.addFolder("MyFolder")
 sts.addMarker(39,-120,"stuff")
 sts.addMarker(39,-121,"myStuff",folderId=fid)
 r=sts.getFeatures("Marker")
-print("sending with id:"+r[0][1])
-sts.addMarker(39.2536,-121.0267,r[0][0],existingId=r[0][1])
+print("sending with id:"+r[0]["id"])
+sts.addMarker(39.2536,-121.0267,r[0]["properties"]["title"],existingId=r[0]["id"])
 ```
 
 
