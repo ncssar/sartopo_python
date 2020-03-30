@@ -9,6 +9,9 @@ This module is intended to provide a simple, API-version-agnostic sartopo
 This python code is in no way supported or maintained by caltopo LLC
  or the authors of caltopo.com or sartopo.com.
 
+## New for v1.0.6 3-30-2020:
+getFeatures now returns the entire json object for each feature.  The top level keys should be id, geometry, and properties.  This allows preservation of things like marker-symbol, folder, coordinates, and so on when moving an existing marker.
+
 ## Installation:
 ```
 pip install sartopo_python
