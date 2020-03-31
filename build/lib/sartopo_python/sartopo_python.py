@@ -3,7 +3,7 @@
 #  sartopo_python.py - python interfaces to the sartopo API
 #
 #   developed for Nevada County Sheriff's Search and Rescue
-#    Copyright (c) 2018 Tom Grundy
+#    Copyright (c) 2020 Tom Grundy
 #
 #   Sartopo / Caltopo currently does not have a publicly available API;
 #    this code calls the non-publicized API that could change at any time.
@@ -36,6 +36,10 @@
 #                          by getFeatures, to allow filtering by folder; modify
 #                          setupSession to only return API version 1 if the
 #                          API is version 1 AND the map ID is valid
+#  3-30-20    TMG        fix #3: v1.0.6: change the return value structure from getFeatures
+#                          to return the entire json structure for each feature;
+#                          this enables preservation of marker-symbol when moving
+#                          an existing marker
 #
 #-----------------------------------------------------------------------------
 
@@ -193,16 +197,13 @@ class SartopoSession():
             if 'result' in rj and 'state' in rj['result'] and 'features' in rj['result']['state']:
                 features=rj['result']['state']['features']
                 for feature in features:
-                    id=feature['id']
+#                     print("FEATURE:"+str(feature))
+#                     id=feature['id']
                     prop=feature['properties']
                     if prop['class']==featureClass:
-                        title=prop['title']
-#                         print(featureClass+": title='"+title+"'  id="+str(id))
-                        if 'folderId' in prop:
-                            folderId=prop['folderId']
-                            rval.append([title,id,folderId])
-                        else:
-                            rval.append([title,id])
+                        rval.append(feature) # return the entire json object
+#                         rval.append([id,prop]) # return all properties
+                        
             return rval
     
 

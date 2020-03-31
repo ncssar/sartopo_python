@@ -1,12 +1,12 @@
 Metadata-Version: 2.1
 Name: sartopo-python
-Version: 1.0.5
+Version: 1.0.6
 Summary: Python interface to unofficial SARTopo API
 Home-page: https://github.com/ncssar/sartopo_python
 Author: Tom Grundy
 Author-email: nccaves@yahoo.com
 License: UNKNOWN
-Download-URL: https://github.com/ncssar/sartopo_python/archive/1.0.5.tar.gz
+Download-URL: https://github.com/ncssar/sartopo_python/archive/1.0.6.tar.gz
 Description: # sartopo_python
         
         Sartopo / Caltopo currently does not have a publically available API;
@@ -17,6 +17,9 @@ Description: # sartopo_python
         
         This python code is in no way supported or maintained by caltopo LLC
          or the authors of caltopo.com or sartopo.com.
+        
+        ## New for v1.0.6 3-30-2020:
+        getFeatures now returns the entire json object for each feature.  The top level keys should be id, geometry, and properties.  This allows preservation of things like marker-symbol, folder, coordinates, and so on when moving an existing marker.
         
         ## Installation:
         ```
@@ -51,8 +54,8 @@ Description: # sartopo_python
         sts.addMarker(39,-120,"stuff")
         sts.addMarker(39,-121,"myStuff",folderId=fid)
         r=sts.getFeatures("Marker")
-        print("sending with id:"+r[0][1])
-        sts.addMarker(39.2536,-121.0267,r[0][0],existingId=r[0][1])
+        print("sending with id:"+r[0]["id"])
+        sts.addMarker(39.2536,-121.0267,r[0]["properties"]["title"],existingId=r[0]["id"])
         ```
         
         
