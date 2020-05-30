@@ -1,12 +1,12 @@
 Metadata-Version: 2.1
 Name: sartopo-python
-Version: 1.0.6
+Version: 1.1.0
 Summary: Python interface to unofficial SARTopo API
 Home-page: https://github.com/ncssar/sartopo_python
 Author: Tom Grundy
 Author-email: nccaves@yahoo.com
 License: UNKNOWN
-Download-URL: https://github.com/ncssar/sartopo_python/archive/1.0.6.tar.gz
+Download-URL: https://github.com/ncssar/sartopo_python/archive/1.1.0.tar.gz
 Description: # sartopo_python
         
         Sartopo / Caltopo currently does not have a publically available API;
@@ -18,6 +18,9 @@ Description: # sartopo_python
         This python code is in no way supported or maintained by caltopo LLC
          or the authors of caltopo.com or sartopo.com.
         
+        ## New for v1.1.0. 5-30-2020:
+        Signed requests for online maps are now supported.  The same requests that work here for offline maps are now also working for online maps.  See the signed request explanation at the bottom of this README file.
+        
         ## New for v1.0.6 3-30-2020:
         getFeatures now returns the entire json object for each feature.  The top level keys should be id, geometry, and properties.  This allows preservation of things like marker-symbol, folder, coordinates, and so on when moving an existing marker.
         
@@ -28,36 +31,91 @@ Description: # sartopo_python
         
         ## Provided functions in class SartopoSession:
         ### \_\_init\_\_ - create a new session
-        domainAndPort="localhost:8080"
-        mapID=None
+        - domainAndPort="localhost:8080"
+        - mapID[required]=None
+        
+        The remaining arguments are only needed to generate signed requests for online maps at sartopo.com; see the signed request explanation at the bottom of this README file.
+        - configpath
+        - account
+        - id
+        - key
+        - expires
         ### getFeatures - get a list of map features
-        featureClass=None - "Marker" etc to return only markers
-        since=0 - get features only since this timestamp
+        - featureClass=None - "Marker" etc to return only markers
+        - since=0 - get features only since this timestamp
         ### addFolder - create a SARTopo folder
-        label="New Folder"
+        - label="New Folder"
         ### addMarker - create a SARTopo marker
-        lat
-        lon
-        title="New Marker"
-        description=""
-        color="FF0000"
-        symbol="point"
-        rotation=None
-        folderId=None
-        (1.0.4) existingId="" - specify this to edit an existing marker
-        ## Typical usage:
-        
+        - lat
+        - lon
+        - title="New Marker"
+        - description=""
+        - color="FF0000"
+        - symbol="point"
+        - rotation=None
+        - folderId=None
+        - (beginning in 1.0.4) existingId="" - specify this to edit an existing marker
+        ## EXAMPLES:
         ```
-        from sartopo_python import SartopoSession
-        sts=SartopoSession("localhost:8080","SBH")
-        fid=sts.addFolder("MyFolder")
-        sts.addMarker(39,-120,"stuff")
-        sts.addMarker(39,-121,"myStuff",folderId=fid)
-        r=sts.getFeatures("Marker")
-        print("sending with id:"+r[0]["id"])
-        sts.addMarker(39.2536,-121.0267,r[0]["properties"]["title"],existingId=r[0]["id"])
+        #     from sartopo_python import SartopoSession
+        #     import time
+        #     
+        #     sts=SartopoSession("localhost:8080","<offlineMapID>")
+        #     fid=sts.addFolder("MyFolder")
+        #     sts.addMarker(39,-120,"stuff")
+        #     sts.addMarker(39.01,-120.01,"myStuff",folderId=fid)
+        #     r=sts.getFeatures("Marker")
+        #     print("r:"+str(r))
+        #     print("moving the marker after a pause:"+r[0]['id'])
+        #     time.sleep(5)
+        #     sts.addMarker(39.02,-120.02,r[0]['properties']['title'],existingId=r[0]['id'])
+        #     
+        #     sts2=SartopoSession(
+        #         "sartopo.com",
+        #         "<onlineMapID>",
+        #         configpath="../../sts.ini",
+        #         account="<accountName>")
+        #     fid2=sts2.addFolder("MyOnlineFolder")
+        #     sts2.addMarker(39,-120,"onlineStuff")
+        #     sts2.addMarker(39.01,-119.99,"onlineStuff2",folderId=fid2)
+        #     r2=sts2.getFeatures("Marker")
+        #     print("return value from getFeatures('Marker'):")
+        #     print(json.dumps(r2,indent=3))
+        #     time.sleep(15)
+        #     print("moving online after a pause:"+r2[0]['id'])
+        #     sts2.addMarker(39.02,-119.98,r2[0]['properties']['title'],existingId=r2[0]['id'])
         ```
+        ## Signed Requests
+        Requests to localhost do not require any authentication; requests to sartopo.com do require authentication in the form of request signatures.
         
+        If the sartopo session object was created with 'sartopo.com' as part of the URL, then this module will sign all requests before sending.
+        
+        Authenticaion information required to generate the signed requests includes an account expiration timestamp, a public key, and an ID code.  For a good explanation of how to determine those three items, see the README at https://github.com/elliottshane/sme-sartopo-mapsrv.
+        
+        Once those three items are determined, they should be stored in a configparser-compatible file that should look like the following:
+        ```
+        # sartopo_pyhton config file
+        # This file contains credentials used to send API map requests
+        #  to sartopo.com.  Protect and do not distribute these credentials.
+        
+        [myaccount@gmail.com]
+        id=123456ABCDEF
+        key=aBcDeF12345somepublickey
+        expires=1234567890
+        ```
+        An explanation of how the SartopoSession constructor arguments are used to determine credentials, if sartopo.com is in the URL:
+        ```
+           # if configpath and account are specified,
+           #  conigpath must be the full pathname of a configparser-compliant
+           #  config file, and account must be the name of a section within it,
+           #  containing keys 'id', 'key', and 'expires'.
+           # otherwise, those parameters must have been specified in this object's
+           #  constructor.
+           # if both are specified, first the config section is read and then
+           #  any parameters of this object are used to override the config file
+           #  values.
+           # if any of those three values are still not specified, abort.
+        ```
         
         
 Platform: UNKNOWN
