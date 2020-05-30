@@ -19,6 +19,38 @@
 #  Contact the author at nccaves@yahoo.com
 #   Attribution, feedback, bug reports and feature requests are appreciated
 #
+############################################################
+#
+# EXAMPLES:
+#
+#     from sartopo_python import SartopoSession
+#     import time
+#     
+#     sts=SartopoSession("localhost:8080","<offlineMapID>")
+#     fid=sts.addFolder("MyFolder")
+#     sts.addMarker(39,-120,"stuff")
+#     sts.addMarker(39.01,-120.01,"myStuff",folderId=fid)
+#     r=sts.getFeatures("Marker")
+#     print("r:"+str(r))
+#     print("moving the marker after a pause:"+r[0]['id'])
+#     time.sleep(5)
+#     sts.addMarker(39.02,-120.02,r[0]['properties']['title'],existingId=r[0]['id'])
+#     
+#     sts2=SartopoSession(
+#         "sartopo.com",
+#         "<onlineMapID>",
+#         configpath="../../sts.ini",
+#         account="<accountName>")
+#     fid2=sts2.addFolder("MyOnlineFolder")
+#     sts2.addMarker(39,-120,"onlineStuff")
+#     sts2.addMarker(39.01,-119.99,"onlineStuff2",folderId=fid2)
+#     r2=sts2.getFeatures("Marker")
+#     print("return value from getFeatures('Marker'):")
+#     print(json.dumps(r2,indent=3))
+#     time.sleep(15)
+#     print("moving online after a pause:"+r2[0]['id'])
+#     sts2.addMarker(39.02,-119.98,r2[0]['properties']['title'],existingId=r2[0]['id'])
+#
 #  REVISION HISTORY
 #-----------------------------------------------------------------------------
 #   DATE   |  AUTHOR  |  NOTES
@@ -40,24 +72,93 @@
 #                          to return the entire json structure for each feature;
 #                          this enables preservation of marker-symbol when moving
 #                          an existing marker
+#  5-30-20    TMG        fix #2: v1.1.0: send signed requests to sartopo.com (online)
 #
 #-----------------------------------------------------------------------------
 
+import hmac
+import base64
 import requests
 import json
-    
+import configparser
+import os
+
 class SartopoSession():
-    def __init__(self,domainAndPort="localhost:8080",mapID=None):
+    def __init__(self,domainAndPort="localhost:8080",mapID=None,configpath=None,account=None,id=None,key=None,expires=None):
         self.s=requests.session()
         self.apiVersion=-1
         if not mapID or not isinstance(mapID,str) or len(mapID)<3:
             print("ERROR: you must specify a three-or-more-character sartopo map ID string (end of the URL) when opening a SartopoSession object.")
-            return
+            return -1
         self.mapID=mapID
         self.domainAndPort=domainAndPort
+        # configpath, account, id, key, and expires are used to build
+        #  signed requests for sartopo.com
+        self.configpath=configpath
+        self.account=account
+        self.id=id
+        self.key=key
+        self.expires=expires
         self.setupSession()
         
     def setupSession(self):
+        if "sartopo.com" in self.domainAndPort.lower():
+            id=None
+            key=None
+            expires=None
+            # if configpath and account are specified,
+            #  conigpath must be the full pathname of a configparser-compliant
+            #  config file, and account must be the name of a section within it,
+            #  containing keys 'id', 'key', and 'expires'.
+            # otherwise, those parameters must have been specified in this object's
+            #  constructor.
+            # if both are specified, first the config section is read and then
+            #  any parameters of this object are used to override the config file
+            #  values.
+            # if any of those three values are still not specified, abort.
+            if self.configpath is not None:
+                if os.path.isfile(self.configpath):
+                    if self.account is None:
+                        print("config file '"+self.configpath+"' is specified, but no account name is specified.")
+                        return -1
+                    config=configparser.ConfigParser()
+                    config.read(self.configpath)
+                    if self.account not in config.sections():
+                        print("specified account '"+self.account+"' has no entry in config file '"+self.configpath+"'.")
+                        return -1
+                    section=config[self.account]
+                    id=section.get("id",None)
+                    key=section.get("key",None)
+                    expires=section.get("expires",None)
+                    if id is None or key is None or expires is None:
+                        print("account entry '"+self.account+"' in config file '"+self.configpath+"' is not complete:\n  it must specify id, key, and expires.")
+                        return -1
+                else:
+                    print("specified config file '"+self.configpath+"' does not exist.")
+                    return -1
+
+            # now allow values specified in constructor to override config file values
+            if self.id is not None:
+                id=self.id
+            if self.key is not None:
+                key=self.key
+            if self.expires is not None:
+                expires=self.expires
+            # finally, save them back as parameters of this object
+            self.id=id
+            self.key=key
+            self.expires=int(expires)
+
+            if self.id is None:
+                print("sartopo session is invalid: 'id' must be specified for online maps")
+                return -1
+            if self.key is None:
+                print("sartopo session is invalid: 'key' must be specified for online maps")
+                return -1                
+            if self.expires is None:
+                print("sartopo session is invalid: 'expires' must be specified for online maps")
+                return -1
+
         # by default, do not assume any sartopo session is running;
         # send a GET request to http://localhost:8080/api/v1/map/
         #  response code 200 = new API
@@ -113,7 +214,6 @@ class SartopoSession():
                                 print("API v0 session is now authenticated")
         print("API version:"+str(self.apiVersion))
         
-    
     def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None):
         if self.apiVersion<0:
             print("sartopo session is invalid; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
@@ -123,14 +223,30 @@ class SartopoSession():
             apiUrlEnd=apiUrlEnd.capitalize()
         if apiUrlEnd.startswith("Since"): # 'since' must be lowercase even in API v1
             apiUrlEnd=apiUrlEnd.lower()
-        url="http://"+self.domainAndPort+self.apiUrlMid+apiUrlEnd+"/"+id
-        url=url.replace("[MAPID]",self.mapID)
+        # append id (if any) to apiUrlEnd so that it is a part of the request
+        #  destination and also a part of the pre-hased data for signed requests
+        if id!="": # sending online request with slash at the end causes failure
+            apiUrlEnd=apiUrlEnd+"/"+id
+        mid=self.apiUrlMid.replace("[MAPID]",self.mapID)
+        url="http://"+self.domainAndPort+mid+apiUrlEnd
 #         print("sending "+str(type)+" to "+url)
         if type is "post":
-#             print("SENDING POST:")
-#             print(json.dumps(j,indent=3))
-            r=self.s.post(url,data={'json':json.dumps(j)},timeout=2)
+            params={}
+            params["json"]=json.dumps(j)
+            if "sartopo.com" in self.domainAndPort.lower():
+                data="POST "+mid+apiUrlEnd+"\n"+str(self.expires)+"\n"+json.dumps(j)
+#                 print("pre-hashed data:"+data)                
+                token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
+                token=base64.b64encode(token).decode()
+#                 print("hashed data:"+str(token))
+                params["id"]=self.id
+                params["expires"]=self.expires
+                params["signature"]=token
+#             print("SENDING POST to '"+url+"':")
+#             print(json.dumps(params,indent=3))
+            r=self.s.post(url,data=params,timeout=2)
         elif type is "get": # no need for json in GET; sending null JSON causes downstream error
+#             print("SENDING GET to '"+url+"':")
             r=self.s.get(url,timeout=2)
         else:
             print("Unrecognized request type:"+str(type))
@@ -155,7 +271,8 @@ class SartopoSession():
                     elif 'id' in rj:
                         id=rj['id']
                     else:
-                        print("No valid folder ID was returned from the request.")
+                        print("No valid ID was returned from the request:")
+                        print(json.dumps(rj,indent=3))
                     return id
                 if returnJson=="ALL":
                     return rj
@@ -205,13 +322,31 @@ class SartopoSession():
 #                         rval.append([id,prop]) # return all properties
                         
             return rval
-    
-
-# if __name__ == "__main__":
-#     sts=SartopoSession("localhost:8080","SBH")
-#     fid=sts.addFolder("MyFolder")
-#     sts.addMarker(39,-120,"stuff")
-#     sts.addMarker(39,-121,"myStuff",folderId=fid)
-#     r=sts.getFeatures("Marker")
-#     print("sending with id:"+r[0][1])
-#     sts.addMarker(39.2536,-121.0267,r[0][0],existingId=r[0][1])
+        
+if __name__=="__main__":
+    import time
+     
+    sts=SartopoSession("localhost:8080","VT3")
+    fid=sts.addFolder("MyFolder")
+    sts.addMarker(39,-120,"stuff")
+    sts.addMarker(39.01,-120.01,"myStuff",folderId=fid)
+    r=sts.getFeatures("Marker")
+    print("r:"+str(r))
+    print("moving the marker after a pause:"+r[0]['id'])
+    time.sleep(5)
+    sts.addMarker(39.02,-120.02,r[0]['properties']['title'],existingId=r[0]['id'])
+     
+#     sts2=SartopoSession(
+#         "sartopo.com",
+#         "KSG2",
+#         configpath="../../sts.ini",
+#         account="<account_name>")
+#     fid2=sts2.addFolder("MyOnlineFolder")
+#     sts2.addMarker(39,-120,"onlineStuff")
+#     sts2.addMarker(39.01,-119.99,"onlineStuff2",folderId=fid2)
+#     r2=sts2.getFeatures("Marker")
+#     print("return value from getFeatures('Marker'):")
+#     print(json.dumps(r2,indent=3))
+#     time.sleep(15)
+#     print("moving online after a pause:"+r2[0]['id'])
+#     sts2.addMarker(39.02,-119.98,r2[0]['properties']['title'],existingId=r2[0]['id'])
