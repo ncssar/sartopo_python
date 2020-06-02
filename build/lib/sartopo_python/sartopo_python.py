@@ -84,6 +84,7 @@ import requests
 import json
 import configparser
 import os
+import time
 
 class SartopoSession():
     def __init__(self,domainAndPort="localhost:8080",mapID=None,configpath=None,account=None,id=None,key=None):
