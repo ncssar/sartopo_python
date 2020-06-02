@@ -73,6 +73,8 @@
 #                          this enables preservation of marker-symbol when moving
 #                          an existing marker
 #  5-30-20    TMG        fix #2: v1.1.0: send signed requests to sartopo.com (online)
+#   6-2-20    TMG        v1.1.1: fix #5 (use correct meaning of 'expires');
+#                           fix #6 (__init__ returns None on failure)
 #
 #-----------------------------------------------------------------------------
 
@@ -84,32 +86,30 @@ import configparser
 import os
 
 class SartopoSession():
-    def __init__(self,domainAndPort="localhost:8080",mapID=None,configpath=None,account=None,id=None,key=None,expires=None):
+    def __init__(self,domainAndPort="localhost:8080",mapID=None,configpath=None,account=None,id=None,key=None):
         self.s=requests.session()
         self.apiVersion=-1
         if not mapID or not isinstance(mapID,str) or len(mapID)<3:
             print("ERROR: you must specify a three-or-more-character sartopo map ID string (end of the URL) when opening a SartopoSession object.")
-            return -1
+            return None
         self.mapID=mapID
         self.domainAndPort=domainAndPort
-        # configpath, account, id, key, and expires are used to build
+        # configpath, account, id, and key are used to build
         #  signed requests for sartopo.com
         self.configpath=configpath
         self.account=account
         self.id=id
         self.key=key
-        self.expires=expires
         self.setupSession()
         
     def setupSession(self):
         if "sartopo.com" in self.domainAndPort.lower():
             id=None
             key=None
-            expires=None
             # if configpath and account are specified,
             #  conigpath must be the full pathname of a configparser-compliant
             #  config file, and account must be the name of a section within it,
-            #  containing keys 'id', 'key', and 'expires'.
+            #  containing keys 'id' and 'key'.
             # otherwise, those parameters must have been specified in this object's
             #  constructor.
             # if both are specified, first the config section is read and then
@@ -129,9 +129,8 @@ class SartopoSession():
                     section=config[self.account]
                     id=section.get("id",None)
                     key=section.get("key",None)
-                    expires=section.get("expires",None)
-                    if id is None or key is None or expires is None:
-                        print("account entry '"+self.account+"' in config file '"+self.configpath+"' is not complete:\n  it must specify id, key, and expires.")
+                    if id is None or key is None:
+                        print("account entry '"+self.account+"' in config file '"+self.configpath+"' is not complete:\n  it must specify id and key.")
                         return -1
                 else:
                     print("specified config file '"+self.configpath+"' does not exist.")
@@ -142,21 +141,15 @@ class SartopoSession():
                 id=self.id
             if self.key is not None:
                 key=self.key
-            if self.expires is not None:
-                expires=self.expires
             # finally, save them back as parameters of this object
             self.id=id
             self.key=key
-            self.expires=int(expires)
 
             if self.id is None:
                 print("sartopo session is invalid: 'id' must be specified for online maps")
                 return -1
             if self.key is None:
                 print("sartopo session is invalid: 'key' must be specified for online maps")
-                return -1                
-            if self.expires is None:
-                print("sartopo session is invalid: 'expires' must be specified for online maps")
                 return -1
 
         # by default, do not assume any sartopo session is running;
@@ -234,13 +227,14 @@ class SartopoSession():
             params={}
             params["json"]=json.dumps(j)
             if "sartopo.com" in self.domainAndPort.lower():
-                data="POST "+mid+apiUrlEnd+"\n"+str(self.expires)+"\n"+json.dumps(j)
+                expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
+                data="POST "+mid+apiUrlEnd+"\n"+str(expires)+"\n"+json.dumps(j)
 #                 print("pre-hashed data:"+data)                
                 token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
                 token=base64.b64encode(token).decode()
 #                 print("hashed data:"+str(token))
                 params["id"]=self.id
-                params["expires"]=self.expires
+                params["expires"]=expires
                 params["signature"]=token
 #             print("SENDING POST to '"+url+"':")
 #             print(json.dumps(params,indent=3))
@@ -322,31 +316,4 @@ class SartopoSession():
 #                         rval.append([id,prop]) # return all properties
                         
             return rval
-        
-if __name__=="__main__":
-    import time
-     
-    sts=SartopoSession("localhost:8080","VT3")
-    fid=sts.addFolder("MyFolder")
-    sts.addMarker(39,-120,"stuff")
-    sts.addMarker(39.01,-120.01,"myStuff",folderId=fid)
-    r=sts.getFeatures("Marker")
-    print("r:"+str(r))
-    print("moving the marker after a pause:"+r[0]['id'])
-    time.sleep(5)
-    sts.addMarker(39.02,-120.02,r[0]['properties']['title'],existingId=r[0]['id'])
-     
-#     sts2=SartopoSession(
-#         "sartopo.com",
-#         "KSG2",
-#         configpath="../../sts.ini",
-#         account="<account_name>")
-#     fid2=sts2.addFolder("MyOnlineFolder")
-#     sts2.addMarker(39,-120,"onlineStuff")
-#     sts2.addMarker(39.01,-119.99,"onlineStuff2",folderId=fid2)
-#     r2=sts2.getFeatures("Marker")
-#     print("return value from getFeatures('Marker'):")
-#     print(json.dumps(r2,indent=3))
-#     time.sleep(15)
-#     print("moving online after a pause:"+r2[0]['id'])
-#     sts2.addMarker(39.02,-119.98,r2[0]['properties']['title'],existingId=r2[0]['id'])
+
