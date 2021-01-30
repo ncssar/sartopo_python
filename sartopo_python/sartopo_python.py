@@ -174,9 +174,9 @@ class SartopoSession():
                 # now validate the mapID, since the initial test doesn't care about mapID
                 mapUrl="http://"+self.domainAndPort+"/m/"+self.mapID
                 try:
-                    r=self.s.get(mapUrl,timeout=2)
+                    r=self.s.get(mapUrl,timeout=8)
                 except:
-                    print("API version 1 detected, but the mapID is not valid.")
+                    print("API version 1 detected, but the get request timed out so the mapID is not valid: "+mapUrl)
                 else:
                     if r.status_code==200:
                         # now we know the API is valid and the mapID is valid
@@ -249,6 +249,25 @@ class SartopoSession():
         elif type=="get": # no need for json in GET; sending null JSON causes downstream error
 #             print("SENDING GET to '"+url+"':")
             r=self.s.get(url,timeout=2)
+        elif type=="delete":
+            params={}
+            if "sartopo.com" in self.domainAndPort.lower():
+                expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
+                data="DELETE "+mid+apiUrlEnd+"\n"+str(expires)+"\n"  #last newline needed as placeholder for json
+                # print("pre-hashed data:"+data)                
+                token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
+                token=base64.b64encode(token).decode()
+#                 print("hashed data:"+str(token))
+                params["json"]=''   # no body, but is required
+                params["id"]=self.id
+                params["expires"]=expires
+                params["signature"]=token
+            # print("SENDING DELETE to '"+url+"':")
+            # print(json.dumps(params,indent=3))
+            # print("Key:"+str(self.key))
+            r=self.s.delete(url,params=params,timeout=2)   ## use params for query vs data for body data
+            # print("URL:"+str(url))
+            # print("Ris:"+str(r))
         else:
             print("Unrecognized request type:"+str(type))
             return -1
@@ -271,6 +290,10 @@ class SartopoSession():
                         id=rj['result']['id']
                     elif 'id' in rj:
                         id=rj['id']
+                    elif not rj['result']['state']['features']:  # response if no new info
+                        return 0
+                    elif 'result' in rj and 'id' in rj['result']['state']['features'][0]:
+                        id=rj['result']['state']['features'][0]['id']
                     else:
                         print("No valid ID was returned from the request:")
                         print(json.dumps(rj,indent=3))
@@ -500,6 +523,49 @@ class SartopoSession():
 
     # def center(self,lat,lon,z):
     #     .
+
+    def addAppTrack(self,points,cnt=None,startTrack=True,title="New AppTrack",since=0,description="",folderId=None,existingId=""):
+        j={}
+        jp={}
+        jg={}
+        jp['class']='AppTrack'
+        jp['updated']=int(time.time()*1000)
+        jp['title']=title
+        ##########################jp['nop']=True
+        if folderId:
+            jp['folderId']=folderId
+        jp['description']=description
+        jg['type']='LineString'
+        jg['coordinates']=points
+        jg['incremental']=True
+        if cnt is None:
+            cnt=len(points)
+        jg['size']=cnt       # cnt includes number of coord in this call
+        j['properties']=jp
+        j['geometry']=jg
+        j['type']='Feature'
+        # if 0 == 1:      ## set for no existing ID
+        ###if existingId:
+            # j['id']=existingId   # get ID from first call - using Shape
+        # else:
+        existingId = ""
+        #print("sending json: "+json.dumps(j,indent=3))
+        #print("ID:"+str(existingId))
+        # if 1 == 1:
+        ##if startTrack == 1:
+        print("At request first time track"+str(existingId)+":"+str(j))
+        return self.sendRequest("post","Shape",j,id=str(existingId),returnJson="ID")
+        # else:
+        #     print("At request adding points to track:"+str(existingId)+":"+str(since)+":"+str(j))
+        #     return self.sendRequest("post","since/"+str(since),j,id=str(existingId),returnJson="ID")
+
+    def delMarker(self,existingId=""):
+        self.delObject("marker",existingId=existingId)
+
+    def delObject(self,objType,existingId=""):
+        # print("In delete:"+objType+":"+str(existingId))
+        ###return self.sendRequest("delete","since/0",None,id=str(existingId),returnJson="ALL")
+        return self.sendRequest("delete",objType,None,id=str(existingId),returnJson="ALL")
 
     def getFeatures(self,featureClass=None,since=0):
         rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL')
