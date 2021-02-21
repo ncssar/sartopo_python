@@ -346,6 +346,102 @@ class SartopoSession():
         else:
             return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
 
+    def editMarker(self,
+            lat=None,
+            lon=None,
+            title=None,
+            description=None,
+            color=None,
+            symbol=None,
+            rotation=None,
+            folderId=None,
+            existingId=None,
+            existingJson=None,
+            queue=False):
+        if existingJson is None:
+            existingJson=sts.getFeatures()
+        j={}
+        jp={}
+        jg={}
+        jp['class']='Marker'
+        jp['updated']=0
+        jp['marker-color']=color
+        jp['marker-symbol']=symbol
+        jp['title']=title
+        if folderId is not None:
+            jp['folderId']=folderId
+        jp['description']=description
+        jg['type']='Point'
+        jg['coordinates']=[float(lon),float(lat)]
+        j['properties']=jp
+        j['geometry']=jg
+        j['type']='Feature'
+        if existingId is not None:
+            j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        if queue:
+            self.queue.setdefault('Marker',[]).append(j)
+            return 0
+        else:
+            return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
+
+    def editMarkerDescription(self,
+            description='',
+            existingId=None):
+        j={}
+        jp={}
+        # jg={}
+        # jp['class']='Marker'
+        # jp['updated']=0
+        # jp['marker-color']=color
+        # jp['marker-symbol']=symbol
+        # jp['title']=title
+        # if folderId is not None:
+        #     jp['folderId']=folderId
+        jp['description']=description
+        # jg['type']='Point'
+        # jg['coordinates']=[float(lon),float(lat)]
+        j['properties']=jp
+        # j['geometry']=jg
+        j['type']='Feature'
+        if existingId is not None:
+            j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        # if queue:
+        #     self.queue.setdefault('Marker',[]).append(j)
+        #     return 0
+        # else:
+        return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
+
+    def moveMarker(self,
+            lat,
+            lon,
+            existingId=None):
+        j={}
+        jp={}
+        jg={}
+        # jp['class']='Marker'
+        # jp['updated']=0
+        # jp['marker-color']=color
+        # jp['marker-symbol']=symbol
+        # jp['title']=title
+        # if folderId is not None:
+        #     jp['folderId']=folderId
+        # jp['description']=description
+        # jg['type']='Point'
+        jg['coordinates']=[float(lon),float(lat)]
+        # j['properties']=jp
+        j['geometry']=jg
+        # j['type']='Feature'
+        if existingId is not None:
+            j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        # if queue:
+        #     self.queue.setdefault('Marker',[]).append(j)
+        #     return 0
+        # else:
+        return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
+
     def addLine(self,
             points,
             title='New Line',
@@ -517,6 +613,50 @@ class SartopoSession():
             return 0
         else:
             return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID')
+
+
+    def editAreaAssignmentNumber(self,
+            number=None,
+            existingId=None):
+        j={}
+        jp={}
+        # jg={}
+        if number is not None:
+            jp['number']=number
+        # if letter is not None:
+        #     jp['letter']=letter
+        # if opId is not None:
+        #     jp['operationalPeriod']=opId
+        # if folderId is not None:
+        #     jp['folderId']=folderId
+        # jp['resourceType']=resourceType
+        # jp['teamSize']=teamSize
+        # jp['priority']=priority
+        # jp['responsivePOD']=responsivePOD
+        # jp['unresponsivePOD']=unresponsivePOD
+        # jp['cluePOD']=cluePOD
+        # jp['description']=description
+        # jp['previousEfforts']=previousEfforts
+        # jp['transportation']=transportation
+        # jp['timeAllocated']=timeAllocated
+        # jp['primaryFrequency']=primaryFrequency
+        # jp['secondaryFrequency']=secondaryFrequency
+        # jp['preparedBy']=preparedBy
+        # jp['gpstype']=gpstype
+        # jp['status']=status
+        # jg['type']='Polygon'
+        # jg['coordinates']=[points]
+        j['properties']=jp
+        j['type']='Feature'
+        # j['geometry']=jg
+        if existingId is not None:
+            j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        # if queue:
+        #     self.queue.setdefault('Assignment',[]).append(j)
+        #     return 0
+        # else:
+        return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID')
 
     def flush(self):
         self.sendRequest('post','api/v0/map/[MAPID]/save',self.queue)
