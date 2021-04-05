@@ -75,6 +75,7 @@
 #  5-30-20    TMG        fix #2: v1.1.0: send signed requests to sartopo.com (online)
 #   6-2-20    TMG        v1.1.1: fix #5 (use correct meaning of 'expires');
 #                           fix #6 (__init__ returns None on failure)
+#   4-5-21    TMG        sync (fix #17)
 #
 #-----------------------------------------------------------------------------
 
@@ -86,9 +87,11 @@ import configparser
 import os
 import time
 import logging
+import sys
+from threading import Timer
 
 class SartopoSession():
-    def __init__(self,domainAndPort='localhost:8080',mapID=None,configpath=None,account=None,id=None,key=None):
+    def __init__(self,domainAndPort='localhost:8080',mapID=None,configpath=None,account=None,id=None,key=None,sync=True,syncDumpFile=None):
         self.s=requests.session()
         self.apiVersion=-1
         if not mapID or not isinstance(mapID,str) or len(mapID)<3:
@@ -101,8 +104,13 @@ class SartopoSession():
         self.configpath=configpath
         self.account=account
         self.queue={}
+        self.mapData={'ids':{},'state':{'features':[]}}
         self.id=id
         self.key=key
+        self.sync=sync
+        self.syncInterval=5
+        self.lastSuccessfulSyncTimestamp=0
+        self.syncDumpFile=syncDumpFile
         self.setupSession()
         
     def setupSession(self):
@@ -209,7 +217,104 @@ class SartopoSession():
                             if r.status_code==200:
                                 logging.info("API v0 session is now authenticated")
         logging.info("API version:"+str(self.apiVersion))
+        # sync needs to be done here instead of in the caller, so that
+        #  edit functions can have access to the full json
+        if self.sync:
+            self.start()
+            
+    def doSync(self):
+        if self.sync: # check here since sync could have been disabled since last sync
+            # Use a 'since' value of a half second prior to the previous response timestamp;
+            #  this is what sartopo currently does.
+
+            # Keys under 'result':
+            # 1 - 'ids' will only exist on first sync or after a deletion, so, if 'ids' exists
+            #     then just use it to replace the entire cached 'ids', and also do cleanup later
+            #     by deleting any state->features from the cache whose 'id' value is not in 'ids'
+            # 2 - state->features is an array of changed existing objects, and the array will
+            #     have complete data for 'geometry', 'id', 'type', and 'properties', so, for each
+            #     item in state->features, just replace the entire existing cached feature of
+            #     the same id
+
+            logging.info('Sending sartopo "since" request...')
+            rj=self.getFeatures(since=str(max(0,self.lastSuccessfulSyncTimestamp-500)))
+            # logging.debug(json.dumps(rj,indent=3))
+            if rj['status']=='ok':
+                self.lastSuccessfulSyncTimestamp=rj['result']['timestamp']
+                logging.info('Successful sartopo sync: timestamp='+str(self.lastSuccessfulSyncTimestamp))
+                rjr=rj['result']
+                rjrsf=rjr['state']['features']
+                
+                # 1 - if 'ids' exists, use it verbatim; cleanup happens later
+                if 'ids' in rjr.keys():
+                    self.mapData['ids']=rjr['ids']
+                    logging.info('  Updating "ids"')
+                
+                # 2 - update existing features
+                if len(rjrsf)>0:
+                    logging.info(json.dumps(rj,indent=3))
+                    for f in rjrsf:
+                        rjrfid=f['id']
+                        prop=f['properties']
+                        title=str(prop.get('title',None))
+                        featureClass=str(prop['class'])
+                        # 2a - if id already exists, replace it
+                        processed=False
+                        for i in range(len(self.mapData['state']['features'])):
+                            if self.mapData['state']['features'][i]['id']==rjrfid:
+                                # don't simply overwrite the entire feature entry:
+                                #  - if only geometry was changed, indicated by properties['nop']=true,
+                                #    then leave properties alone and just overwrite geometry;
+                                #  - if only properties were changed, geometry will not be in the response,
+                                #    so leave geometry alone
+                                #  SO:
+                                #  - if f->prop->title exists, replace the entire prop dict
+                                #  - if f->geometry exists, replace the entire geometry dict
+                                if 'title' in prop.keys():
+                                    logging.info('  Updating properties for '+featureClass+':'+title)
+                                    self.mapData['state']['features'][i]['properties']=prop
+                                if title=='None':
+                                    title=self.mapData['state']['features'][i]['properties']['title']
+                                if 'geometry' in f.keys():
+                                    logging.info('  Updating geometry for '+featureClass+':'+title)
+                                    self.mapData['state']['features'][i]['geometry']=f['geometry']
+                                processed=True
+                                break
+                        # 2b - otherwise, create it - and add to ids so it doesn't get cleaned
+                        if not processed:
+                            logging.info('  Adding '+featureClass+':'+title)
+                            self.mapData['state']['features'].append(f)
+                            if f['id'] not in self.mapData['ids'][prop['class']]:
+                                self.mapData['ids'][prop['class']].append(f['id'])
+
+                # 3 - cleanup
+                self.mapIDs=sum(self.mapData['ids'].values(),[])
+                mapSFIDs=[f['id'] for f in self.mapData['state']['features']]
+                for i in range(len(mapSFIDs)):
+                    if mapSFIDs[i] not in self.mapIDs:
+                        prop=self.mapData['state']['features'][i]['properties']
+                        logging.info('  Deleting '+str(prop['class'])+':'+str(prop['title']))
+                        del self.mapData['state']['features'][i]
         
+                if self.syncDumpFile:
+                    with open(self.syncDumpFile,"w") as f:
+                        f.write(json.dumps(self.mapData,indent=3))
+
+                if self.sync:
+                    syncTimer=Timer(self.syncInterval,self.doSync)
+                    syncTimer.start()
+            else:
+                logging.error('Sartopo sync failed!')
+
+    def stop(self):
+        logging.info('Sartopo syncing terminated.')
+        self.sync=False
+
+    def start(self):
+        self.sync=True
+        logging.info('Sartopo syncing initiated.')
+        self.doSync()
+
     def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None):
         if self.apiVersion<0:
             logging.error("sartopo session is invalid; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
@@ -586,3 +691,4 @@ class SartopoSession():
                         
             return rval
 
+logging.basicConfig(stream=sys.stdout,level=logging.INFO) # print by default; let the caller change this if needed
