@@ -91,7 +91,19 @@ import sys
 from threading import Timer
 
 class SartopoSession():
-    def __init__(self,domainAndPort='localhost:8080',mapID=None,configpath=None,account=None,id=None,key=None,sync=True,syncDumpFile=None):
+    def __init__(self,
+            domainAndPort='localhost:8080',
+            mapID=None,
+            configpath=None,
+            account=None,
+            id=None,
+            key=None,
+            sync=True,
+            syncDumpFile=None,
+            propUpdateCallback=None,
+            geometryUpdateCallback=None,
+            newObjectCallback=None,
+            deletedObjectCallback=None):
         self.s=requests.session()
         self.apiVersion=-1
         if not mapID or not isinstance(mapID,str) or len(mapID)<3:
@@ -108,6 +120,10 @@ class SartopoSession():
         self.id=id
         self.key=key
         self.sync=sync
+        self.propUpdateCallback=propUpdateCallback
+        self.geometryUpdateCallback=geometryUpdateCallback
+        self.newObjectCallback=newObjectCallback
+        self.deletedObjectCallback=deletedObjectCallback
         self.syncInterval=5
         self.lastSuccessfulSyncTimestamp=0
         self.syncDumpFile=syncDumpFile
@@ -273,17 +289,23 @@ class SartopoSession():
                                 if 'title' in prop.keys():
                                     logging.info('  Updating properties for '+featureClass+':'+title)
                                     self.mapData['state']['features'][i]['properties']=prop
+                                    if self.propUpdateCallback:
+                                        self.propUpdateCallback(rjrfid,prop)
                                 if title=='None':
                                     title=self.mapData['state']['features'][i]['properties']['title']
                                 if 'geometry' in f.keys():
                                     logging.info('  Updating geometry for '+featureClass+':'+title)
                                     self.mapData['state']['features'][i]['geometry']=f['geometry']
+                                    if self.geometryUpdateCallback:
+                                        self.geometryUpdateCallback(rjrfid,f['geometry'])
                                 processed=True
                                 break
                         # 2b - otherwise, create it - and add to ids so it doesn't get cleaned
                         if not processed:
                             logging.info('  Adding '+featureClass+':'+title)
                             self.mapData['state']['features'].append(f)
+                            if self.newObjectCallback:
+                                self.newObjectCallback(f)
                             if f['id'] not in self.mapData['ids'][prop['class']]:
                                 self.mapData['ids'][prop['class']].append(f['id'])
 
@@ -294,6 +316,8 @@ class SartopoSession():
                     if mapSFIDs[i] not in self.mapIDs:
                         prop=self.mapData['state']['features'][i]['properties']
                         logging.info('  Deleting '+str(prop['class'])+':'+str(prop['title']))
+                        if self.deletedObjectCallback:
+                            self.deletedObjectCallback(mapSFIDs[i],self.mapData['state']['features'][i])
                         del self.mapData['state']['features'][i]
         
                 if self.syncDumpFile:
