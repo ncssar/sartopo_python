@@ -716,18 +716,14 @@ class SartopoSession():
                         
             return rval
 
-    # editObject
-    #   - id, className, title, letter - one or more of these is used to identify the exact object;
-    #      if not enough info is given or it results in ambiguity, return an error
+    # editObject(id=None,className=None,title=None,letter=None,properties=None,geometry=None)
+    # edit any properties and/or geometry of specified map object
+
+    #   - id, className, title, letter - used to identify the object to be edited;
+    #      if not enough info is given or it results in ambiguity, return with an error
     #         - id - optional argument; if specified, no search is needed
     #         - className - required argument, since it will be sent as part of the URL
     #         - title, letter - if id is not specified, exactly one of these must be specified
-
-    #     These combinations are enough to try to identify the object to be edited:
-    #       1. id only (definitely not ambiguous)
-    #       2. title (could be ambiguous)
-    #       3. className and title (could be ambiguous)
-    #       4. letter (this can only refer to an Assignment object - could be ambiguous)
     
     #   - properties, geometry - one or both must be specified
     #      dictionaries of keys and values to be changed; they don't need to be complete;
@@ -737,7 +733,7 @@ class SartopoSession():
     #  (assuming sts is a SartopoSession object)
     
     #  1. move a marker
-    #    sts.editObject(className='Marker',title='t',geometry={'coordinates':[39,120,0,0]})
+    #    sts.editObject(className='Marker',title='t',geometry={'coordinates':[-120,39,0,0]})
 
     #  2. change assignment status to INPROGRESS
     #    sts.editObject(className='Assignment',letter='AB',properties={'status':'INPROGRESS'})
@@ -807,7 +803,7 @@ class SartopoSession():
         #       "class":"Assignment"
         #   }
         # }
-        
+
         propToWrite=None
         if properties is not None:
             keys=properties.keys()
