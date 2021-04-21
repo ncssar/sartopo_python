@@ -449,12 +449,13 @@ class SartopoSession():
             rotation=None,
             folderId=None,
             existingId=None,
+            update=0,
             queue=False):
         j={}
         jp={}
         jg={}
         jp['class']='Marker'
-        jp['updated']=0
+        jp['updated']=update
         jp['marker-color']=color
         jp['marker-symbol']=symbol
         jp['title']=title
@@ -714,5 +715,122 @@ class SartopoSession():
 #                         rval.append([id,prop]) # return all properties
                         
             return rval
+
+    # editObject
+    #   - id, className, title, letter - one or more of these is used to identify the exact object;
+    #      if not enough info is given or it results in ambiguity, return an error
+    #         - id - optional argument; if specified, no search is needed
+    #         - className - required argument, since it will be sent as part of the URL
+    #         - title, letter - if id is not specified, exactly one of these must be specified
+
+    #     These combinations are enough to try to identify the object to be edited:
+    #       1. id only (definitely not ambiguous)
+    #       2. title (could be ambiguous)
+    #       3. className and title (could be ambiguous)
+    #       4. letter (this can only refer to an Assignment object - could be ambiguous)
+    
+    #   - properties, geometry - one or both must be specified
+    #      dictionaries of keys and values to be changed; they don't need to be complete;
+    #      they will be merged here with the synced dictionary before sending to the server
+
+    #  EXAMPLES:
+    #  (assuming sts is a SartopoSession object)
+    
+    #  1. move a marker
+    #    sts.editObject(className='Marker',title='t',geometry={'coordinates':[39,120,0,0]})
+
+    #  2. change assignment status to INPROGRESS
+    #    sts.editObject(className='Assignment',letter='AB',properties={'status':'INPROGRESS'})
+
+    #  3. change assignment number
+    #    sts.editObject(className='Assignment',letter='AB',properties={'number':'111'})
+
+    def editObject(self,
+            id=None,
+            className=None,
+            title=None,
+            letter=None,
+            properties=None,
+            geometry=None):
+
+        # PART 1: determine the exact id of the object to be edited
+        if id is None:
+            # first, validate the arguments and and adjust as needed
+            if className is None:
+                logging.error('ClassName was not specified.')
+                return -1
+            if letter is not None:
+                if className is not 'Assignment':
+                    logging.warning('Letter was specified, but className was specified as other than Assignment.  ClassName Assignment will be used.')
+                className='Assignment'
+            if title is None and letter is None:
+                logging.error('Either Title or Letter must be specified.')
+                return -1
+            if title is not None and letter is not None:
+                logging.warning('Both Title and Letter were specified.  Only one or the other can be used for the search.  Using Letter, in case the rest of the object title has changed.')
+                title=None
+            if title is not None:
+                ltKey='title'
+                ltVal=title
+            else:
+                ltKey='letter'
+                ltVal=letter
+
+            # validation complete; first search based on letter/title, then, if needed, filter based on className if specified
+            
+            # it's probably quicker to filter by letter/title first, since that should only return a very small number of hits,
+            #   as opposed to filtering by className first, which could return a large number of hits
+
+            features=[f for f in self.mapData['state']['features'] if f['properties'].get(ltKey,None)==ltVal and f['properties']['class'].lower()==className.lower()]
+                
+            if len(features)==0:
+                logging.error('no feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
+                return -1
+            if len(features)>1:
+                logging.error('more than one feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
+                return -1
+            feature=features[0]
+            logging.info('feature found: '+str(feature))
+
+        # PART 2: merge the properties and/or geometry dictionaries, and send the request
+        
+        # the outgoing request when changing an assignment letter is as follows:
+        # URL: ...../<mapID>/<className>/<id>
+        # type: POST
+        # json: {
+        #   "type":"Feature",
+        #   "id":"3c8e72a2-4ea6-433d-b547-37e23472065b",
+        #   "properties":{
+        #       "number":"",
+        #       "letter":"AX",
+        #       ...
+        #       "class":"Assignment"
+        #   }
+        # }
+        
+        propToWrite=None
+        if properties is not None:
+            keys=properties.keys()
+            propToWrite=feature['properties']
+            for key in keys:
+                propToWrite[key]=properties[key]
+            # write the correct title for assignments, since sartopo does not internally recalcualte it
+            if className.lower()=='assignment':
+                propToWrite['title']=propToWrite['letter']+' '+propToWrite['number'].strip()
+
+        geomToWrite=None
+        if geometry is not None:
+            geomToWrite=feature['geometry']
+            for key in geometry.keys():
+                geomToWrite[key]=geometry[key]
+        
+        j={'type':'Feature','id':feature['id']}
+        if propToWrite is not None:
+            j['properties']=propToWrite
+        if geomToWrite is not None:
+            j['geometry']=geomToWrite
+
+        return self.sendRequest('post',className,j,id=feature['id'],returnJson='ID')
+
 
 logging.basicConfig(stream=sys.stdout,level=logging.INFO) # print by default; let the caller change this if needed
