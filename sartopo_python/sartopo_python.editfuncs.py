@@ -75,7 +75,6 @@
 #  5-30-20    TMG        fix #2: v1.1.0: send signed requests to sartopo.com (online)
 #   6-2-20    TMG        v1.1.1: fix #5 (use correct meaning of 'expires');
 #                           fix #6 (__init__ returns None on failure)
-#   4-5-21    TMG        sync (fix #17)
 #
 #-----------------------------------------------------------------------------
 
@@ -91,21 +90,7 @@ import sys
 from threading import Timer
 
 class SartopoSession():
-    def __init__(self,
-            domainAndPort='localhost:8080',
-            mapID=None,
-            configpath=None,
-            account=None,
-            id=None,
-            key=None,
-            sync=True,
-            syncInterval=5,
-            syncTimeout=2,
-            syncDumpFile=None,
-            propUpdateCallback=None,
-            geometryUpdateCallback=None,
-            newObjectCallback=None,
-            deletedObjectCallback=None):
+    def __init__(self,domainAndPort='localhost:8080',mapID=None,configpath=None,account=None,id=None,key=None,sync=True,syncDumpFile=None):
         self.s=requests.session()
         self.apiVersion=-1
         if not mapID or not isinstance(mapID,str) or len(mapID)<3:
@@ -122,12 +107,7 @@ class SartopoSession():
         self.id=id
         self.key=key
         self.sync=sync
-        self.syncTimeout=syncTimeout
-        self.propUpdateCallback=propUpdateCallback
-        self.geometryUpdateCallback=geometryUpdateCallback
-        self.newObjectCallback=newObjectCallback
-        self.deletedObjectCallback=deletedObjectCallback
-        self.syncInterval=syncInterval
+        self.syncInterval=5
         self.lastSuccessfulSyncTimestamp=0
         self.syncDumpFile=syncDumpFile
         self.setupSession()
@@ -256,7 +236,7 @@ class SartopoSession():
             #     the same id
 
             logging.info('Sending sartopo "since" request...')
-            rj=self.getFeatures(since=str(max(0,self.lastSuccessfulSyncTimestamp-500)),timeout=self.syncTimeout)
+            rj=self.getFeatures(since=str(max(0,self.lastSuccessfulSyncTimestamp-500)))
             # logging.debug(json.dumps(rj,indent=3))
             if rj['status']=='ok':
                 self.lastSuccessfulSyncTimestamp=rj['result']['timestamp']
@@ -292,23 +272,17 @@ class SartopoSession():
                                 if 'title' in prop.keys():
                                     logging.info('  Updating properties for '+featureClass+':'+title)
                                     self.mapData['state']['features'][i]['properties']=prop
-                                    if self.propUpdateCallback:
-                                        self.propUpdateCallback(rjrfid,prop)
                                 if title=='None':
                                     title=self.mapData['state']['features'][i]['properties']['title']
                                 if 'geometry' in f.keys():
                                     logging.info('  Updating geometry for '+featureClass+':'+title)
                                     self.mapData['state']['features'][i]['geometry']=f['geometry']
-                                    if self.geometryUpdateCallback:
-                                        self.geometryUpdateCallback(rjrfid,f['geometry'])
                                 processed=True
                                 break
                         # 2b - otherwise, create it - and add to ids so it doesn't get cleaned
                         if not processed:
                             logging.info('  Adding '+featureClass+':'+title)
                             self.mapData['state']['features'].append(f)
-                            if self.newObjectCallback:
-                                self.newObjectCallback(f)
                             if f['id'] not in self.mapData['ids'][prop['class']]:
                                 self.mapData['ids'][prop['class']].append(f['id'])
 
@@ -319,8 +293,6 @@ class SartopoSession():
                     if mapSFIDs[i] not in self.mapIDs:
                         prop=self.mapData['state']['features'][i]['properties']
                         logging.info('  Deleting '+str(prop['class'])+':'+str(prop['title']))
-                        if self.deletedObjectCallback:
-                            self.deletedObjectCallback(mapSFIDs[i],self.mapData['state']['features'][i])
                         del self.mapData['state']['features'][i]
         
                 if self.syncDumpFile:
@@ -342,7 +314,7 @@ class SartopoSession():
         logging.info('Sartopo syncing initiated.')
         self.doSync()
 
-    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=2):
+    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None):
         if self.apiVersion<0:
             logging.error("sartopo session is invalid; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
             return -1
@@ -378,10 +350,10 @@ class SartopoSession():
                 params["signature"]=token
             logging.info("SENDING POST to '"+url+"':")
             logging.info(json.dumps(params,indent=3))
-            r=self.s.post(url,data=params,timeout=timeout)
+            r=self.s.post(url,data=params,timeout=2)
         elif type=="get": # no need for json in GET; sending null JSON causes downstream error
 #             logging.info("SENDING GET to '"+url+"':")
-            r=self.s.get(url,timeout=timeout)
+            r=self.s.get(url,timeout=2)
         elif type=="delete":
             params={}
             if "sartopo.com" in self.domainAndPort.lower():
@@ -398,7 +370,7 @@ class SartopoSession():
             # logging.info("SENDING DELETE to '"+url+"':")
             # logging.info(json.dumps(params,indent=3))
             # logging.info("Key:"+str(self.key))
-            r=self.s.delete(url,params=params,timeout=timeout)   ## use params for query vs data for body data
+            r=self.s.delete(url,params=params,timeout=2)   ## use params for query vs data for body data
             # logging.info("URL:"+str(url))
             # logging.info("Ris:"+str(r))
         else:
@@ -452,13 +424,12 @@ class SartopoSession():
             rotation=None,
             folderId=None,
             existingId=None,
-            update=0,
             queue=False):
         j={}
         jp={}
         jg={}
         jp['class']='Marker'
-        jp['updated']=update
+        jp['updated']=0
         jp['marker-color']=color
         jp['marker-symbol']=symbol
         jp['title']=title
@@ -478,6 +449,102 @@ class SartopoSession():
             return 0
         else:
             return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
+
+    def editMarker(self,
+            lat=None,
+            lon=None,
+            title=None,
+            description=None,
+            color=None,
+            symbol=None,
+            rotation=None,
+            folderId=None,
+            existingId=None,
+            existingJson=None,
+            queue=False):
+        if existingJson is None:
+            existingJson=self.getFeatures()
+        j={}
+        jp={}
+        jg={}
+        jp['class']='Marker'
+        jp['updated']=0
+        jp['marker-color']=color
+        jp['marker-symbol']=symbol
+        jp['title']=title
+        if folderId is not None:
+            jp['folderId']=folderId
+        jp['description']=description
+        jg['type']='Point'
+        jg['coordinates']=[float(lon),float(lat)]
+        j['properties']=jp
+        j['geometry']=jg
+        j['type']='Feature'
+        if existingId is not None:
+            j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        if queue:
+            self.queue.setdefault('Marker',[]).append(j)
+            return 0
+        else:
+            return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
+
+    def editMarkerDescription(self,
+            description='',
+            existingId=None):
+        j={}
+        jp={}
+        # jg={}
+        # jp['class']='Marker'
+        # jp['updated']=0
+        # jp['marker-color']=color
+        # jp['marker-symbol']=symbol
+        # jp['title']=title
+        # if folderId is not None:
+        #     jp['folderId']=folderId
+        jp['description']=description
+        # jg['type']='Point'
+        # jg['coordinates']=[float(lon),float(lat)]
+        j['properties']=jp
+        # j['geometry']=jg
+        j['type']='Feature'
+        if existingId is not None:
+            j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        # if queue:
+        #     self.queue.setdefault('Marker',[]).append(j)
+        #     return 0
+        # else:
+        return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
+
+    def moveMarker(self,
+            lat,
+            lon,
+            existingId=None):
+        j={}
+        jp={}
+        jg={}
+        # jp['class']='Marker'
+        # jp['updated']=0
+        # jp['marker-color']=color
+        # jp['marker-symbol']=symbol
+        # jp['title']=title
+        # if folderId is not None:
+        #     jp['folderId']=folderId
+        # jp['description']=description
+        # jg['type']='Point'
+        jg['coordinates']=[float(lon),float(lat)]
+        # j['properties']=jp
+        j['geometry']=jg
+        # j['type']='Feature'
+        if existingId is not None:
+            j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        # if queue:
+        #     self.queue.setdefault('Marker',[]).append(j)
+        #     return 0
+        # else:
+        return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
 
     def addLine(self,
             points,
@@ -651,8 +718,51 @@ class SartopoSession():
         else:
             return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID')
 
-    def flush(self,timeout=20):
-        self.sendRequest('post','api/v0/map/[MAPID]/save',self.queue,timeout=timeout)
+    def editAreaAssignmentNumber(self,
+            number=None,
+            existingId=None):
+        j={}
+        jp={}
+        # jg={}
+        if number is not None:
+            jp['number']=number
+        # if letter is not None:
+        #     jp['letter']=letter
+        # if opId is not None:
+        #     jp['operationalPeriod']=opId
+        # if folderId is not None:
+        #     jp['folderId']=folderId
+        # jp['resourceType']=resourceType
+        # jp['teamSize']=teamSize
+        # jp['priority']=priority
+        # jp['responsivePOD']=responsivePOD
+        # jp['unresponsivePOD']=unresponsivePOD
+        # jp['cluePOD']=cluePOD
+        # jp['description']=description
+        # jp['previousEfforts']=previousEfforts
+        # jp['transportation']=transportation
+        # jp['timeAllocated']=timeAllocated
+        # jp['primaryFrequency']=primaryFrequency
+        # jp['secondaryFrequency']=secondaryFrequency
+        # jp['preparedBy']=preparedBy
+        # jp['gpstype']=gpstype
+        # jp['status']=status
+        # jg['type']='Polygon'
+        # jg['coordinates']=[points]
+        j['properties']=jp
+        j['type']='Feature'
+        # j['geometry']=jg
+        if existingId is not None:
+            j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        # if queue:
+        #     self.queue.setdefault('Assignment',[]).append(j)
+        #     return 0
+        # else:
+        return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID')
+
+    def flush(self):
+        self.sendRequest('post','api/v0/map/[MAPID]/save',self.queue)
         self.queue={}
 
     # def center(self,lat,lon,z):
@@ -701,8 +811,8 @@ class SartopoSession():
         ###return self.sendRequest("delete","since/0",None,id=str(existingId),returnJson="ALL")
         return self.sendRequest("delete",objType,None,id=str(existingId),returnJson="ALL")
 
-    def getFeatures(self,featureClass=None,since=0,timeout=2):
-        rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
+    def getFeatures(self,featureClass=None,since=0):
+        rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL')
         if featureClass is None:
             return rj # if no feature class is specified, return the entire json response
         else:
@@ -718,128 +828,5 @@ class SartopoSession():
 #                         rval.append([id,prop]) # return all properties
                         
             return rval
-
-    # editObject(id=None,className=None,title=None,letter=None,properties=None,geometry=None)
-    # edit any properties and/or geometry of specified map object
-
-    #   - id, className, title, letter - used to identify the object to be edited;
-    #      if not enough info is given or it results in ambiguity, return with an error
-    #         - id - optional argument; if specified, no search is needed
-    #         - className - required argument, since it will be sent as part of the URL
-    #         - title, letter - if id is not specified, exactly one of these must be specified
-    
-    #   - properties, geometry - one or both must be specified
-    #      dictionaries of keys and values to be changed; they don't need to be complete;
-    #      they will be merged here with the synced dictionary before sending to the server
-
-    #  EXAMPLES:
-    #  (assuming sts is a SartopoSession object)
-    
-    #  1. move a marker
-    #    sts.editObject(className='Marker',title='t',geometry={'coordinates':[-120,39,0,0]})
-
-    #  2. change assignment status to INPROGRESS
-    #    sts.editObject(className='Assignment',letter='AB',properties={'status':'INPROGRESS'})
-
-    #  3. change assignment number
-    #    sts.editObject(className='Assignment',letter='AB',properties={'number':'111'})
-
-    def editObject(self,
-            id=None,
-            className=None,
-            title=None,
-            letter=None,
-            properties=None,
-            geometry=None):
-
-        # PART 1: determine the exact id of the object to be edited
-        if id is None:
-            # first, validate the arguments and and adjust as needed
-            if className is None:
-                logging.error('ClassName was not specified.')
-                return -1
-            if letter is not None:
-                if className is not 'Assignment':
-                    logging.warning('Letter was specified, but className was specified as other than Assignment.  ClassName Assignment will be used.')
-                className='Assignment'
-            if title is None and letter is None:
-                logging.error('Either Title or Letter must be specified.')
-                return -1
-            if title is not None and letter is not None:
-                logging.warning('Both Title and Letter were specified.  Only one or the other can be used for the search.  Using Letter, in case the rest of the object title has changed.')
-                title=None
-            if title is not None:
-                ltKey='title'
-                ltVal=title
-            else:
-                ltKey='letter'
-                ltVal=letter
-
-            # validation complete; first search based on letter/title, then, if needed, filter based on className if specified
-            
-            # it's probably quicker to filter by letter/title first, since that should only return a very small number of hits,
-            #   as opposed to filtering by className first, which could return a large number of hits
-
-            features=[f for f in self.mapData['state']['features'] if f['properties'].get(ltKey,None)==ltVal and f['properties']['class'].lower()==className.lower()]
-                
-            if len(features)==0:
-                logging.error('no feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
-                return -1
-            if len(features)>1:
-                logging.error('more than one feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
-                return -1
-            feature=features[0]
-            logging.info('feature found: '+str(feature))
-
-        else:
-            logging.info('id specified: '+id)
-            features=[f for f in self.mapData['state']['features'] if f['id']==id]
-            # logging.info(json.dumps(self.mapData,indent=3))
-            if len(features)==1:
-                feature=features[0]
-                className=feature['properties']['class']
-            else:
-                logging.info('no match!')
-
-        # PART 2: merge the properties and/or geometry dictionaries, and send the request
-        
-        # the outgoing request when changing an assignment letter is as follows:
-        # URL: ...../<mapID>/<className>/<id>
-        # type: POST
-        # json: {
-        #   "type":"Feature",
-        #   "id":"3c8e72a2-4ea6-433d-b547-37e23472065b",
-        #   "properties":{
-        #       "number":"",
-        #       "letter":"AX",
-        #       ...
-        #       "class":"Assignment"
-        #   }
-        # }
-
-        propToWrite=None
-        if properties is not None:
-            keys=properties.keys()
-            propToWrite=feature['properties']
-            for key in keys:
-                propToWrite[key]=properties[key]
-            # write the correct title for assignments, since sartopo does not internally recalcualte it
-            if className.lower()=='assignment':
-                propToWrite['title']=propToWrite['letter']+' '+propToWrite['number'].strip()
-
-        geomToWrite=None
-        if geometry is not None:
-            geomToWrite=feature['geometry']
-            for key in geometry.keys():
-                geomToWrite[key]=geometry[key]
-        
-        j={'type':'Feature','id':feature['id']}
-        if propToWrite is not None:
-            j['properties']=propToWrite
-        if geomToWrite is not None:
-            j['geometry']=geomToWrite
-
-        return self.sendRequest('post',className,j,id=feature['id'],returnJson='ID')
-
 
 logging.basicConfig(stream=sys.stdout,level=logging.INFO) # print by default; let the caller change this if needed
