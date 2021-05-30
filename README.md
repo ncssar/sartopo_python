@@ -22,20 +22,34 @@ pip install sartopo_python
 
 ## Provided functions in class SartopoSession:
 ### \_\_init\_\_ - create a new session
-- domainAndPort="localhost:8080"
-- mapID[required]=None
+- domainAndPort="localhost:8080" ('sartopo.com' will require signed requests - see details below)
+- mapID=None - three- or four-character map ID [required]
+- configPath=None - only needed for signed requests
+- account=None - only needed for signed requests
+- id=None - only needed for signed requests
+- key=None - only needed for signed requests
+- sync=True - if True, the session will automatically sync at the specified interval, so .mapData will be kept up to date
+ 
+ NOTE: the following arguments are only relevant if sync=True
+ 
+- syncInterval=5 - interval (in seconds) between automatic sync requests
+- syncTimeout=2 - time after which an error will be thrown if no response is received
+- syncDumpFile=None - file to which all sync activity will be logged
+- propUpdateCallback=None - callback function to be called whenever a feature's properties have been changed
+  - called with arguments (id, properties[json])
+- geometryUpdateCallback=None - callback function to be called whenever a feature's geometry has been changed
+  - called with arguments (id, geometry[json])
+- newObjectCallback=None - callback function to be called whenever a new feature has been added
+  - called with arguments (feature[json])
+- deletedObjectCallback=None - callback function to be called whenever a feature has been deleted
+  - called with arguments (id of deleted object, updated list of all features)
 
-The remaining arguments are only needed to generate signed requests for online maps at sartopo.com; see the signed request explanation at the bottom of this README file.
-- configpath
-- account
-- id
-- key
-- expires
-### getFeatures - get a list of map features
-- featureClass=None - "Marker" etc to return only markers
-- since=0 - get features only since this timestamp
-### addFolder - create a SARTopo folder
-- label="New Folder"
+### start() - start syncing
+- also sets .sync=True
+### stop() - stop syncing
+- also sets .sync=False
+### addFolder(label="New Folder", queue=False) - create a SARTopo folder
+- creates a new folder with the specified name; queues the request if specified (see queueing below)
 ### addMarker - create a SARTopo marker
 - lat
 - lon
@@ -46,6 +60,16 @@ The remaining arguments are only needed to generate signed requests for online m
 - rotation=None
 - folderId=None
 - (beginning in 1.0.4) existingId="" - specify this to edit an existing marker
+### addLine - add a line object
+### addLineAssignment - add a line assignment object
+### addAreaAssignment - add an area assignment object
+### flush - send all queued requests
+### addAppTrack - add an appTrack object
+### delMarker - delete a marker
+### getFeatures(featureClass=None, since=0, timeout=2) - get a list of map features
+- returns a list of json of all features that meet the featureClass and since filters
+### editObject - edit an existing object
+
 ## EXAMPLES:
 ```
 #     from sartopo_python import SartopoSession
