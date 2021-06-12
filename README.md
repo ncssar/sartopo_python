@@ -71,35 +71,67 @@ pip install sartopo_python
 ### editObject - edit an existing object
 
 ## EXAMPLES:
+### Adding a marker:
 ```
-#     from sartopo_python import SartopoSession
-#     import time
-#     
-#     sts=SartopoSession("localhost:8080","<offlineMapID>")
-#     fid=sts.addFolder("MyFolder")
-#     sts.addMarker(39,-120,"stuff")
-#     sts.addMarker(39.01,-120.01,"myStuff",folderId=fid)
-#     r=sts.getFeatures("Marker")
-#     print("r:"+str(r))
-#     print("moving the marker after a pause:"+r[0]['id'])
-#     time.sleep(5)
-#     sts.addMarker(39.02,-120.02,r[0]['properties']['title'],existingId=r[0]['id'])
-#     
-#     sts2=SartopoSession(
-#         "sartopo.com",
-#         "<onlineMapID>",
-#         configpath="../../sts.ini",
-#         account="<accountName>")
-#     fid2=sts2.addFolder("MyOnlineFolder")
-#     sts2.addMarker(39,-120,"onlineStuff")
-#     sts2.addMarker(39.01,-119.99,"onlineStuff2",folderId=fid2)
-#     r2=sts2.getFeatures("Marker")
-#     print("return value from getFeatures('Marker'):")
-#     print(json.dumps(r2,indent=3))
-#     time.sleep(15)
-#     print("moving online after a pause:"+r2[0]['id'])
-#     sts2.addMarker(39.02,-119.98,r2[0]['properties']['title'],existingId=r2[0]['id'])
+from sartopo_python import SartopoSession
+import time
+  
+sts=SartopoSession("localhost:8080","<offlineMapID>")
+fid=sts.addFolder("MyFolder")
+sts.addMarker(39,-120,"stuff")
+sts.addMarker(39.01,-120.01,"myStuff",folderId=fid)
+r=sts.getFeatures("Marker")
+print("r:"+str(r))
+print("moving the marker after a pause:"+r[0]['id'])
+time.sleep(5)
+sts.addMarker(39.02,-120.02,r[0]['properties']['title'],existingId=r[0]['id'])
 ```
+### Moving an existing marker:
+```   
+from sartopo_python import SartopoSession
+import time
+
+sts2=SartopoSession(
+    "sartopo.com",
+    "<onlineMapID>",
+     configpath="../../sts.ini",
+     account="<accountName>")
+fid2=sts2.addFolder("MyOnlineFolder")
+sts2.addMarker(39,-120,"onlineStuff")
+sts2.addMarker(39.01,-119.99,"onlineStuff2",folderId=fid2)
+r2=sts2.getFeatures("Marker")
+print("return value from getFeatures('Marker'):")
+print(json.dumps(r2,indent=3))
+time.sleep(15)
+print("moving online after a pause:"+r2[0]['id'])
+sts2.addMarker(39.02,-119.98,r2[0]['properties']['title'],existingId=r2[0]['id'])
+```
+### Sync and callbacks:
+```
+from sartopo_python import SartopoSession
+
+def pucb(*args):
+    print("Property Updated: pucb called with args "+str(args))
+
+def gucb(*args):
+    print("Geometry Updated: gucb called with args "+str(args))
+
+def nocb(*args):
+    print("New Object: nocb called with args "+str(args))
+
+def docb(*args):
+    print("Deleted Object: docb called with args "+str(args))
+
+sts=SartopoSession('sartopo.com','xxxx',
+        configpath='../../sts.ini',
+        account='account@gmail.com',
+        syncDumpFile='../../xxxx.txt',
+        propUpdateCallback=pucb,
+        geometryUpdateCallback=gucb,
+        newObjectCallback=nocb,
+        deletedObjectCallback=docb)
+```
+
 ## Signed Requests
 Requests to localhost do not require any authentication; requests to sartopo.com do require authentication in the form of request signatures.
 
@@ -109,7 +141,7 @@ Authenticaion information required to generate the signed requests includes an a
 
 Once those three items are determined, they should be stored in a configparser-compatible file that should look like the following:
 ```
-# sartopo_pyhton config file
+# sartopo_python config file
 # This file contains credentials used to send API map requests
 #  to sartopo.com.  Protect and do not distribute these credentials.
 
