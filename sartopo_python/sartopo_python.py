@@ -489,7 +489,8 @@ class SartopoSession():
             pattern='solid',
             folderId=None,
             existingId=None,
-            queue=False):
+            queue=False,
+            timeout=2):
         j={}
         jp={}
         jg={}
@@ -508,7 +509,7 @@ class SartopoSession():
         if existingId is not None:
             j['id']=existingId
         # logging.info("sending json: "+json.dumps(j,indent=3))
-        return self.sendRequest("post","Shape",j,id=existingId,returnJson="ID")
+        return self.sendRequest("post","Shape",j,id=existingId,returnJson="ID",timeout=timeout)
 
     def addLineAssignment(self,
             points,
@@ -754,7 +755,7 @@ class SartopoSession():
 
         # PART 1: determine the exact id of the object to be edited
         if id is None:
-            # first, validate the arguments and and adjust as needed
+            # first, validate the arguments and adjust as needed
             if className is None:
                 logging.error('ClassName was not specified.')
                 return -1
@@ -800,6 +801,7 @@ class SartopoSession():
                 className=feature['properties']['class']
             else:
                 logging.info('no match!')
+                return -1
 
         # PART 2: merge the properties and/or geometry dictionaries, and send the request
         
