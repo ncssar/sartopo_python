@@ -347,7 +347,7 @@ class SartopoSession():
 
     def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=2):
         if self.apiVersion<0:
-            logging.error("sartopo session is invalid; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
+            logging.error("sendRequest: sartopo session is invalid; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
             return -1
         mid=self.apiUrlMid
         if 'api/' in apiUrlEnd.lower():
@@ -379,8 +379,8 @@ class SartopoSession():
                 params["id"]=self.id
                 params["expires"]=expires
                 params["signature"]=token
-            logging.info("SENDING POST to '"+url+"':")
-            logging.info(json.dumps(params,indent=3))
+            logging.debug("SENDING POST to '"+url+"':")
+            logging.debug(json.dumps(params,indent=3))
             r=self.s.post(url,data=params,timeout=timeout)
         elif type=="get": # no need for json in GET; sending null JSON causes downstream error
 #             logging.info("SENDING GET to '"+url+"':")
@@ -405,7 +405,7 @@ class SartopoSession():
             # logging.info("URL:"+str(url))
             # logging.info("Ris:"+str(r))
         else:
-            logging.error("Unrecognized request type:"+str(type))
+            logging.error("sendRequest: Unrecognized request type:"+str(type))
             return -1
 #         logging.info("response code = "+str(r.status_code))
 #         logging.info("response:")
@@ -417,7 +417,7 @@ class SartopoSession():
             try:
                 rj=r.json()
             except:
-                logging.error("response had no decodable json")
+                logging.error("sendRequest: response had no decodable json")
                 return -1
             else:
                 if returnJson=="ID":
@@ -431,7 +431,7 @@ class SartopoSession():
                     elif 'result' in rj and 'id' in rj['result']['state']['features'][0]:
                         id=rj['result']['state']['features'][0]['id']
                     else:
-                        logging.info("No valid ID was returned from the request:")
+                        logging.info("sendRequest: No valid ID was returned from the request:")
                         logging.info(json.dumps(rj,indent=3))
                     return id
                 if returnJson=="ALL":
@@ -746,28 +746,28 @@ class SartopoSession():
         self.delObject("marker",existingId=existingId)
 
     def delObject(self,objType,existingId=""):
-        # logging.info("In delete:"+objType+":"+str(existingId))
-        ###return self.sendRequest("delete","since/0",None,id=str(existingId),returnJson="ALL")
         return self.sendRequest("delete",objType,None,id=str(existingId),returnJson="ALL")
 
     def getFeatures(self,
             featureClass=None,
             title=None,
+            id=None,
             featureClassExcludeList=[],
             allowMultiTitleMatch=False,
             since=0,
             timeout=2):
         rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
-        if featureClass is None and title is None:
-            return rj # if no feature class or title is specified, return the entire json response
+        if featureClass is None and title is None and id is None:
+            return rj # if no feature class or title or id is specified, return the entire json response
         else:
             titleMatchCount=0
             rval=[]
             if 'result' in rj and 'state' in rj['result'] and 'features' in rj['result']['state']:
                 features=rj['result']['state']['features']
                 for feature in features:
-#                     logging.info('FEATURE:'+str(feature))
-#                     id=feature['id']
+                    if feature['id']==id:
+                        rval.append(feature)
+                        break
                     prop=feature['properties']
                     cls=prop['class']
                     if featureClass is None and cls not in featureClassExcludeList:
@@ -782,12 +782,13 @@ class SartopoSession():
                                 if prop['title']==title:
                                     titleMatchCount+=1
                                     rval.append(feature) # return the entire json object
-#                         rval.append([id,prop]) # return all properties
+            if len(rval)==0:
+                logging.info('getFeatures: No features matching the specified criteria.')
             if titleMatchCount>1:
                 if allowMultiTitleMatch:
                     return rval
                 else:
-                    logging.error('More than one object found matching specified title; returning False from getFeatures')
+                    logging.error('getFeatures: More than one feature matches the specified title.')
                     return False
             else:
                 return rval
@@ -921,13 +922,14 @@ class SartopoSession():
     #   - slice a polygon, using a line
     #   - slice a line, using a polygon
     #   - slice a line, using a line
-    #  The first three cases use object.difference (overloaded '-' operator);
-    #    the last two must use shapely.ops.split
+    #  the arguments (target, cutter) can be name (string), id (string), or feature (json)
 
-    def cut(self,target,cutter):
-        logging.info('cut called')
+    def cut(self,target,cutter,deleteCutter=True):
         if isinstance(target,str):
-            targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+            if len(target)==36: # id
+                targetShape=self.getFeatures(id=target)[0]
+            else:
+                targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
         else:
             targetShape=target # if string, find object by name; if id, find object by id
         tg=targetShape['geometry']
@@ -936,10 +938,13 @@ class SartopoSession():
             targetGeom=Polygon(tg['coordinates'][0]) # Shapely object
         elif targetType=='LineString':
             targetGeom=LineString(tg['coordinates']) # Shapely object
-        logging.info('targetGeom:'+str(targetGeom))
+        logging.debug('targetGeom:'+str(targetGeom))
 
         if isinstance(cutter,str):
-            cutterShape=self.getFeatures(title=cutter)[0]
+            if len(cutter)==36: # id
+                cutterShape=self.getFeatures(id=cutter)[0]
+            else:
+                cutterShape=self.getFeatures(title=cutter,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
         else:
             cutterShape=cutter # if string, find object by name; if id, find object by id
         cg=cutterShape['geometry']
@@ -948,7 +953,7 @@ class SartopoSession():
             cutterGeom=Polygon(cg['coordinates'][0]) # Shapely object
         elif cutterType=='LineString':
             cutterGeom=LineString(cg['coordinates']) # Shapely object
-        logging.info('cutterGeom:'+str(cutterGeom))
+        logging.debug('cutterGeom:'+str(cutterGeom))
 
         #  shapely.ops.split only works if the second geometry completely splits the first;
         #   instead, use the simple boolean object.difference (same as overloaded '-' operator)
@@ -956,7 +961,7 @@ class SartopoSession():
             result=split(targetGeom,cutterGeom)
         else:
             result=targetGeom-cutterGeom
-        logging.info('cut result:'+str(result))
+        logging.debug('cut result:'+str(result))
 
         # preserve target properties when adding new features
         tp=targetShape['properties']
@@ -1005,7 +1010,7 @@ class SartopoSession():
                         gpstype=tp['gpstype'],
                         status=tp['status'])
                 else:
-                    logging.error('Target object class was neither Shape nor Assigment')
+                    logging.error('cut: target object class was neither Shape nor Assigment')
         elif isinstance(result,LineString):
             self.editObject(id=targetShape['id'],geometry={'coordinates':list(result.coords)})
         elif isinstance(result,MultiLineString):
@@ -1045,7 +1050,49 @@ class SartopoSession():
                         gpstype=tp['gpstype'],
                         status=tp['status'])
                 else:
-                    logging.error('Target object class was neither Shape nor Assigment')
+                    logging.error('cut: arget object class was neither Shape nor Assigment')
+        if deleteCutter:
+            self.delObject(cutterShape['properties']['class'],existingId=cutterShape['id'])
 
+    # expand - expand target polygon to include the area of p2 polygon
+
+    def expand(self,target,p2,deleteP2=True):
+        if isinstance(target,str):
+            if len(target)==36: # id
+                targetShape=self.getFeatures(id=target)[0]
+            else:
+                targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+        else:
+            targetShape=target # if string, find object by name; if id, find object by id
+        tg=targetShape['geometry']
+        targetType=tg['type']
+        if targetType=='Polygon':
+            targetGeom=Polygon(tg['coordinates'][0]) # Shapely object
+        else:
+            logging.error('expand: target object is not a polygon: '+targetType)
+        logging.debug('targetGeom:'+str(targetGeom))
+
+        if isinstance(p2,str):
+            if len(p2)==36: # id
+                p2Shape=self.getFeatures(id=p2)[0]
+            else:
+                p2Shape=self.getFeatures(title=p2,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+        else:
+            p2Shape=p2 # if string, find object by name; if id, find object by id
+        cg=p2Shape['geometry']
+        p2Type=cg['type']
+        if p2Type=='Polygon':
+            p2Geom=Polygon(cg['coordinates'][0]) # Shapely object
+        else:
+            logging.error('expand: p2 object is not a polygon: '+p2Type)
+        logging.debug('p2Geom:'+str(p2Geom))
+
+        result=targetGeom|p2Geom
+        logging.debug('expand result:'+str(result))
+
+        self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]})
+
+        if deleteP2:
+            self.delObject(p2Shape['properties']['class'],existingId=p2Shape['id'])
 
 logging.basicConfig(stream=sys.stdout,level=logging.INFO) # print by default; let the caller change this if needed
