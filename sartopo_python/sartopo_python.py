@@ -90,6 +90,9 @@ import logging
 import sys
 from threading import Timer
 
+from shapely.geometry import LineString,Polygon,MultiLineString,MultiPolygon,GeometryCollection
+from shapely.ops import split
+
 class SartopoSession():
     def __init__(self,
             domainAndPort='localhost:8080',
@@ -487,6 +490,7 @@ class SartopoSession():
             opacity=1,
             color='#FF0000',
             pattern='solid',
+            gpstype='TRACK',
             folderId=None,
             existingId=None,
             queue=False,
@@ -502,6 +506,7 @@ class SartopoSession():
         jp['stroke-opacity']=opacity
         jp['stroke']=color
         jp['pattern']=pattern
+        jp['gpstype']=gpstype
         jg['type']='LineString'
         jg['coordinates']=points
         j['properties']=jp
@@ -542,7 +547,7 @@ class SartopoSession():
         if letter is not None:
             jp['letter']=letter
         if opId is not None:
-            jp['operationalPeriod']=opId
+            jp['operationalPeriodId']=opId
         if folderId is not None:
             jp['folderId']=folderId
         jp['resourceType']=resourceType
@@ -567,7 +572,11 @@ class SartopoSession():
         if existingId is not None:
             j['id']=existingId
         # logging.info("sending json: "+json.dumps(j,indent=3))
-        return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID')
+        if queue:
+            self.queue.setdefault('Assignment',[]).append(j)
+            return 0
+        else:
+            return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID')
 
     # buffers: in the web interface, adding a buffer results in two requests:
     #   1. api/v0/geodata/buffer - payload = drawn centerline, response = polygon points
@@ -589,6 +598,45 @@ class SartopoSession():
     #     rj=self.sendRequest('post','api/v0/geodata/buffer',j,None,returnJson='ALL')
     #     logging.info('generated buffer response:'+json.dumps(rj,indent=3))
     #     return rj
+
+    def addPolygon(self,
+            points,
+            title='New Shape',
+            folderId=None,
+            description='',
+            strokeOpacity=1,
+            strokeWidth=2,
+            fillOpacity=0.1,
+            stroke='#FF0000',
+            fill='#FF0000',
+            gpstype='TRACK',
+            existingId=None,
+            queue=False):
+        j={}
+        jp={}
+        jg={}
+        jp['title']=title
+        if folderId is not None:
+            jp['folderId']=folderId
+        jp['description']=description
+        jp['stroke-width']=strokeWidth
+        jp['stroke-opacity']=strokeOpacity
+        jp['stroke']=stroke
+        jp['fill']=fill
+        jp['fill-opacity']=fillOpacity
+        jp['gpstype']=gpstype
+        jg['type']='Polygon'
+        jg['coordinates']=[points]
+        j['properties']=jp
+        j['geometry']=jg
+        if existingId is not None:
+            j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        if queue:
+            self.queue.setdefault('Shape',[]).append(j)
+            return 0
+        else:
+            return self.sendRequest('post','Shape',j,id=existingId,returnJson='ID')
 
     def addAreaAssignment(self,
             points,
@@ -621,7 +669,7 @@ class SartopoSession():
         if letter is not None:
             jp['letter']=letter
         if opId is not None:
-            jp['operationalPeriod']=opId
+            jp['operationalPeriodId']=opId
         if folderId is not None:
             jp['folderId']=folderId
         jp['resourceType']=resourceType
@@ -702,11 +750,18 @@ class SartopoSession():
         ###return self.sendRequest("delete","since/0",None,id=str(existingId),returnJson="ALL")
         return self.sendRequest("delete",objType,None,id=str(existingId),returnJson="ALL")
 
-    def getFeatures(self,featureClass=None,since=0,timeout=2):
+    def getFeatures(self,
+            featureClass=None,
+            title=None,
+            featureClassExcludeList=[],
+            allowMultiTitleMatch=False,
+            since=0,
+            timeout=2):
         rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
-        if featureClass is None:
-            return rj # if no feature class is specified, return the entire json response
+        if featureClass is None and title is None:
+            return rj # if no feature class or title is specified, return the entire json response
         else:
+            titleMatchCount=0
             rval=[]
             if 'result' in rj and 'state' in rj['result'] and 'features' in rj['result']['state']:
                 features=rj['result']['state']['features']
@@ -714,11 +769,28 @@ class SartopoSession():
 #                     logging.info('FEATURE:'+str(feature))
 #                     id=feature['id']
                     prop=feature['properties']
-                    if prop['class']==featureClass:
-                        rval.append(feature) # return the entire json object
+                    cls=prop['class']
+                    if featureClass is None and cls not in featureClassExcludeList:
+                        if prop['title']==title:
+                            titleMatchCount+=1
+                            rval.append(feature)
+                    else:
+                        if cls==featureClass:
+                            if title is None:
+                                rval.append(feature)
+                            else:
+                                if prop['title']==title:
+                                    titleMatchCount+=1
+                                    rval.append(feature) # return the entire json object
 #                         rval.append([id,prop]) # return all properties
-                        
-            return rval
+            if titleMatchCount>1:
+                if allowMultiTitleMatch:
+                    return rval
+                else:
+                    logging.error('More than one object found matching specified title; returning False from getFeatures')
+                    return False
+            else:
+                return rval
 
     # editObject(id=None,className=None,title=None,letter=None,properties=None,geometry=None)
     # edit any properties and/or geometry of specified map object
@@ -842,6 +914,138 @@ class SartopoSession():
             j['geometry']=geomToWrite
 
         return self.sendRequest('post',className,j,id=feature['id'],returnJson='ID')
+
+    # cut - this method should accomodate the following operations:
+    #   - remove a notch from a polygon, using a polygon
+    #   - slice a polygon, using a polygon
+    #   - slice a polygon, using a line
+    #   - slice a line, using a polygon
+    #   - slice a line, using a line
+    #  The first three cases use object.difference (overloaded '-' operator);
+    #    the last two must use shapely.ops.split
+
+    def cut(self,target,cutter):
+        logging.info('cut called')
+        if isinstance(target,str):
+            targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+        else:
+            targetShape=target # if string, find object by name; if id, find object by id
+        tg=targetShape['geometry']
+        targetType=tg['type']
+        if targetType=='Polygon':
+            targetGeom=Polygon(tg['coordinates'][0]) # Shapely object
+        elif targetType=='LineString':
+            targetGeom=LineString(tg['coordinates']) # Shapely object
+        logging.info('targetGeom:'+str(targetGeom))
+
+        if isinstance(cutter,str):
+            cutterShape=self.getFeatures(title=cutter)[0]
+        else:
+            cutterShape=cutter # if string, find object by name; if id, find object by id
+        cg=cutterShape['geometry']
+        cutterType=cg['type']
+        if cutterType=='Polygon':
+            cutterGeom=Polygon(cg['coordinates'][0]) # Shapely object
+        elif cutterType=='LineString':
+            cutterGeom=LineString(cg['coordinates']) # Shapely object
+        logging.info('cutterGeom:'+str(cutterGeom))
+
+        #  shapely.ops.split only works if the second geometry completely splits the first;
+        #   instead, use the simple boolean object.difference (same as overloaded '-' operator)
+        if targetType=='Polygon' and cutterType=='LineString':
+            result=split(targetGeom,cutterGeom)
+        else:
+            result=targetGeom-cutterGeom
+        logging.info('cut result:'+str(result))
+
+        # preserve target properties when adding new features
+        tp=targetShape['properties']
+        tc=tp['class'] # Shape or Assignment
+        tfid=tp.get('folderId',None)
+
+        if isinstance(result,GeometryCollection):
+            result=MultiPolygon(result)
+        if isinstance(result,Polygon):
+            self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]})
+        elif isinstance(result,MultiPolygon):
+            self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]})
+            suffix=0
+            for r in result[1:]:
+                suffix+=1
+                if tc=='Shape':
+                    self.addPolygon(list(r.exterior.coords),
+                        title=tp['title']+':'+str(suffix),
+                        stroke=tp['stroke'],
+                        fill=tp['fill'],
+                        strokeOpacity=tp['stroke-opacity'],
+                        strokeWidth=tp['stroke-width'],
+                        fillOpacity=tp['fill-opacity'],
+                        description=tp['description'],
+                        folderId=tfid,
+                        gpstype=tp['gpstype'])
+                elif tc=='Assignment':
+                    self.addAreaAssignment(list(r.exterior.coords),
+                        number=tp['number'],
+                        letter=tp['letter']+':'+str(suffix),
+                        opId=tp.get('operationalPeriodId',None),
+                        folderId=tp.get('folderId',None),
+                        resourceType=tp['resourceType'],
+                        teamSize=tp['teamSize'],
+                        priority=tp['priority'],
+                        responsivePOD=tp['responsivePOD'],
+                        unresponsivePOD=tp['unresponsivePOD'],
+                        cluePOD=tp['cluePOD'],
+                        description=tp['description'],
+                        previousEfforts=tp['previousEfforts'],
+                        transportation=tp['transportation'],
+                        timeAllocated=tp['timeAllocated'],
+                        primaryFrequency=tp['primaryFrequency'],
+                        secondaryFrequency=tp['secondaryFrequency'],
+                        preparedBy=tp['preparedBy'],
+                        gpstype=tp['gpstype'],
+                        status=tp['status'])
+                else:
+                    logging.error('Target object class was neither Shape nor Assigment')
+        elif isinstance(result,LineString):
+            self.editObject(id=targetShape['id'],geometry={'coordinates':list(result.coords)})
+        elif isinstance(result,MultiLineString):
+            self.editObject(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)})
+            suffix=0
+            for r in result[1:]:
+                suffix+=1
+                if tc=='Shape':
+                    self.addLine(list(r.coords),
+                        title=tp['title']+':'+str(suffix),
+                        color=tp['stroke'],
+                        opacity=tp['stroke-opacity'],
+                        width=tp['stroke-width'],
+                        pattern=tp['pattern'],
+                        description=tp['description'],
+                        folderId=tfid,
+                        gpstype=tp['gpstype'])
+                elif tc=='Assignment':
+                    self.addLineAssignment(list(r.coords),
+                        number=tp['number'],
+                        letter=tp['letter']+':'+str(suffix),
+                        opId=tp.get('operationalPeriodId',None),
+                        folderId=tp.get('folderId',None),
+                        resourceType=tp['resourceType'],
+                        teamSize=tp['teamSize'],
+                        priority=tp['priority'],
+                        responsivePOD=tp['responsivePOD'],
+                        unresponsivePOD=tp['unresponsivePOD'],
+                        cluePOD=tp['cluePOD'],
+                        description=tp['description'],
+                        previousEfforts=tp['previousEfforts'],
+                        transportation=tp['transportation'],
+                        timeAllocated=tp['timeAllocated'],
+                        primaryFrequency=tp['primaryFrequency'],
+                        secondaryFrequency=tp['secondaryFrequency'],
+                        preparedBy=tp['preparedBy'],
+                        gpstype=tp['gpstype'],
+                        status=tp['status'])
+                else:
+                    logging.error('Target object class was neither Shape nor Assigment')
 
 
 logging.basicConfig(stream=sys.stdout,level=logging.INFO) # print by default; let the caller change this if needed
