@@ -76,6 +76,7 @@
 #   6-2-20    TMG        v1.1.1: fix #5 (use correct meaning of 'expires');
 #                           fix #6 (__init__ returns None on failure)
 #   4-5-21    TMG        sync (fix #17)
+#  6-15-21    TMG        add geometry operations cut, expand, crop
 #
 #-----------------------------------------------------------------------------
 
@@ -938,6 +939,9 @@ class SartopoSession():
             targetGeom=Polygon(tg['coordinates'][0]) # Shapely object
         elif targetType=='LineString':
             targetGeom=LineString(tg['coordinates']) # Shapely object
+        else:
+            logging.error('cut: unhandled target geometry type: '+targetType)
+            return False
         logging.debug('targetGeom:'+str(targetGeom))
 
         if isinstance(cutter,str):
@@ -968,7 +972,7 @@ class SartopoSession():
         tc=tp['class'] # Shape or Assignment
         tfid=tp.get('folderId',None)
 
-        if isinstance(result,GeometryCollection):
+        if isinstance(result,GeometryCollection): # apparently this will only be the case for polygons
             result=MultiPolygon(result)
         if isinstance(result,Polygon):
             self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]})
@@ -1050,7 +1054,7 @@ class SartopoSession():
                         gpstype=tp['gpstype'],
                         status=tp['status'])
                 else:
-                    logging.error('cut: arget object class was neither Shape nor Assigment')
+                    logging.error('cut: target object class was neither Shape nor Assigment')
         if deleteCutter:
             self.delObject(cutterShape['properties']['class'],existingId=cutterShape['id'])
 
@@ -1094,5 +1098,135 @@ class SartopoSession():
 
         if deleteP2:
             self.delObject(p2Shape['properties']['class'],existingId=p2Shape['id'])
+
+    # crop - remove portions of a line or polygon that are outside a boundary polygon;
+    #          grow the specified boundary polygon by the specified distance before cropping
+
+    def crop(self,target,boundary,beyond=0.0001,deleteBoundary=False):
+        if isinstance(target,str):
+            if len(target)==36: # id
+                targetShape=self.getFeatures(id=target)[0]
+            else:
+                targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+        else:
+            targetShape=target # if string, find object by name; if id, find object by id
+        tg=targetShape['geometry']
+        targetType=tg['type']
+        if targetType=='Polygon':
+            targetGeom=Polygon(tg['coordinates'][0]) # Shapely object
+        elif targetType=='LineString':
+            targetGeom=LineString(tg['coordinates'])
+        else:
+            logging.error('crop: target object is not a polygon or line: '+targetType)
+            
+        if isinstance(boundary,str):
+            if len(boundary)==36: # id
+                boundaryShape=self.getFeatures(id=boundary)[0]
+            else:
+                boundaryShape=self.getFeatures(title=boundary,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+        else:
+            boundaryShape=boundary # if string, find object by name; if id, find object by id
+        cg=boundaryShape['geometry']
+        boundaryType=cg['type']
+        if boundaryType=='Polygon':
+            boundaryGeom=Polygon(cg['coordinates'][0]).buffer(beyond) # Shapely object
+        else:
+            logging.error('crop: boundary object is not a polygon: '+boundaryType)
+        logging.debug('crop: boundaryGeom:'+str(boundaryGeom))
+
+        result=targetGeom&boundaryGeom # could be MultiPolygon or MultiLinestring or GeometryCollection
+        logging.debug('crop result:'+str(result))
+
+        # preserve target properties when adding new features
+        tp=targetShape['properties']
+        tc=tp['class'] # Shape or Assignment
+        tfid=tp.get('folderId',None)
+
+        if isinstance(result,GeometryCollection): # apparently this will only be the case for polygons
+            result=MultiPolygon(result)
+        if isinstance(result,Polygon):
+            self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]})
+        elif isinstance(result,MultiPolygon):
+            self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]})
+            suffix=0
+            for r in result[1:]:
+                suffix+=1
+                if tc=='Shape':
+                    self.addPolygon(list(r.exterior.coords),
+                        title=tp['title']+':'+str(suffix),
+                        stroke=tp['stroke'],
+                        fill=tp['fill'],
+                        strokeOpacity=tp['stroke-opacity'],
+                        strokeWidth=tp['stroke-width'],
+                        fillOpacity=tp['fill-opacity'],
+                        description=tp['description'],
+                        folderId=tfid,
+                        gpstype=tp['gpstype'])
+                elif tc=='Assignment':
+                    self.addAreaAssignment(list(r.exterior.coords),
+                        number=tp['number'],
+                        letter=tp['letter']+':'+str(suffix),
+                        opId=tp.get('operationalPeriodId',None),
+                        folderId=tp.get('folderId',None),
+                        resourceType=tp['resourceType'],
+                        teamSize=tp['teamSize'],
+                        priority=tp['priority'],
+                        responsivePOD=tp['responsivePOD'],
+                        unresponsivePOD=tp['unresponsivePOD'],
+                        cluePOD=tp['cluePOD'],
+                        description=tp['description'],
+                        previousEfforts=tp['previousEfforts'],
+                        transportation=tp['transportation'],
+                        timeAllocated=tp['timeAllocated'],
+                        primaryFrequency=tp['primaryFrequency'],
+                        secondaryFrequency=tp['secondaryFrequency'],
+                        preparedBy=tp['preparedBy'],
+                        gpstype=tp['gpstype'],
+                        status=tp['status'])
+                else:
+                    logging.error('crop: target object class was neither Shape nor Assigment')
+        elif isinstance(result,LineString):
+            self.editObject(id=targetShape['id'],geometry={'coordinates':list(result.coords)})
+        elif isinstance(result,MultiLineString):
+            self.editObject(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)})
+            suffix=0
+            for r in result[1:]:
+                suffix+=1
+                if tc=='Shape':
+                    self.addLine(list(r.coords),
+                        title=tp['title']+':'+str(suffix),
+                        color=tp['stroke'],
+                        opacity=tp['stroke-opacity'],
+                        width=tp['stroke-width'],
+                        pattern=tp['pattern'],
+                        description=tp['description'],
+                        folderId=tfid,
+                        gpstype=tp['gpstype'])
+                elif tc=='Assignment':
+                    self.addLineAssignment(list(r.coords),
+                        number=tp['number'],
+                        letter=tp['letter']+':'+str(suffix),
+                        opId=tp.get('operationalPeriodId',None),
+                        folderId=tp.get('folderId',None),
+                        resourceType=tp['resourceType'],
+                        teamSize=tp['teamSize'],
+                        priority=tp['priority'],
+                        responsivePOD=tp['responsivePOD'],
+                        unresponsivePOD=tp['unresponsivePOD'],
+                        cluePOD=tp['cluePOD'],
+                        description=tp['description'],
+                        previousEfforts=tp['previousEfforts'],
+                        transportation=tp['transportation'],
+                        timeAllocated=tp['timeAllocated'],
+                        primaryFrequency=tp['primaryFrequency'],
+                        secondaryFrequency=tp['secondaryFrequency'],
+                        preparedBy=tp['preparedBy'],
+                        gpstype=tp['gpstype'],
+                        status=tp['status'])
+                else:
+                    logging.error('crop: target object class was neither Shape nor Assigment')
+
+        if deleteBoundary:
+            self.delObject(boundaryShape['properties']['class'],existingId=boundaryShape['id'])
 
 logging.basicConfig(stream=sys.stdout,level=logging.INFO) # print by default; let the caller change this if needed
