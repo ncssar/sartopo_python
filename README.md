@@ -70,6 +70,25 @@ pip install sartopo_python
 - returns a list of json of all features that meet the featureClass and since filters
 ### editObject - edit an existing object
 
+## Geometry operations:
+
+For the following geometry operations, the arguments can be
+  title (string), id (string), or feature (json)
+  
+Also, the arguments can refer either to assignments or to non-assignment objects.
+
+### cut - notch or slice a polygon or line, using a polygon or line
+- can accomodate the following operations:
+  - remove a notch from a polygon, using a polygon
+  - slice a polygon, using a polygon
+  - slice a polygon, using a line
+  - slice a line, using a polygon
+  - slice a line, using a line
+
+### expand - expand the first polygon to include the area of the second polygon
+
+### crop - remove portions of a line or polygon that are outside a boundary polygon
+
 ## EXAMPLES:
 ### Adding a marker:
 ```
@@ -130,6 +149,25 @@ sts=SartopoSession('sartopo.com','xxxx',
         geometryUpdateCallback=gucb,
         newObjectCallback=nocb,
         deletedObjectCallback=docb)
+```
+### Geometry operations:
+```
+sts.cut('AC 103','b0')
+sts.cut('a1','b1')
+sts.cut('a8','b8',deleteCutter=False)
+
+# argument is a feature
+a10=sts.getFeatures(title='a10')[0]
+b10=sts.getFeatures(title='b10')[0]
+sts.cut(a10,b10)
+
+# argument is id
+a12=sts.getFeatures(title='a12')[0]
+b12=sts.getFeatures(title='b12')[0]
+sts.cut(a12['id'],b12['id'])
+
+sts.crop('a14','b14')
+sts.crop('a15','b15',beyond=0)
 ```
 
 ## Signed Requests
