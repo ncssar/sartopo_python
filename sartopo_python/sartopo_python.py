@@ -77,6 +77,7 @@
 #                           fix #6 (__init__ returns None on failure)
 #   4-5-21    TMG        sync (fix #17)
 #  6-15-21    TMG        add geometry operations cut, expand, crop
+#  6-27-21    TMG        stop sync when main thread terminates (fix #19)
 #
 #-----------------------------------------------------------------------------
 
@@ -89,7 +90,8 @@ import os
 import time
 import logging
 import sys
-from threading import Timer
+import threading
+from threading import Thread
 
 from shapely.geometry import LineString,Polygon,MultiLineString,MultiPolygon,GeometryCollection
 from shapely.ops import split
@@ -332,8 +334,12 @@ class SartopoSession():
                         f.write(json.dumps(self.mapData,indent=3))
 
                 if self.sync:
-                    syncTimer=Timer(self.syncInterval,self.doSync)
-                    syncTimer.start()
+                    if threading.main_thread().is_alive():
+                        time.sleep(self.syncInterval)
+                        self.doSync()
+                    else:
+                        logging.info('Main thread has ended; sync is stopping...')
+
             else:
                 logging.error('Sartopo sync failed!')
 
@@ -341,10 +347,15 @@ class SartopoSession():
         logging.info('Sartopo syncing terminated.')
         self.sync=False
 
+    def __del__(self):
+        logging.info('Object deleted.')
+        if self.sync:
+            self.stop()
+
     def start(self):
         self.sync=True
         logging.info('Sartopo syncing initiated.')
-        self.doSync()
+        Thread(target=self.doSync).start()
 
     def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=2):
         if self.apiVersion<0:
