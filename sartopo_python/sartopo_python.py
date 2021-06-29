@@ -78,6 +78,7 @@
 #   4-5-21    TMG        sync (fix #17)
 #  6-15-21    TMG        add geometry operations cut, expand, crop
 #  6-27-21    TMG        stop sync when main thread terminates (fix #19)
+#  6-28-21    TMG        remove spurs to fix self-intersecting polygons (fix #20)
 #
 #-----------------------------------------------------------------------------
 
@@ -928,6 +929,48 @@ class SartopoSession():
 
         return self.sendRequest('post',className,j,id=feature['id'],returnJson='ID')
 
+    # removeDuplicatePoints - walk a list of points - if a given point is
+    #   very close to the previous point, delete it (<0.00001 degrees)
+
+    def removeDuplicatePoints(self,points):
+        logging.info('removeDuplicatePoints called')
+        ls=LineString(points)
+        logging.info('is_valid:'+str(ls.is_valid))
+        logging.info('is_simple:'+str(ls.is_simple))
+        out=[points[0]]
+        for i in range(1,len(points)):
+            dx=points[i][0]-points[i-1][0]
+            dy=points[i][1]-points[i-1][1]
+            logging.info('   '+str(i)+' : dx='+str(dx)+' dy='+str(dy))
+            if abs(dx)>0.0005 or abs(dy)>0.0005:
+                out.append(points[i])
+        logging.info('\n     '+str(len(points))+' points: '+str(points)+'\n --> '+str(len(out))+' points: '+str(out))
+        return out
+
+    # removeSpurs - self-intersecting polygons can be caused by single-point
+    #   'spurs': a,b,c,d,c,e,f  where c,d,c is the spur.  Change a sequence
+    #   like this to a,b,c,e,f.
+
+    def removeSpurs(self,points):
+        # logging.info('removeSpurs called')
+        # ls=LineString(points)
+        # logging.info('is_valid:'+str(ls.is_valid))
+        # logging.info('is_simple:'+str(ls.is_simple))
+        if len(points)>3:
+            out=points[0:2]
+            for i in range(2,len(points)):
+                if points[i]!=points[i-2]:
+                    out.append(points[i])
+                else:
+                    out.pop() # delete last vertex
+                # logging.info('\n --> '+str(len(out))+' points: '+str(out))
+        else:
+            logging.info('\n      object has less than three points; no spur removal attempted.')
+            out=points
+        if len(points)!=len(out):
+            logging.info('spur(s) were removed from the shape:\n    '+str(len(points))+' points: '+str(points)+'\n --> '+str(len(out))+' points: '+str(out))
+        return out
+
     # cut - this method should accomodate the following operations:
     #   - remove a notch from a polygon, using a polygon
     #   - slice a polygon, using a polygon
@@ -947,9 +990,13 @@ class SartopoSession():
         tg=targetShape['geometry']
         targetType=tg['type']
         if targetType=='Polygon':
-            targetGeom=Polygon(tg['coordinates'][0]) # Shapely object
+            tgc=tg['coordinates'][0]
+            tgc=self.removeSpurs(tgc)
+            targetGeom=Polygon(tgc) # Shapely object
         elif targetType=='LineString':
-            targetGeom=LineString(tg['coordinates']) # Shapely object
+            tgc=tg['coordinates']
+            tgc=self.removeSpurs(tgc)
+            targetGeom=LineString(tgc) # Shapely object
         else:
             logging.error('cut: unhandled target geometry type: '+targetType)
             return False
@@ -965,9 +1012,13 @@ class SartopoSession():
         cg=cutterShape['geometry']
         cutterType=cg['type']
         if cutterType=='Polygon':
-            cutterGeom=Polygon(cg['coordinates'][0]) # Shapely object
+            cgc=cg['coordinates'][0]
+            cgc=self.removeSpurs(cgc)
+            cutterGeom=Polygon(cgc) # Shapely object
         elif cutterType=='LineString':
-            cutterGeom=LineString(cg['coordinates']) # Shapely object
+            cgc=cg['coordinates']
+            cgc=self.removeSpurs(cgc)
+            cutterGeom=LineString(cgc) # Shapely object
         logging.debug('cutterGeom:'+str(cutterGeom))
 
         #  shapely.ops.split only works if the second geometry completely splits the first;
@@ -1080,9 +1131,11 @@ class SartopoSession():
         else:
             targetShape=target # if string, find object by name; if id, find object by id
         tg=targetShape['geometry']
+        tgc=tg['coordinates'][0]
+        tgc=self.removeSpurs(tgc)
         targetType=tg['type']
         if targetType=='Polygon':
-            targetGeom=Polygon(tg['coordinates'][0]) # Shapely object
+            targetGeom=Polygon(tgc) # Shapely object
         else:
             logging.error('expand: target object is not a polygon: '+targetType)
         logging.debug('targetGeom:'+str(targetGeom))
@@ -1095,9 +1148,11 @@ class SartopoSession():
         else:
             p2Shape=p2 # if string, find object by name; if id, find object by id
         cg=p2Shape['geometry']
+        cgc=cg['coordinates'][0]
+        cgc=self.removeSpurs(cgc)
         p2Type=cg['type']
         if p2Type=='Polygon':
-            p2Geom=Polygon(cg['coordinates'][0]) # Shapely object
+            p2Geom=Polygon(cgc) # Shapely object
         else:
             logging.error('expand: p2 object is not a polygon: '+p2Type)
         logging.debug('p2Geom:'+str(p2Geom))
@@ -1124,9 +1179,13 @@ class SartopoSession():
         tg=targetShape['geometry']
         targetType=tg['type']
         if targetType=='Polygon':
-            targetGeom=Polygon(tg['coordinates'][0]) # Shapely object
+            tgc=tg['coordinates'][0]
+            tgc=self.removeSpurs(tgc)
+            targetGeom=Polygon(tgc) # Shapely object
         elif targetType=='LineString':
-            targetGeom=LineString(tg['coordinates'])
+            tgc=tg['coordinates']
+            tgc=self.removeSpurs(tgc)
+            targetGeom=LineString(tgc)
         else:
             logging.error('crop: target object is not a polygon or line: '+targetType)
             
@@ -1140,7 +1199,9 @@ class SartopoSession():
         cg=boundaryShape['geometry']
         boundaryType=cg['type']
         if boundaryType=='Polygon':
-            boundaryGeom=Polygon(cg['coordinates'][0]).buffer(beyond) # Shapely object
+            cgc=cg['coordinates'][0]
+            gcg=self.removeSpurs(cgc)
+            boundaryGeom=Polygon(cgc).buffer(beyond) # Shapely object
         else:
             logging.error('crop: boundary object is not a polygon: '+boundaryType)
         logging.debug('crop: boundaryGeom:'+str(boundaryGeom))
