@@ -79,6 +79,7 @@
 #  6-15-21    TMG        add geometry operations cut, expand, crop
 #  6-27-21    TMG        stop sync when main thread terminates (fix #19)
 #  6-28-21    TMG        remove spurs to fix self-intersecting polygons (fix #20)
+#  6-29-21    TMG        return gracefully if shapes do not intersect (fix #21)
 #
 #-----------------------------------------------------------------------------
 
@@ -349,7 +350,7 @@ class SartopoSession():
         self.sync=False
 
     def __del__(self):
-        logging.info('Object deleted.')
+        logging.info('SartopoSession instance deleted.')
         if self.sync:
             self.stop()
 
@@ -965,7 +966,7 @@ class SartopoSession():
                     out.pop() # delete last vertex
                 # logging.info('\n --> '+str(len(out))+' points: '+str(out))
         else:
-            logging.info('\n      object has less than three points; no spur removal attempted.')
+            # logging.info('\n      object has less than three points; no spur removal attempted.')
             out=points
         if len(points)!=len(out):
             logging.info('spur(s) were removed from the shape:\n    '+str(len(points))+' points: '+str(points)+'\n --> '+str(len(out))+' points: '+str(out))
@@ -980,13 +981,13 @@ class SartopoSession():
     #  the arguments (target, cutter) can be name (string), id (string), or feature (json)
 
     def cut(self,target,cutter,deleteCutter=True):
-        if isinstance(target,str):
+        if isinstance(target,str): # if string, find object by name; if id, find object by id
             if len(target)==36: # id
                 targetShape=self.getFeatures(id=target)[0]
             else:
                 targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
         else:
-            targetShape=target # if string, find object by name; if id, find object by id
+            targetShape=target
         tg=targetShape['geometry']
         targetType=tg['type']
         if targetType=='Polygon':
@@ -1020,6 +1021,10 @@ class SartopoSession():
             cgc=self.removeSpurs(cgc)
             cutterGeom=LineString(cgc) # Shapely object
         logging.debug('cutterGeom:'+str(cutterGeom))
+
+        if not cutterGeom.intersects(targetGeom):
+            logging.info(targetShape['properties']['title']+','+cutterShape['properties']['title']+': objects do not intersect; no operation performed')
+            return False
 
         #  shapely.ops.split only works if the second geometry completely splits the first;
         #   instead, use the simple boolean object.difference (same as overloaded '-' operator)
@@ -1123,13 +1128,13 @@ class SartopoSession():
     # expand - expand target polygon to include the area of p2 polygon
 
     def expand(self,target,p2,deleteP2=True):
-        if isinstance(target,str):
+        if isinstance(target,str): # if string, find object by name; if id, find object by id
             if len(target)==36: # id
                 targetShape=self.getFeatures(id=target)[0]
             else:
                 targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
         else:
-            targetShape=target # if string, find object by name; if id, find object by id
+            targetShape=target
         tg=targetShape['geometry']
         tgc=tg['coordinates'][0]
         tgc=self.removeSpurs(tgc)
@@ -1157,6 +1162,10 @@ class SartopoSession():
             logging.error('expand: p2 object is not a polygon: '+p2Type)
         logging.debug('p2Geom:'+str(p2Geom))
 
+        if not p2Geom.intersects(targetGeom):
+            logging.info(targetShape['properties']['title']+','+p2Shape['properties']['title']+': objects do not intersect; no operation performed')
+            return False
+
         result=targetGeom|p2Geom
         logging.debug('expand result:'+str(result))
 
@@ -1169,13 +1178,13 @@ class SartopoSession():
     #          grow the specified boundary polygon by the specified distance before cropping
 
     def crop(self,target,boundary,beyond=0.0001,deleteBoundary=False):
-        if isinstance(target,str):
+        if isinstance(target,str): # if string, find object by name; if id, find object by id
             if len(target)==36: # id
                 targetShape=self.getFeatures(id=target)[0]
             else:
                 targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
         else:
-            targetShape=target # if string, find object by name; if id, find object by id
+            targetShape=target
         tg=targetShape['geometry']
         targetType=tg['type']
         if targetType=='Polygon':
@@ -1205,6 +1214,10 @@ class SartopoSession():
         else:
             logging.error('crop: boundary object is not a polygon: '+boundaryType)
         logging.debug('crop: boundaryGeom:'+str(boundaryGeom))
+
+        if not boundaryGeom.intersects(targetGeom):
+            logging.info(targetShape['properties']['title']+','+boundaryShape['properties']['title']+': objects do not intersect; no operation performed')
+            return False
 
         result=targetGeom&boundaryGeom # could be MultiPolygon or MultiLinestring or GeometryCollection
         logging.debug('crop result:'+str(result))
