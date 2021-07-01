@@ -1,3 +1,5 @@
 
 .project
 .pydevproject
+sartopo_python/test.py
+*.pyc
