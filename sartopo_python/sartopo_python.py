@@ -81,6 +81,7 @@
 #  6-28-21    TMG        remove spurs to fix self-intersecting polygons (fix #20)
 #  6-29-21    TMG        return gracefully if shapes do not intersect (fix #21)
 #  6-30-21    TMG        fix #26; various error handling and logging improvements
+#  6-30-21    TMG        do an initial since(0) request even if sync=False (fix #25)
 #
 #-----------------------------------------------------------------------------
 
@@ -249,9 +250,11 @@ class SartopoSession():
         #  edit functions can have access to the full json
         if self.sync:
             self.start()
+        else: # do an initial since(0) even if sync is false
+            self.doSync(once=True)
             
-    def doSync(self):
-        if self.sync: # check here since sync could have been disabled since last sync
+    def doSync(self,once=False):
+        if self.sync or once: # check here since sync could have been disabled since last sync
             # Use a 'since' value of a half second prior to the previous response timestamp;
             #  this is what sartopo currently does.
 
