@@ -97,7 +97,7 @@ import sys
 import threading
 from threading import Thread
 
-from shapely.geometry import LineString,Polygon,MultiLineString,MultiPolygon,GeometryCollection
+from shapely.geometry import LineString,Point,Polygon,MultiLineString,MultiPolygon,GeometryCollection
 from shapely.ops import split
 
 class SartopoSession():
@@ -160,21 +160,21 @@ class SartopoSession():
                 if os.path.isfile(self.configpath):
                     if self.account is None:
                         logging.error("config file '"+self.configpath+"' is specified, but no account name is specified.")
-                        return -1
+                        return False
                     config=configparser.ConfigParser()
                     config.read(self.configpath)
                     if self.account not in config.sections():
                         logging.error("specified account '"+self.account+"' has no entry in config file '"+self.configpath+"'.")
-                        return -1
+                        return False
                     section=config[self.account]
                     id=section.get("id",None)
                     key=section.get("key",None)
                     if id is None or key is None:
                         logging.error("account entry '"+self.account+"' in config file '"+self.configpath+"' is not complete:\n  it must specify id and key.")
-                        return -1
+                        return False
                 else:
                     logging.error("specified config file '"+self.configpath+"' does not exist.")
-                    return -1
+                    return False
 
             # now allow values specified in constructor to override config file values
             if self.id is not None:
@@ -187,10 +187,10 @@ class SartopoSession():
 
             if self.id is None:
                 logging.error("sartopo session is invalid: 'id' must be specified for online maps")
-                return -1
+                return False
             if self.key is None:
                 logging.error("sartopo session is invalid: 'key' must be specified for online maps")
-                return -1
+                return False
 
         # by default, do not assume any sartopo session is running;
         # send a GET request to http://localhost:8080/api/v1/map/
@@ -363,10 +363,11 @@ class SartopoSession():
         logging.info('Sartopo syncing initiated.')
         Thread(target=self.doSync).start()
 
-    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=2):
+    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None):
+        timeout=timeout or self.syncTimeout
         if self.apiVersion<0:
             logging.error("sendRequest: sartopo session is invalid; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
-            return -1
+            return False
         mid=self.apiUrlMid
         if 'api/' in apiUrlEnd.lower():
             mid='/'
@@ -383,7 +384,7 @@ class SartopoSession():
         mid=mid.replace("[MAPID]",self.mapID)
         apiUrlEnd=apiUrlEnd.replace("[MAPID]",self.mapID)
         url="http://"+self.domainAndPort+mid+apiUrlEnd
-        # logging.info("sending "+str(type)+" to "+url)
+        logging.debug("sending "+str(type)+" to "+url)
         if type=="post":
             params={}
             params["json"]=json.dumps(j)
@@ -424,7 +425,7 @@ class SartopoSession():
             # logging.info("Ris:"+str(r))
         else:
             logging.error("sendRequest: Unrecognized request type:"+str(type))
-            return -1
+            return False
 #         logging.info("response code = "+str(r.status_code))
 #         logging.info("response:")
 #         try:
@@ -432,12 +433,14 @@ class SartopoSession():
 #         except:
 #             logging.info(r.text)
         if returnJson:
+            logging.debug('response:'+str(r))
             try:
                 rj=r.json()
             except:
                 logging.error("sendRequest: response had no decodable json")
-                return -1
+                return False
             else:
+                logging.debug('rj:'+str(rj))
                 if returnJson=="ID":
                     id=None
                     if 'result' in rj and 'id' in rj['result']:
@@ -461,7 +464,11 @@ class SartopoSession():
         j={}
         j['properties']={}
         j['properties']['title']=label
-        return self.sendRequest("post","folder",j,returnJson="ID")
+        if queue:
+            self.queue.setdefault('folder',[]).append(j)
+            return 0
+        else:
+            return self.sendRequest("post","folder",j,returnJson="ID")
     
     def addMarker(self,
             lat,
@@ -532,7 +539,11 @@ class SartopoSession():
         if existingId is not None:
             j['id']=existingId
         # logging.info("sending json: "+json.dumps(j,indent=3))
-        return self.sendRequest("post","Shape",j,id=existingId,returnJson="ID",timeout=timeout)
+        if queue:
+            self.queue.setdefault('Shape',[]).append(j)
+            return 0
+        else:
+            return self.sendRequest("post","Shape",j,id=existingId,returnJson="ID",timeout=timeout)
 
     def addLineAssignment(self,
             points,
@@ -773,7 +784,8 @@ class SartopoSession():
             featureClassExcludeList=[],
             allowMultiTitleMatch=False,
             since=0,
-            timeout=2):
+            timeout=False):
+        timeout=timeout or self.syncTimeout
         rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
         if featureClass is None and title is None and id is None:
             return rj # if no feature class or title or id is specified, return the entire json response
@@ -850,14 +862,14 @@ class SartopoSession():
             # first, validate the arguments and adjust as needed
             if className is None:
                 logging.error('ClassName was not specified.')
-                return -1
+                return False
             if letter is not None:
                 if className is not 'Assignment':
                     logging.warning('Letter was specified, but className was specified as other than Assignment.  ClassName Assignment will be used.')
                 className='Assignment'
             if title is None and letter is None:
                 logging.error('Either Title or Letter must be specified.')
-                return -1
+                return False
             if title is not None and letter is not None:
                 logging.warning('Both Title and Letter were specified.  Only one or the other can be used for the search.  Using Letter, in case the rest of the object title has changed.')
                 title=None
@@ -877,10 +889,10 @@ class SartopoSession():
                 
             if len(features)==0:
                 logging.error('no feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
-                return -1
+                return False
             if len(features)>1:
                 logging.error('more than one feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
-                return -1
+                return False
             feature=features[0]
             logging.info('feature found: '+str(feature))
 
@@ -1065,8 +1077,15 @@ class SartopoSession():
         tc=tp['class'] # Shape or Assignment
         tfid=tp.get('folderId',None)
 
-        if isinstance(result,GeometryCollection): # apparently this will only be the case for polygons
-            result=MultiPolygon(result)
+        if isinstance(result,GeometryCollection): # polygons, linestrings, or both
+            try:
+                result=MultiPolygon(result)
+            except:
+                try:
+                    result=MultiLineString(result)
+                except:
+                    logging.error('cut: resulting GeometryCollection could not be converted to MultiPolygon or MultiLineString.  Operation aborted.')
+                    return False
         if isinstance(result,Polygon):
             if not self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}):
                 logging.error('cut: target shape not found; operation aborted.')
@@ -1232,6 +1251,72 @@ class SartopoSession():
         if deleteP2:
             self.delObject(p2Shape['properties']['class'],existingId=p2Shape['id'])
 
+    # intersection2(targetGeom,boundaryGeom)
+    # we want a function that can take the place of shapely.ops.intersection
+    #  when the target is a LineString and the boundary is a Polygon,
+    #  which will preserve complex (is_simple=False) lines i.e. with internal crossovers
+
+    # walk thru the points (except fot the last point) in the target shape(line):
+    #    A = current point, B = next point
+    #  A and B both inside boundary?  --> append A to output coord list
+    #  A inside, B outside --> append A; append point at instersection of this segment with boundary; don't append B
+    #  A outside, B inside --> append B; append point at intersection of this segment with boundary; don't append A
+    #  A outside, B outside --> don't append either
+
+    # known issue: straight segments that are 'clipped' by the boundary corner,
+    #  i.e. A and B are both outside, but a portion of the AB segment is inside,
+    #  will be omitted from the result, since only the drawn vertices are checked.
+    
+    def intersection2(self,targetGeom,boundaryGeom):
+        outLines=[]
+        targetCoords=targetGeom.coords
+        nextInsidePointStartsNewLine=True
+        for i in range(len(targetCoords)-1):
+            ac=targetCoords[i]
+            bc=targetCoords[i+1]
+            ap=Point(ac)
+            bp=Point(bc)
+            a_in=ap.within(boundaryGeom)
+            b_in=bp.within(boundaryGeom)
+            if a_in and b_in:
+                if nextInsidePointStartsNewLine:
+                    outLines.append([])
+                    nextInsidePointStartsNewLine=False
+                outLines[-1].append(ac)
+            elif a_in and not b_in:
+                abl=LineString([ap,bp])
+                mp=abl.intersection(boundaryGeom.exterior)
+                if nextInsidePointStartsNewLine:
+                    outLines.append([])
+                    nextInsidePointStartsNewLine=False
+                outLines[-1].append(ac)
+                outLines[-1].append(list(mp.coords)[0])
+                nextInsidePointStartsNewLine=True
+            elif b_in and not a_in:
+                abl=LineString([ap,bp])
+                mp=abl.intersection(boundaryGeom.exterior)
+                nextInsidePointStartsNewLine=True
+                if nextInsidePointStartsNewLine:
+                    outLines.append([])
+                    nextInsidePointStartsNewLine=False
+                # the midpoint will be the first point of a new line
+                outLines[-1].append(list(mp.coords)[0])
+
+        # don't forget to check the last vertex!
+        fc=targetCoords[-1]
+        fp=Point(fc)
+        f_in=fp.within(boundaryGeom)
+        if f_in:
+            outLines[-1].append(fc)
+
+        # return the Shapely object(s)
+        if len(outLines)>1:
+            rval=MultiLineString(outLines)
+        else:
+            rval=LineString(outLines[0])
+        return rval
+
+
     # crop - remove portions of a line or polygon that are outside a boundary polygon;
     #          grow the specified boundary polygon by the specified distance before cropping
 
@@ -1286,7 +1371,7 @@ class SartopoSession():
         boundaryType=cg['type']
         if boundaryType=='Polygon':
             cgc=cg['coordinates'][0]
-            gcg=self.removeSpurs(cgc)
+            cgc=self.removeSpurs(cgc)
             boundaryGeom=Polygon(cgc).buffer(beyond) # Shapely object
         else:
             logging.error('crop: boundary object '+boundaryStr+' is not a polygon: '+boundaryType)
@@ -1297,7 +1382,11 @@ class SartopoSession():
             logging.error(targetShape['properties']['title']+','+boundaryShape['properties']['title']+': objects do not intersect; no operation performed')
             return False
 
-        result=targetGeom&boundaryGeom # could be MultiPolygon or MultiLinestring or GeometryCollection
+        # if target is a line, and boundary is a polygon, use intersection2; see notes above
+        if isinstance(targetGeom,LineString) and isinstance(boundaryGeom,Polygon):
+            result=self.intersection2(targetGeom,boundaryGeom)
+        else:
+            result=targetGeom&boundaryGeom # could be MultiPolygon or MultiLinestring or GeometryCollection
         logging.debug('crop result:'+str(result))
 
         # preserve target properties when adding new features
@@ -1305,21 +1394,26 @@ class SartopoSession():
         tc=tp['class'] # Shape or Assignment
         tfid=tp.get('folderId',None)
 
+        # collect resulting object ids to return as the return value
+        rids=[]
+
         if isinstance(result,GeometryCollection): # apparently this will only be the case for polygons
             result=MultiPolygon(result)
         if isinstance(result,Polygon):
-            if not self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}):
+            rids.append(self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}))
+            if rids==[]:
                 logging.error('cut: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiPolygon):
-            if not self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}):
+            rids.append(self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}))
+            if rids==[]:
                 logging.error('cut: target shape not found; operation aborted.')
                 return False
             suffix=0
             for r in result[1:]:
                 suffix+=1
                 if tc=='Shape':
-                    self.addPolygon(list(r.exterior.coords),
+                    rids.append(self.addPolygon(list(r.exterior.coords),
                         title=tp['title']+':'+str(suffix),
                         stroke=tp['stroke'],
                         fill=tp['fill'],
@@ -1328,9 +1422,9 @@ class SartopoSession():
                         fillOpacity=tp['fill-opacity'],
                         description=tp['description'],
                         folderId=tfid,
-                        gpstype=tp['gpstype'])
+                        gpstype=tp['gpstype']))
                 elif tc=='Assignment':
-                    self.addAreaAssignment(list(r.exterior.coords),
+                    rids.append(self.addAreaAssignment(list(r.exterior.coords),
                         number=tp['number'],
                         letter=tp['letter']+':'+str(suffix),
                         opId=tp.get('operationalPeriodId',None),
@@ -1349,22 +1443,24 @@ class SartopoSession():
                         secondaryFrequency=tp['secondaryFrequency'],
                         preparedBy=tp['preparedBy'],
                         gpstype=tp['gpstype'],
-                        status=tp['status'])
+                        status=tp['status']))
                 else:
                     logging.error('crop: target object class was neither Shape nor Assigment')
         elif isinstance(result,LineString):
-            if not self.editObject(id=targetShape['id'],geometry={'coordinates':list(result.coords)}):
+            rids.append(self.editObject(id=targetShape['id'],geometry={'coordinates':list(result.coords)}))
+            if rids==[]:
                 logging.error('crop: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiLineString):
-            if not self.editObject(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}):
+            rids.append(self.editObject(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}))
+            if rids==[]:
                 logging.error('crop: target shape not found; operation aborted.')
                 return False
             suffix=0
             for r in result[1:]:
                 suffix+=1
                 if tc=='Shape':
-                    self.addLine(list(r.coords),
+                    rids.append(self.addLine(list(r.coords),
                         title=tp['title']+':'+str(suffix),
                         color=tp['stroke'],
                         opacity=tp['stroke-opacity'],
@@ -1372,9 +1468,9 @@ class SartopoSession():
                         pattern=tp['pattern'],
                         description=tp['description'],
                         folderId=tfid,
-                        gpstype=tp['gpstype'])
+                        gpstype=tp['gpstype']))
                 elif tc=='Assignment':
-                    self.addLineAssignment(list(r.coords),
+                    rids.append(self.addLineAssignment(list(r.coords),
                         number=tp['number'],
                         letter=tp['letter']+':'+str(suffix),
                         opId=tp.get('operationalPeriodId',None),
@@ -1393,12 +1489,14 @@ class SartopoSession():
                         secondaryFrequency=tp['secondaryFrequency'],
                         preparedBy=tp['preparedBy'],
                         gpstype=tp['gpstype'],
-                        status=tp['status'])
+                        status=tp['status']))
                 else:
                     logging.error('crop: target object class was neither Shape nor Assigment')
                     return False
 
         if deleteBoundary:
             self.delObject(boundaryShape['properties']['class'],existingId=boundaryShape['id'])
+
+        return rids # resulting object IDs
 
 logging.basicConfig(stream=sys.stdout,level=logging.INFO) # print by default; let the caller change this if needed

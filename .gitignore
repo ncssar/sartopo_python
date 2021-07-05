@@ -3,3 +3,7 @@
 .pydevproject
 sartopo_python/test.py
 *.pyc
+sartopo_python/sartopo_bg.py
+sartopo_python/__pycache__/sartopo_python.cpython-37.pyc
+*.pyc
+sartopo_python/test2.py
