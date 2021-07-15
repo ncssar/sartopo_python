@@ -82,6 +82,7 @@
 #  6-29-21    TMG        return gracefully if shapes do not intersect (fix #21)
 #  6-30-21    TMG        fix #26; various error handling and logging improvements
 #  6-30-21    TMG        do an initial since(0) request even if sync=False (fix #25)
+#   7-4-21    TMG        preserve complex lines during crop (fix #29); other cleanup
 #
 #-----------------------------------------------------------------------------
 
@@ -99,7 +100,7 @@ from threading import Thread
 
 from shapely.geometry import LineString,Point,Polygon,MultiLineString,MultiPolygon,GeometryCollection
 from shapely.ops import split
-
+    
 class SartopoSession():
     def __init__(self,
             domainAndPort='localhost:8080',
@@ -254,6 +255,7 @@ class SartopoSession():
             self.doSync(once=True)
             
     def doSync(self,once=False):
+        self.syncing=True
         if self.sync or once: # check here since sync could have been disabled since last sync
             # Use a 'since' value of a half second prior to the previous response timestamp;
             #  this is what sartopo currently does.
@@ -269,6 +271,9 @@ class SartopoSession():
 
             logging.info('Sending sartopo "since" request...')
             rj=self.getFeatures(since=str(max(0,self.lastSuccessfulSyncTimestamp-500)),timeout=self.syncTimeout)
+            if self.syncDumpFile:
+                with open(self.insertBeforeExt(self.syncDumpFile,'since'+str(self.lastSuccessfulSyncTimestamp)),"w") as f:
+                    f.write(json.dumps(rj,indent=3))
             # logging.debug(json.dumps(rj,indent=3))
             if rj['status']=='ok':
                 self.lastSuccessfulSyncTimestamp=rj['result']['timestamp']
@@ -324,30 +329,41 @@ class SartopoSession():
                             if f['id'] not in self.mapData['ids'][prop['class']]:
                                 self.mapData['ids'][prop['class']].append(f['id'])
 
-                # 3 - cleanup
+                # 3 - cleanup - ids will be part of the response whenever object(s) were added or deleted
                 self.mapIDs=sum(self.mapData['ids'].values(),[])
                 mapSFIDs=[f['id'] for f in self.mapData['state']['features']]
+
+                logging.info('\nself.mapIDs:'+str(self.mapIDs))
+                logging.info('\n   mapSFIDs:'+str(mapSFIDs))
                 for i in range(len(mapSFIDs)):
                     if mapSFIDs[i] not in self.mapIDs:
                         prop=self.mapData['state']['features'][i]['properties']
                         logging.info('  Deleting '+str(prop['class'])+':'+str(prop['title']))
+                        logging.info('     [ id='+mapSFIDs[i]+' ]')
                         if self.deletedObjectCallback:
                             self.deletedObjectCallback(mapSFIDs[i],self.mapData['state']['features'][i])
                         del self.mapData['state']['features'][i]
         
                 if self.syncDumpFile:
-                    with open(self.syncDumpFile,"w") as f:
+                    with open(self.insertBeforeExt(self.syncDumpFile,'cache'+str(self.lastSuccessfulSyncTimestamp)),"w") as f:
+                        f.write('sync cleanup:')
+                        f.write('  mapIDs='+str(self.mapIDs)+'\n\n')
+                        f.write('  mapSFIDs='+str(mapSFIDs)+'\n\n')
                         f.write(json.dumps(self.mapData,indent=3))
 
+                self.syncing=False
                 if self.sync:
                     if threading.main_thread().is_alive():
                         time.sleep(self.syncInterval)
-                        self.doSync()
+                        while self.syncPause: # wait until at least one second after sendRequest finishes
+                            time.sleep(1)
+                        self.doSync() # will this trigger the recursion limit eventually?  Rethink looping method!
                     else:
                         logging.info('Main thread has ended; sync is stopping...')
 
             else:
                 logging.error('Sartopo sync failed!')
+        self.syncing=False
 
     def stop(self):
         logging.info('Sartopo syncing terminated.')
@@ -385,6 +401,7 @@ class SartopoSession():
         apiUrlEnd=apiUrlEnd.replace("[MAPID]",self.mapID)
         url="http://"+self.domainAndPort+mid+apiUrlEnd
         logging.debug("sending "+str(type)+" to "+url)
+        self.syncPause=True
         if type=="post":
             params={}
             params["json"]=json.dumps(j)
@@ -425,6 +442,7 @@ class SartopoSession():
             # logging.info("Ris:"+str(r))
         else:
             logging.error("sendRequest: Unrecognized request type:"+str(type))
+            self.syncPause=False
             return False
 #         logging.info("response code = "+str(r.status_code))
 #         logging.info("response:")
@@ -438,6 +456,7 @@ class SartopoSession():
                 rj=r.json()
             except:
                 logging.error("sendRequest: response had no decodable json")
+                self.syncPause=False
                 return False
             else:
                 logging.debug('rj:'+str(rj))
@@ -448,15 +467,19 @@ class SartopoSession():
                     elif 'id' in rj:
                         id=rj['id']
                     elif not rj['result']['state']['features']:  # response if no new info
+                        self.syncPause=False
                         return 0
                     elif 'result' in rj and 'id' in rj['result']['state']['features'][0]:
                         id=rj['result']['state']['features'][0]['id']
                     else:
                         logging.info("sendRequest: No valid ID was returned from the request:")
                         logging.info(json.dumps(rj,indent=3))
+                    self.syncPause=False
                     return id
                 if returnJson=="ALL":
+                    self.syncPause=False
                     return rj
+        self.syncPause=False
         
     def addFolder(self,
             label="New Folder",
@@ -980,13 +1003,14 @@ class SartopoSession():
                 if points[i]!=points[i-2]:
                     out.append(points[i])
                 else:
+                    logging.info('spur removed at '+str(points[i-1]))
                     out.pop() # delete last vertex
                 # logging.info('\n --> '+str(len(out))+' points: '+str(out))
         else:
             # logging.info('\n      object has less than three points; no spur removal attempted.')
             out=points
-        if len(points)!=len(out):
-            logging.info('spur(s) were removed from the shape:\n    '+str(len(points))+' points: '+str(points)+'\n --> '+str(len(out))+' points: '+str(out))
+        # if len(points)!=len(out):
+        #     logging.info('spur(s) were removed from the shape:\n    '+str(len(points))+' points: '+str(points)+'\n --> '+str(len(out))+' points: '+str(out))
         return out
 
     # cut - this method should accomodate the following operations:
@@ -1266,7 +1290,7 @@ class SartopoSession():
     # known issue: straight segments that are 'clipped' by the boundary corner,
     #  i.e. A and B are both outside, but a portion of the AB segment is inside,
     #  will be omitted from the result, since only the drawn vertices are checked.
-    
+
     def intersection2(self,targetGeom,boundaryGeom):
         outLines=[]
         targetCoords=targetGeom.coords
@@ -1498,5 +1522,22 @@ class SartopoSession():
             self.delObject(boundaryShape['properties']['class'],existingId=boundaryShape['id'])
 
         return rids # resulting object IDs
+
+        
+    def insertBeforeExt(self,fn,ins):
+        if '.' in fn:
+            lastSlashIndex=-1
+            lastBackSlashIndex=-1
+            if '/' in fn:
+                lastSlashIndex=fn.rindex('/')
+            if '\\' in fn:
+                lastBackSlashIndex=fn.rindex('\\')
+            lastSepIndex=max(lastBackSlashIndex,lastSlashIndex)
+            try:
+                lastDotIndex=fn.rindex('.',lastSepIndex)
+                return fn[:lastDotIndex]+ins+fn[lastDotIndex:]
+            except:
+                pass
+        return fn+ins
 
 logging.basicConfig(stream=sys.stdout,level=logging.INFO) # print by default; let the caller change this if needed
