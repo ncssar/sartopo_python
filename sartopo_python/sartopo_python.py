@@ -51,6 +51,47 @@
 #     print('moving online after a pause:'+r2[0]['id'])
 #     sts2.addMarker(39.02,-119.98,r2[0]['properties']['title'],existingId=r2[0]['id'])
 #
+#
+#  Threading
+#
+#  When self.sync is True, we want to call doSync, then wait n seconds after
+#  the response, then call doSync again, etc.  This is not strictly the same
+#  as calling doSync every n seconds, since it may take several seconds for
+#  the response to be completed, for large data or slow connection or both.
+# 
+#  We could use the timer object (a subclass of Threading), but that
+#  would cause a new thread to be spawned for each iteration, which might
+#  cause python resource or memory issues after a long time.  So, instead,
+#  we use one thread for syncing, which does a blocking sleep of n
+#  seconds after each completed response.  This sync thread is separate
+#  from the main thread, so that its blocking sleeps (or slow responses) do
+#  not block the rest of the program.
+# 
+#  The sync thread is created by calling self.start().  A call to self.stop()
+#  simply sets self.sync to False, which causes the sync thread to end itself
+#  after the next request/response.
+#
+#  Since self.doSync is called repeatedly if self.sync is True, the sync
+#  thread would stay alive forever, even after the calling program ends; so,
+#  at the end of each sync iteration, self.doSync checks to see if the main
+#  thread is still alive, and terminates the sync thread if the main thread
+#  is no longer alive.
+#
+#  To avoid the recursion limit, doSync is called iteratively rather than
+#  recursivley, in _syncLoop which is only meant to be called from start().
+#
+#  To prevent main-thread requests from being sent while a sync request is
+#  in process, doSync sets self.syncing just before sending the 'since'
+#  request, and leaves it set until the sync response is processed.
+#   TO DO: If a main-thread request wants to be sent while self.syncing is
+#   set, the request is queued, and is sent after the next sync response is
+#   processed.
+#
+#  NOTE : is this block-and-queue necessary?  Since the http requests
+#  and responses should be able to synchronize themselves, maybe it's not
+#  needed here?
+# 
+#
 #  REVISION HISTORY
 #-----------------------------------------------------------------------------
 #   DATE   |  AUTHOR  |  NOTES
@@ -83,7 +124,10 @@
 #  6-30-21    TMG        fix #26; various error handling and logging improvements
 #  6-30-21    TMG        do an initial since(0) request even if sync=False (fix #25)
 #   7-4-21    TMG        preserve complex lines during crop (fix #29); other cleanup
-#
+#   8-8-21    TMG        sync and getFeature/s overhaul: sync iteratively instead of
+#                         recursively; handle cache refreshing such that downstream
+#                         apps should never need to access .mapData, but should only
+#                         make calls to getFeature/s (fix #23)
 #-----------------------------------------------------------------------------
 
 import hmac
@@ -111,7 +155,7 @@ class SartopoSession():
             key=None,
             sync=True,
             syncInterval=5,
-            syncTimeout=2,
+            syncTimeout=10,
             syncDumpFile=None,
             propUpdateCallback=None,
             geometryUpdateCallback=None,
@@ -134,12 +178,14 @@ class SartopoSession():
         self.key=key
         self.sync=sync
         self.syncTimeout=syncTimeout
+        self.syncPause=False
         self.propUpdateCallback=propUpdateCallback
         self.geometryUpdateCallback=geometryUpdateCallback
         self.newObjectCallback=newObjectCallback
         self.deletedObjectCallback=deletedObjectCallback
         self.syncInterval=syncInterval
-        self.lastSuccessfulSyncTimestamp=0
+        self.lastSuccessfulSyncTimestamp=0 # the server's integer milliseconds 'sincce' request completion time
+        self.lastSuccessfulSyncTSLocal=0 # this object's integer milliseconds sync completion time
         self.syncDumpFile=syncDumpFile
         self.setupSession()
         
@@ -204,7 +250,7 @@ class SartopoSession():
         url="http://"+self.domainAndPort+"/api/v1/map/"
         logging.info("searching for API v1: sending get to "+url)
         try:
-            r=self.s.get(url,timeout=2)
+            r=self.s.get(url,timeout=10)
         except:
             logging.error("no response from first get request; aborting; should get a response of 400 at this point for api v0")
         else:
@@ -213,7 +259,7 @@ class SartopoSession():
                 # now validate the mapID, since the initial test doesn't care about mapID
                 mapUrl="http://"+self.domainAndPort+"/m/"+self.mapID
                 try:
-                    r=self.s.get(mapUrl,timeout=8)
+                    r=self.s.get(mapUrl,timeout=10)
                 except:
                     logging.error("API version 1 detected, but the get request timed out so the mapID is not valid: "+mapUrl)
                 else:
@@ -227,7 +273,7 @@ class SartopoSession():
                 url="http://"+self.domainAndPort+"/rest/marker/"
                 logging.info("searching for API v0: sending get to "+url)
                 try:
-                    r=self.s.get(url,timeout=2)
+                    r=self.s.get(url,timeout=10)
                 except:
                     logging.info("no response from second get request")
                 else:
@@ -239,7 +285,7 @@ class SartopoSession():
                         url="http://"+self.domainAndPort+"/m/"+self.mapID
                         logging.info("sending API v0 authentication request to url "+url)
                         try:
-                            r=self.s.get(url,timeout=2)
+                            r=self.s.get(url,timeout=10)
                         except:
                             logging.info("no response during authentication for API v0")
                         else:
@@ -252,118 +298,144 @@ class SartopoSession():
         if self.sync:
             self.start()
         else: # do an initial since(0) even if sync is false
-            self.doSync(once=True)
+            self.doSync()
             
-    def doSync(self,once=False):
+    def doSync(self):
         self.syncing=True
-        if self.sync or once: # check here since sync could have been disabled since last sync
-            # Use a 'since' value of a half second prior to the previous response timestamp;
-            #  this is what sartopo currently does.
 
-            # Keys under 'result':
-            # 1 - 'ids' will only exist on first sync or after a deletion, so, if 'ids' exists
-            #     then just use it to replace the entire cached 'ids', and also do cleanup later
-            #     by deleting any state->features from the cache whose 'id' value is not in 'ids'
-            # 2 - state->features is an array of changed existing objects, and the array will
-            #     have complete data for 'geometry', 'id', 'type', and 'properties', so, for each
-            #     item in state->features, just replace the entire existing cached feature of
-            #     the same id
+        # Keys under 'result':
+        # 1 - 'ids' will only exist on first sync or after a deletion, so, if 'ids' exists
+        #     then just use it to replace the entire cached 'ids', and also do cleanup later
+        #     by deleting any state->features from the cache whose 'id' value is not in 'ids'
+        # 2 - state->features is an array of changed existing objects, and the array will
+        #     have complete data for 'geometry', 'id', 'type', and 'properties', so, for each
+        #     item in state->features, just replace the entire existing cached feature of
+        #     the same id
 
-            logging.info('Sending sartopo "since" request...')
-            rj=self.getFeatures(since=str(max(0,self.lastSuccessfulSyncTimestamp-500)),timeout=self.syncTimeout)
+        logging.info('Sending sartopo "since" request...')
+        rj=self.sendRequest('get','since/'+str(max(0,self.lastSuccessfulSyncTimestamp-500)),None,returnJson='ALL',timeout=self.syncTimeout)
+        if rj and rj['status']=='ok':
             if self.syncDumpFile:
-                with open(self.insertBeforeExt(self.syncDumpFile,'since'+str(self.lastSuccessfulSyncTimestamp)),"w") as f:
+                with open(self.insertBeforeExt(self.syncDumpFile,'.since'+str(self.lastSuccessfulSyncTimestamp)),"w") as f:
                     f.write(json.dumps(rj,indent=3))
-            # logging.debug(json.dumps(rj,indent=3))
-            if rj['status']=='ok':
-                self.lastSuccessfulSyncTimestamp=rj['result']['timestamp']
-                logging.info('Successful sartopo sync: timestamp='+str(self.lastSuccessfulSyncTimestamp))
-                rjr=rj['result']
-                rjrsf=rjr['state']['features']
-                
-                # 1 - if 'ids' exists, use it verbatim; cleanup happens later
-                if 'ids' in rjr.keys():
-                    self.mapData['ids']=rjr['ids']
-                    logging.debug('  Updating "ids"')
-                
-                # 2 - update existing features
-                if len(rjrsf)>0:
-                    logging.debug(json.dumps(rj,indent=3))
-                    for f in rjrsf:
-                        rjrfid=f['id']
-                        prop=f['properties']
-                        title=str(prop.get('title',None))
-                        featureClass=str(prop['class'])
-                        # 2a - if id already exists, replace it
-                        processed=False
-                        for i in range(len(self.mapData['state']['features'])):
-                            if self.mapData['state']['features'][i]['id']==rjrfid:
-                                # don't simply overwrite the entire feature entry:
-                                #  - if only geometry was changed, indicated by properties['nop']=true,
-                                #    then leave properties alone and just overwrite geometry;
-                                #  - if only properties were changed, geometry will not be in the response,
-                                #    so leave geometry alone
-                                #  SO:
-                                #  - if f->prop->title exists, replace the entire prop dict
-                                #  - if f->geometry exists, replace the entire geometry dict
-                                if 'title' in prop.keys():
-                                    logging.info('  Updating properties for '+featureClass+':'+title)
-                                    self.mapData['state']['features'][i]['properties']=prop
-                                    if self.propUpdateCallback:
-                                        self.propUpdateCallback(rjrfid,prop)
-                                if title=='None':
-                                    title=self.mapData['state']['features'][i]['properties']['title']
-                                if 'geometry' in f.keys():
-                                    logging.info('  Updating geometry for '+featureClass+':'+title)
-                                    self.mapData['state']['features'][i]['geometry']=f['geometry']
-                                    if self.geometryUpdateCallback:
-                                        self.geometryUpdateCallback(rjrfid,f['geometry'])
-                                processed=True
-                                break
-                        # 2b - otherwise, create it - and add to ids so it doesn't get cleaned
-                        if not processed:
-                            logging.info('  Adding '+featureClass+':'+title)
-                            self.mapData['state']['features'].append(f)
-                            if self.newObjectCallback:
-                                self.newObjectCallback(f)
-                            if f['id'] not in self.mapData['ids'][prop['class']]:
-                                self.mapData['ids'][prop['class']].append(f['id'])
+            # response timestamp is an integer number of milliseconds; equivalent to
+            # int(time.time()*1000))
+            self.lastSuccessfulSyncTimestamp=rj['result']['timestamp']
+            logging.info('Successful sartopo sync: timestamp='+str(self.lastSuccessfulSyncTimestamp))
+            rjr=rj['result']
+            rjrsf=rjr['state']['features']
+            
+            # 1 - if 'ids' exists, use it verbatim; cleanup happens later
+            if 'ids' in rjr.keys():
+                self.mapData['ids']=rjr['ids']
+                logging.info('  Updating "ids"')
+            
+            # 2 - update existing features
+            if len(rjrsf)>0:
+                logging.info(json.dumps(rj,indent=3))
+                for f in rjrsf:
+                    rjrfid=f['id']
+                    prop=f['properties']
+                    title=str(prop.get('title',None))
+                    featureClass=str(prop['class'])
+                    # 2a - if id already exists, replace it
+                    processed=False
+                    for i in range(len(self.mapData['state']['features'])):
+                        if self.mapData['state']['features'][i]['id']==rjrfid:
+                            # don't simply overwrite the entire feature entry:
+                            #  - if only geometry was changed, indicated by properties['nop']=true,
+                            #    then leave properties alone and just overwrite geometry;
+                            #  - if only properties were changed, geometry will not be in the response,
+                            #    so leave geometry alone
+                            #  SO:
+                            #  - if f->prop->title exists, replace the entire prop dict
+                            #  - if f->geometry exists, replace the entire geometry dict
+                            if 'title' in prop.keys():
+                                logging.info('  Updating properties for '+featureClass+':'+title)
+                                self.mapData['state']['features'][i]['properties']=prop
+                                if self.propUpdateCallback:
+                                    self.propUpdateCallback(rjrfid,prop)
+                            if title=='None':
+                                title=self.mapData['state']['features'][i]['properties']['title']
+                            if 'geometry' in f.keys():
+                                logging.info('  Updating geometry for '+featureClass+':'+title)
+                                self.mapData['state']['features'][i]['geometry']=f['geometry']
+                                if self.geometryUpdateCallback:
+                                    self.geometryUpdateCallback(rjrfid,f['geometry'])
+                            processed=True
+                            break
+                    # 2b - otherwise, create it - and add to ids so it doesn't get cleaned
+                    if not processed:
+                        logging.info('  Adding '+featureClass+':'+title)
+                        self.mapData['state']['features'].append(f)
+                        if self.newObjectCallback:
+                            self.newObjectCallback(f)
+                        if f['id'] not in self.mapData['ids'][prop['class']]:
+                            self.mapData['ids'][prop['class']].append(f['id'])
 
-                # 3 - cleanup - ids will be part of the response whenever object(s) were added or deleted
-                self.mapIDs=sum(self.mapData['ids'].values(),[])
-                mapSFIDs=[f['id'] for f in self.mapData['state']['features']]
+            # 3 - cleanup - ids will be part of the response whenever object(s) were added or deleted
+            self.mapIDs=sum(self.mapData['ids'].values(),[])
+            mapSFIDs=[f['id'] for f in self.mapData['state']['features']]
 
-                logging.info('\nself.mapIDs:'+str(self.mapIDs))
-                logging.info('\n   mapSFIDs:'+str(mapSFIDs))
-                for i in range(len(mapSFIDs)):
-                    if mapSFIDs[i] not in self.mapIDs:
-                        prop=self.mapData['state']['features'][i]['properties']
-                        logging.info('  Deleting '+str(prop['class'])+':'+str(prop['title']))
-                        logging.info('     [ id='+mapSFIDs[i]+' ]')
-                        if self.deletedObjectCallback:
-                            self.deletedObjectCallback(mapSFIDs[i],self.mapData['state']['features'][i])
-                        del self.mapData['state']['features'][i]
-        
-                if self.syncDumpFile:
-                    with open(self.insertBeforeExt(self.syncDumpFile,'cache'+str(self.lastSuccessfulSyncTimestamp)),"w") as f:
-                        f.write('sync cleanup:')
-                        f.write('  mapIDs='+str(self.mapIDs)+'\n\n')
-                        f.write('  mapSFIDs='+str(mapSFIDs)+'\n\n')
-                        f.write(json.dumps(self.mapData,indent=3))
+            logging.debug('\nself.mapIDs:'+str(self.mapIDs))
+            logging.debug('\n   mapSFIDs:'+str(mapSFIDs))
+            for i in range(len(mapSFIDs)):
+                if mapSFIDs[i] not in self.mapIDs:
+                    prop=self.mapData['state']['features'][i]['properties']
+                    logging.info('  Deleting '+str(prop['class'])+':'+str(prop['title']))
+                    logging.info('     [ id='+mapSFIDs[i]+' ]')
+                    if self.deletedObjectCallback:
+                        self.deletedObjectCallback(mapSFIDs[i],self.mapData['state']['features'][i])
+                    del self.mapData['state']['features'][i]
+    
+            if self.syncDumpFile:
+                with open(self.insertBeforeExt(self.syncDumpFile,'.cache'+str(self.lastSuccessfulSyncTimestamp)),"w") as f:
+                    f.write('sync cleanup:')
+                    f.write('  mapIDs='+str(self.mapIDs)+'\n\n')
+                    f.write('  mapSFIDs='+str(mapSFIDs)+'\n\n')
+                    f.write(json.dumps(self.mapData,indent=3))
 
-                self.syncing=False
-                if self.sync:
-                    if threading.main_thread().is_alive():
-                        time.sleep(self.syncInterval)
-                        while self.syncPause: # wait until at least one second after sendRequest finishes
-                            time.sleep(1)
-                        self.doSync() # will this trigger the recursion limit eventually?  Rethink looping method!
-                    else:
-                        logging.info('Main thread has ended; sync is stopping...')
+            self.syncing=False
+            self.lastSuccessfulSyncTSLocal=int(time.time()*1000)
+            if self.sync:
+                if not threading.main_thread().is_alive():
+                    logging.info('Main thread has ended; sync is stopping...')
+                    self.sync=False
+                # if threading.main_thread().is_alive():
+                #     # this is where the blocking sleep happens, instead of spawning a new thread;
+                #     #  normally this function is being called in a separate thread anyway, so
+                #     #  the main thread can continue while this thread sleeps
+                #     logging.info('  sleeping for specified sync interval ('+str(self.syncInterval)+' seconds)...')
+                #     time.sleep(self.syncInterval)
+                #     while self.syncPause: # wait until at least one second after sendRequest finishes
+                #         logging.info('  sync is paused - sleeping for one second')
+                #         time.sleep(1)
+                #     self.doSync() # will this trigger the recursion limit eventually?  Rethink looping method!
+                # else:
+                #     logging.info('Main thread has ended; sync is stopping...')
 
-            else:
-                logging.error('Sartopo sync failed!')
+        else:
+            logging.error('Sync returned invalid or no response; sync aborted:'+str(rj))
+            self.sync=False
         self.syncing=False
+
+    # refresh - update the cache (self.mapData) by calling doSync once;
+    #   only relevant if sync is off; if the latest refresh is within the sync interval value (even when sync is off),
+    #   then don't do a refresh unless forceImmediate is True
+    #  since doSync() would be called from this thread, it is always blocking
+    def refresh(self,blocking=False,forceImmediate=False):
+        d=int(time.time()*1000)-self.lastSuccessfulSyncTSLocal # integer ms since last completed sync
+        logging.info('  refresh requested: '+str(d)+'ms since last completed sync')
+        if d>(self.syncInterval*1000):
+            logging.info('    this is longer than the syncInterval: syncing now')
+            self.doSync()
+        else:
+            logging.info('    this is shorter than the syncInterval')
+            if forceImmediate:
+                logging.info('    but forceImmedate is specified: syncing now')
+                self.doSync()
+            else:
+                logging.info('    and forceImmediate is not specified: not syncing now')
 
     def stop(self):
         logging.info('Sartopo syncing terminated.')
@@ -377,7 +449,22 @@ class SartopoSession():
     def start(self):
         self.sync=True
         logging.info('Sartopo syncing initiated.')
-        Thread(target=self.doSync).start()
+        Thread(target=self._syncLoop).start()
+
+    # _syncLoop - should only be called from self.start(), which calls _syncLoop in a new thread.
+    #  This is just a loop that calls doSync.  To prevent an endless loop, doSync must be
+    #  able to terminate the thread if the main thread has ended; also note that any other
+    #  code can end sync by setting self.sync to False.  This allows doSync to be
+    #  iterative rather than recursive (which would eventually hit recursion limit issues),
+    #  and it allows the blocking sleep call to happen here instead of inside doSync.
+    def _syncLoop(self):
+        while self.sync:
+            while self.syncPause:
+                logging.info('  sync is paused - sleeping for one second')
+                time.sleep(1)
+            self.doSync()
+            if self.sync: # don't bother with the sleep if sync is no longer True
+                time.sleep(self.syncInterval)
 
     def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None):
         timeout=timeout or self.syncTimeout
@@ -400,7 +487,7 @@ class SartopoSession():
         mid=mid.replace("[MAPID]",self.mapID)
         apiUrlEnd=apiUrlEnd.replace("[MAPID]",self.mapID)
         url="http://"+self.domainAndPort+mid+apiUrlEnd
-        logging.debug("sending "+str(type)+" to "+url)
+        logging.info("sending "+str(type)+" to "+url)
         self.syncPause=True
         if type=="post":
             params={}
@@ -415,8 +502,8 @@ class SartopoSession():
                 params["id"]=self.id
                 params["expires"]=expires
                 params["signature"]=token
-            logging.debug("SENDING POST to '"+url+"':")
-            logging.debug(json.dumps(params,indent=3))
+            logging.info("SENDING POST to '"+url+"':")
+            logging.info(json.dumps(params,indent=3))
             r=self.s.post(url,data=params,timeout=timeout)
         elif type=="get": # no need for json in GET; sending null JSON causes downstream error
 #             logging.info("SENDING GET to '"+url+"':")
@@ -451,7 +538,7 @@ class SartopoSession():
 #         except:
 #             logging.info(r.text)
         if returnJson:
-            logging.debug('response:'+str(r))
+            logging.info('response:'+str(r))
             try:
                 rj=r.json()
             except:
@@ -459,7 +546,7 @@ class SartopoSession():
                 self.syncPause=False
                 return False
             else:
-                logging.debug('rj:'+str(rj))
+                logging.info('rj:'+str(rj))
                 if returnJson=="ID":
                     id=None
                     if 'result' in rj and 'id' in rj['result']:
@@ -504,6 +591,7 @@ class SartopoSession():
             folderId=None,
             existingId=None,
             update=0,
+            size=1,
             queue=False):
         j={}
         jp={}
@@ -512,6 +600,8 @@ class SartopoSession():
         jp['updated']=update
         jp['marker-color']=color
         jp['marker-symbol']=symbol
+        jp['marker-size']=size
+        jp['marker-rotation']=rotation
         jp['title']=title
         if folderId is not None:
             jp['folderId']=folderId
@@ -542,7 +632,7 @@ class SartopoSession():
             folderId=None,
             existingId=None,
             queue=False,
-            timeout=2):
+            timeout=10):
         j={}
         jp={}
         jg={}
@@ -800,6 +890,11 @@ class SartopoSession():
     def delObject(self,objType,existingId=""):
         return self.sendRequest("delete",objType,None,id=str(existingId),returnJson="ALL")
 
+    # getFeatures - attempts to get data from the local cache (self.madData); refreshes and tries again if necessary
+    #   determining if a refresh is necessary:
+    #   - if the requested feature/s is/are not in the cache, and it has been longer than syncInterval since the last refresh,
+    #      then do a new refresh; otherwise return [False]
+    #   - if the requested feature/s IS/ARE in the cache, do we need to do a refresh anyway?  Only if forceRefresh is True.
     def getFeatures(self,
             featureClass=None,
             title=None,
@@ -807,45 +902,89 @@ class SartopoSession():
             featureClassExcludeList=[],
             allowMultiTitleMatch=False,
             since=0,
-            timeout=False):
+            timeout=False,
+            forceRefresh=False):
         timeout=timeout or self.syncTimeout
-        rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
+        # rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
+        # call refresh now; refresh will decide whether it needs to do a new doSync call, based
+        #  on time since last doSync response - or, if specified with forceImmediate, will call
+        #  doSync regardless of time since last doSync response
+        self.refresh(forceImmediate=forceRefresh)
+        # if forceRefresh:
+        #     self.refresh(forceImmediate=True) # this is a blocking call
+        # else:
+    
+        # if syncing loop is not on, call refresh now; refresh will call doSync if the previous sync response
+        #  was longer than syncInterval ago, but will return without syncing otherwise
+        
+        # if not self.sync: 
         if featureClass is None and title is None and id is None:
-            return rj # if no feature class or title or id is specified, return the entire json response
+            return self.mapData # if no feature class or title or id is specified, return the entire cache
         else:
             titleMatchCount=0
             rval=[]
-            if 'result' in rj and 'state' in rj['result'] and 'features' in rj['result']['state']:
-                features=rj['result']['state']['features']
-                for feature in features:
-                    if feature['id']==id:
+            features=self.mapData['state']['features']
+            for feature in features:
+                if feature['id']==id:
+                    rval.append(feature)
+                    break
+                prop=feature['properties']
+                c=prop['class']
+                if featureClass is None and c not in featureClassExcludeList:
+                    if prop['title']==title:
+                        titleMatchCount+=1
                         rval.append(feature)
-                        break
-                    prop=feature['properties']
-                    cls=prop['class']
-                    if featureClass is None and cls not in featureClassExcludeList:
-                        if prop['title']==title:
-                            titleMatchCount+=1
+                else:
+                    if c==featureClass:
+                        if title is None:
                             rval.append(feature)
-                    else:
-                        if cls==featureClass:
-                            if title is None:
-                                rval.append(feature)
-                            else:
-                                if prop['title']==title:
-                                    titleMatchCount+=1
-                                    rval.append(feature) # return the entire json object
+                        else:
+                            if prop['title']==title:
+                                titleMatchCount+=1
+                                rval.append(feature) # return the entire json object
             if len(rval)==0:
+                # question: do we want to try a refresh and try one more time?
                 logging.info('getFeatures: No features match the specified criteria.')
                 return [False]
             if titleMatchCount>1:
                 if allowMultiTitleMatch:
                     return rval
                 else:
-                    logging.error('getFeatures: More than one feature match the specified title.')
+                    logging.error('getFeatures: More than one feature matches the specified title.')
                     return [False]
             else:
                 return rval
+
+    # getFeature - same interface as getFeatures, expecting only one result;
+    #   if the number of results is not exactly one, return with an error
+    def getFeature(self,
+            featureClass=None,
+            title=None,
+            id=None,
+            featureClassExcludeList=[],
+            allowMultiTitleMatch=False,
+            since=0,
+            timeout=False):
+        r=self.getFeatures(
+            featureClass=featureClass,
+            title=title,
+            id=id,
+            featureClassExcludeList=featureClassExcludeList,
+            allowMultiTitleMatch=allowMultiTitleMatch,
+            since=since,
+            timeout=timeout)
+        if isinstance(r,list):
+            if len(r)==1:
+                return r[0]
+            elif len(r)<1:
+                logging.error('getFeature: no match')
+                return -1
+            else:
+                logging.error('getFeature: more than one match')
+                logging.info(str(r))
+                return -1
+        else:
+            logging.error('getFeature: return from getFeatures was not a list: '+str(r))
 
     # editObject(id=None,className=None,title=None,letter=None,properties=None,geometry=None)
     # edit any properties and/or geometry of specified map object
@@ -1025,9 +1164,9 @@ class SartopoSession():
         if isinstance(target,str): # if string, find object by name; if id, find object by id
             targetStr=target
             if len(target)==36: # id
-                targetShape=self.getFeatures(id=target)[0]
+                targetShape=self.getFeature(id=target)
             else:
-                targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+                targetShape=self.getFeature(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])
         else:
             targetShape=target
             targetStr='NO TITLE'
@@ -1050,14 +1189,14 @@ class SartopoSession():
         else:
             logging.error('cut: unhandled target '+targetStr+' geometry type: '+targetType)
             return False
-        logging.debug('targetGeom:'+str(targetGeom))
+        logging.info('targetGeom:'+str(targetGeom))
 
         if isinstance(cutter,str): # if string, find object by name; if id, find object by id
             cutterStr=cutter
             if len(cutter)==36: # id
-                cutterShape=self.getFeatures(id=cutter)[0]
+                cutterShape=self.getFeature(id=cutter)
             else:
-                cutterShape=self.getFeatures(title=cutter,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+                cutterShape=self.getFeature(title=cutter,featureClassExcludeList=['Folder','OperationalPeriod'])
         else:
             cutterShape=cutter
             cutterStr='NO TITLE'
@@ -1082,7 +1221,7 @@ class SartopoSession():
         else:
             logging.error('cut: unhandled cutter geometry type: '+cutterType)
             return False
-        logging.debug('cutterGeom:'+str(cutterGeom))
+        logging.info('cutterGeom:'+str(cutterGeom))
 
         if not cutterGeom.intersects(targetGeom):
             logging.error(targetShape['properties']['title']+','+cutterShape['properties']['title']+': objects do not intersect; no operation performed')
@@ -1094,7 +1233,7 @@ class SartopoSession():
             result=split(targetGeom,cutterGeom)
         else:
             result=targetGeom-cutterGeom
-        logging.debug('cut result:'+str(result))
+        logging.info('cut result:'+str(result))
 
         # preserve target properties when adding new features
         tp=targetShape['properties']
@@ -1210,9 +1349,9 @@ class SartopoSession():
         if isinstance(target,str): # if string, find object by name; if id, find object by id
             targetStr=target
             if len(target)==36: # id
-                targetShape=self.getFeatures(id=target)[0]
+                targetShape=self.getFeature(id=target)
             else:
-                targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+                targetShape=self.getFeature(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])
         else:
             targetShape=target
             targetStr='NO TITLE'
@@ -1231,14 +1370,14 @@ class SartopoSession():
         else:
             logging.error('expand: target object '+targetStr+' is not a polygon: '+targetType)
             return False
-        logging.debug('targetGeom:'+str(targetGeom))
+        logging.info('targetGeom:'+str(targetGeom))
 
         if isinstance(p2,str): # if string, find object by name; if id, find object by id
             p2Str=p2
             if len(p2)==36: # id
-                p2Shape=self.getFeatures(id=p2)[0]
+                p2Shape=self.getFeature(id=p2)
             else:
-                p2Shape=self.getFeatures(title=p2,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+                p2Shape=self.getFeature(title=p2,featureClassExcludeList=['Folder','OperationalPeriod'])
         else:
             p2Shape=p2
             p2Str='NO TITLE'
@@ -1259,14 +1398,14 @@ class SartopoSession():
         else:
             logging.error('expand: p2 object '+p2Str+' is not a polygon: '+p2Type)
             return False
-        logging.debug('p2Geom:'+str(p2Geom))
+        logging.info('p2Geom:'+str(p2Geom))
 
         if not p2Geom.intersects(targetGeom):
             logging.error(targetShape['properties']['title']+','+p2Shape['properties']['title']+': objects do not intersect; no operation performed')
             return False
 
         result=targetGeom|p2Geom
-        logging.debug('expand result:'+str(result))
+        logging.info('expand result:'+str(result))
 
         if not self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}):
             logging.error('expand: target shape not found; operation aborted.')
@@ -1348,9 +1487,9 @@ class SartopoSession():
         if isinstance(target,str): # if string, find object by name; if id, find object by id
             targetStr=target
             if len(target)==36: # id
-                targetShape=self.getFeatures(id=target)[0]
+                targetShape=self.getFeature(id=target)
             else:
-                targetShape=self.getFeatures(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+                targetShape=self.getFeature(title=target,featureClassExcludeList=['Folder','OperationalPeriod'])
         else:
             targetShape=target
             targetStr='NO TITLE'
@@ -1377,9 +1516,9 @@ class SartopoSession():
         if isinstance(boundary,str): # if string, find object by name; if id, find object by id
             boundaryStr=boundary
             if len(boundary)==36: # id
-                boundaryShape=self.getFeatures(id=boundary)[0]
+                boundaryShape=self.getFeature(id=boundary)
             else:
-                boundaryShape=self.getFeatures(title=boundary,featureClassExcludeList=['Folder','OperationalPeriod'])[0]
+                boundaryShape=self.getFeature(title=boundary,featureClassExcludeList=['Folder','OperationalPeriod'])
         else:
             boundaryShape=boundary
             boundaryStr='NO TITLE'
@@ -1400,7 +1539,7 @@ class SartopoSession():
         else:
             logging.error('crop: boundary object '+boundaryStr+' is not a polygon: '+boundaryType)
             return False
-        logging.debug('crop: boundaryGeom:'+str(boundaryGeom))
+        logging.info('crop: boundaryGeom:'+str(boundaryGeom))
 
         if not boundaryGeom.intersects(targetGeom):
             logging.error(targetShape['properties']['title']+','+boundaryShape['properties']['title']+': objects do not intersect; no operation performed')
@@ -1411,7 +1550,7 @@ class SartopoSession():
             result=self.intersection2(targetGeom,boundaryGeom)
         else:
             result=targetGeom&boundaryGeom # could be MultiPolygon or MultiLinestring or GeometryCollection
-        logging.debug('crop result:'+str(result))
+        logging.info('crop result:'+str(result))
 
         # preserve target properties when adding new features
         tp=targetShape['properties']
