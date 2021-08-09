@@ -157,7 +157,7 @@ class SartopoSession():
             syncInterval=5,
             syncTimeout=10,
             syncDumpFile=None,
-            propUpdateCallback=None,
+            propertyUpdateCallback=None,
             geometryUpdateCallback=None,
             newObjectCallback=None,
             deletedObjectCallback=None):
@@ -179,7 +179,7 @@ class SartopoSession():
         self.sync=sync
         self.syncTimeout=syncTimeout
         self.syncPause=False
-        self.propUpdateCallback=propUpdateCallback
+        self.propertyUpdateCallback=propertyUpdateCallback
         self.geometryUpdateCallback=geometryUpdateCallback
         self.newObjectCallback=newObjectCallback
         self.deletedObjectCallback=deletedObjectCallback
@@ -353,8 +353,8 @@ class SartopoSession():
                             if 'title' in prop.keys():
                                 logging.info('  Updating properties for '+featureClass+':'+title)
                                 self.mapData['state']['features'][i]['properties']=prop
-                                if self.propUpdateCallback:
-                                    self.propUpdateCallback(rjrfid,prop)
+                                if self.propertyUpdateCallback:
+                                    self.propertyUpdateCallback(rjrfid,prop)
                             if title=='None':
                                 title=self.mapData['state']['features'][i]['properties']['title']
                             if 'geometry' in f.keys():
@@ -578,7 +578,14 @@ class SartopoSession():
             self.queue.setdefault('folder',[]).append(j)
             return 0
         else:
-            return self.sendRequest("post","folder",j,returnJson="ID")
+            # return self.sendRequest("post","folder",j,returnJson="ID")
+            # add to .mapData immediately
+            rj=self.sendRequest('post','folder',j,returnJson='ALL')
+            rjr=rj['result']
+            id=rjr['id']
+            self.mapData['ids'].setdefault('Folder',[]).append(id)
+            self.mapData['state']['features'].append(rjr)
+            return id
     
     def addMarker(self,
             lat,
@@ -618,7 +625,14 @@ class SartopoSession():
             self.queue.setdefault('Marker',[]).append(j)
             return 0
         else:
-            return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
+            # return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
+            # add to .mapData immediately
+            rj=self.sendRequest('post','marker',j,id=existingId,returnJson='ALL')
+            rjr=rj['result']
+            id=rjr['id']
+            self.mapData['ids'].setdefault('Marker',[]).append(id)
+            self.mapData['state']['features'].append(rjr)
+            return id
 
     def addLine(self,
             points,
@@ -656,7 +670,14 @@ class SartopoSession():
             self.queue.setdefault('Shape',[]).append(j)
             return 0
         else:
-            return self.sendRequest("post","Shape",j,id=existingId,returnJson="ID",timeout=timeout)
+            # return self.sendRequest("post","Shape",j,id=existingId,returnJson="ID",timeout=timeout)
+            # add to .mapData immediately
+            rj=self.sendRequest('post','Shape',j,id=existingId,returnJson='ALL',timeout=timeout)
+            rjr=rj['result']
+            id=rjr['id']
+            self.mapData['ids'].setdefault('Shape',[]).append(id)
+            self.mapData['state']['features'].append(rjr)
+            return id
 
     def addLineAssignment(self,
             points,
@@ -778,7 +799,14 @@ class SartopoSession():
             self.queue.setdefault('Shape',[]).append(j)
             return 0
         else:
-            return self.sendRequest('post','Shape',j,id=existingId,returnJson='ID')
+            # return self.sendRequest('post','Shape',j,id=existingId,returnJson='ID')
+            # add to .mapData immediately
+            rj=self.sendRequest('post','Shape',j,id=existingId,returnJson='ALL')
+            rjr=rj['result']
+            id=rjr['id']
+            self.mapData['ids'].setdefault('Shape',[]).append(id)
+            self.mapData['state']['features'].append(rjr)
+            return id
 
     def addAreaAssignment(self,
             points,
@@ -1679,4 +1707,13 @@ class SartopoSession():
                 pass
         return fn+ins
 
-logging.basicConfig(stream=sys.stdout,level=logging.INFO) # print by default; let the caller change this if needed
+# print by default; let the caller change this if needed
+# (note, caller would need to clear all handlers first,
+#   per stackoverflow.com/questions/12158048)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s 2] %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
