@@ -128,6 +128,7 @@
 #                         recursively; handle cache refreshing such that downstream
 #                         apps should never need to access .mapData, but should only
 #                         make calls to getFeature/s (fix #23)
+#   8-9-21    TMG        add new objects to .mapData immediately (fix #28)
 #-----------------------------------------------------------------------------
 
 import hmac
@@ -159,8 +160,8 @@ class SartopoSession():
             syncDumpFile=None,
             propertyUpdateCallback=None,
             geometryUpdateCallback=None,
-            newObjectCallback=None,
-            deletedObjectCallback=None):
+            newFeatureCallback=None,
+            deletedFeatureCallback=None):
         self.s=requests.session()
         self.apiVersion=-1
         if not mapID or not isinstance(mapID,str) or len(mapID)<3:
@@ -181,8 +182,8 @@ class SartopoSession():
         self.syncPause=False
         self.propertyUpdateCallback=propertyUpdateCallback
         self.geometryUpdateCallback=geometryUpdateCallback
-        self.newObjectCallback=newObjectCallback
-        self.deletedObjectCallback=deletedObjectCallback
+        self.newFeatureCallback=newFeatureCallback
+        self.deletedFeatureCallback=deletedFeatureCallback
         self.syncInterval=syncInterval
         self.lastSuccessfulSyncTimestamp=0 # the server's integer milliseconds 'sincce' request completion time
         self.lastSuccessfulSyncTSLocal=0 # this object's integer milliseconds sync completion time
@@ -368,8 +369,8 @@ class SartopoSession():
                     if not processed:
                         logging.info('  Adding '+featureClass+':'+title)
                         self.mapData['state']['features'].append(f)
-                        if self.newObjectCallback:
-                            self.newObjectCallback(f)
+                        if self.newFeatureCallback:
+                            self.newFeatureCallback(f)
                         if f['id'] not in self.mapData['ids'][prop['class']]:
                             self.mapData['ids'][prop['class']].append(f['id'])
 
@@ -384,8 +385,8 @@ class SartopoSession():
                     prop=self.mapData['state']['features'][i]['properties']
                     logging.info('  Deleting '+str(prop['class'])+':'+str(prop['title']))
                     logging.info('     [ id='+mapSFIDs[i]+' ]')
-                    if self.deletedObjectCallback:
-                        self.deletedObjectCallback(mapSFIDs[i],self.mapData['state']['features'][i])
+                    if self.deletedFeatureCallback:
+                        self.deletedFeatureCallback(mapSFIDs[i],self.mapData['state']['features'][i])
                     del self.mapData['state']['features'][i]
     
             if self.syncDumpFile:
@@ -679,6 +680,52 @@ class SartopoSession():
             self.mapData['state']['features'].append(rjr)
             return id
 
+    def addPolygon(self,
+            points,
+            title='New Shape',
+            folderId=None,
+            description='',
+            strokeOpacity=1,
+            strokeWidth=2,
+            fillOpacity=0.1,
+            stroke='#FF0000',
+            fill='#FF0000',
+            gpstype='TRACK',
+            existingId=None,
+            queue=False):
+        j={}
+        jp={}
+        jg={}
+        jp['title']=title
+        if folderId is not None:
+            jp['folderId']=folderId
+        jp['description']=description
+        jp['stroke-width']=strokeWidth
+        jp['stroke-opacity']=strokeOpacity
+        jp['stroke']=stroke
+        jp['fill']=fill
+        jp['fill-opacity']=fillOpacity
+        jp['gpstype']=gpstype
+        jg['type']='Polygon'
+        jg['coordinates']=[points]
+        j['properties']=jp
+        j['geometry']=jg
+        if existingId is not None:
+            j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        if queue:
+            self.queue.setdefault('Shape',[]).append(j)
+            return 0
+        else:
+            # return self.sendRequest('post','Shape',j,id=existingId,returnJson='ID')
+            # add to .mapData immediately
+            rj=self.sendRequest('post','Shape',j,id=existingId,returnJson='ALL')
+            rjr=rj['result']
+            id=rjr['id']
+            self.mapData['ids'].setdefault('Shape',[]).append(id)
+            self.mapData['state']['features'].append(rjr)
+            return id
+
     def addLineAssignment(self,
             points,
             number=None,
@@ -761,52 +808,6 @@ class SartopoSession():
     #     rj=self.sendRequest('post','api/v0/geodata/buffer',j,None,returnJson='ALL')
     #     logging.info('generated buffer response:'+json.dumps(rj,indent=3))
     #     return rj
-
-    def addPolygon(self,
-            points,
-            title='New Shape',
-            folderId=None,
-            description='',
-            strokeOpacity=1,
-            strokeWidth=2,
-            fillOpacity=0.1,
-            stroke='#FF0000',
-            fill='#FF0000',
-            gpstype='TRACK',
-            existingId=None,
-            queue=False):
-        j={}
-        jp={}
-        jg={}
-        jp['title']=title
-        if folderId is not None:
-            jp['folderId']=folderId
-        jp['description']=description
-        jp['stroke-width']=strokeWidth
-        jp['stroke-opacity']=strokeOpacity
-        jp['stroke']=stroke
-        jp['fill']=fill
-        jp['fill-opacity']=fillOpacity
-        jp['gpstype']=gpstype
-        jg['type']='Polygon'
-        jg['coordinates']=[points]
-        j['properties']=jp
-        j['geometry']=jg
-        if existingId is not None:
-            j['id']=existingId
-        # logging.info("sending json: "+json.dumps(j,indent=3))
-        if queue:
-            self.queue.setdefault('Shape',[]).append(j)
-            return 0
-        else:
-            # return self.sendRequest('post','Shape',j,id=existingId,returnJson='ID')
-            # add to .mapData immediately
-            rj=self.sendRequest('post','Shape',j,id=existingId,returnJson='ALL')
-            rjr=rj['result']
-            id=rjr['id']
-            self.mapData['ids'].setdefault('Shape',[]).append(id)
-            self.mapData['state']['features'].append(rjr)
-            return id
 
     def addAreaAssignment(self,
             points,
