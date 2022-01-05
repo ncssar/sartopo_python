@@ -129,6 +129,10 @@
 #                         apps should never need to access .mapData, but should only
 #                         make calls to getFeature/s (fix #23)
 #   8-9-21    TMG        add new objects to .mapData immediately (fix #28)
+#   1-4-22    TMG        remove initial 'dummy' request which was causing NPEs;
+#                         sync enhancements; handle exceptions in __init__; change
+#                         occurrences of 'object' to 'feature'; only update cached
+#                         features during sync if properties or geometry have changed
 #-----------------------------------------------------------------------------
 
 import hmac
@@ -145,7 +149,12 @@ from threading import Thread
 
 from shapely.geometry import LineString,Point,Polygon,MultiLineString,MultiPolygon,GeometryCollection
 from shapely.ops import split
-    
+
+# silent exception class to be raised during __init__ and handlded by the caller,
+#  since __init__ should always return None: https://stackoverflow.com/questions/20059766
+class STSException:
+    pass
+
 class SartopoSession():
     def __init__(self,
             domainAndPort='localhost:8080',
@@ -166,7 +175,7 @@ class SartopoSession():
         self.apiVersion=-1
         if not mapID or not isinstance(mapID,str) or len(mapID)<3:
             logging.error('ERROR: you must specify a three-or-more-character sartopo map ID string (end of the URL) when opening a SartopoSession object.')
-            return None
+            raise STSException
         self.mapID=mapID
         self.domainAndPort=domainAndPort
         # configpath, account, id, and key are used to build
@@ -188,7 +197,8 @@ class SartopoSession():
         self.lastSuccessfulSyncTimestamp=0 # the server's integer milliseconds 'sincce' request completion time
         self.lastSuccessfulSyncTSLocal=0 # this object's integer milliseconds sync completion time
         self.syncDumpFile=syncDumpFile
-        self.setupSession()
+        if not self.setupSession():
+            raise STSException
         
     def setupSession(self):
         if 'sartopo.com' in self.domainAndPort.lower():
@@ -240,59 +250,67 @@ class SartopoSession():
                 logging.error("sartopo session is invalid: 'key' must be specified for online maps")
                 return False
 
-        # by default, do not assume any sartopo session is running;
-        # send a GET request to http://localhost:8080/api/v1/map/
-        #  response code 200 = new API
-        #  otherwise:
-        #    send a GET request to http://localhost:8080/rest/
-        #     response code 200 = old API
+        # # by default, do not assume any sartopo session is running;
+        # # send a GET request to http://localhost:8080/api/v1/map/
+        # #  response code 200 = new API
+        # #  otherwise:
+        # #    send a GET request to http://localhost:8080/rest/
+        # #     response code 200 = old API
         
-        self.apiUrlMid="/invalid/"
-        url="http://"+self.domainAndPort+"/api/v1/map/"
-        logging.info("searching for API v1: sending get to "+url)
-        try:
-            r=self.s.get(url,timeout=10)
-        except:
-            logging.error("no response from first get request; aborting; should get a response of 400 at this point for api v0")
-        else:
-            logging.info("response code = "+str(r.status_code))
-            if r.status_code==200:
-                # now validate the mapID, since the initial test doesn't care about mapID
-                mapUrl="http://"+self.domainAndPort+"/m/"+self.mapID
-                try:
-                    r=self.s.get(mapUrl,timeout=10)
-                except:
-                    logging.error("API version 1 detected, but the get request timed out so the mapID is not valid: "+mapUrl)
-                else:
-                    if r.status_code==200:
-                        # now we know the API is valid and the mapID is valid
-                        self.apiVersion=1
-                        self.apiUrlMid="/api/v1/map/[MAPID]/"
-                    else:
-                        logging.error("API version 1 detected, but the map-specific URL returned a code of "+str(r.status_code)+" so this session is not valid.")
-            else:
-                url="http://"+self.domainAndPort+"/rest/marker/"
-                logging.info("searching for API v0: sending get to "+url)
-                try:
-                    r=self.s.get(url,timeout=10)
-                except:
-                    logging.info("no response from second get request")
-                else:
-                    logging.info("response code = "+str(r.status_code))
-                    if r.status_code==200:
-                        self.apiVersion=0
-                        self.apiUrlMid="/rest/"
-                        # for v0, send a get to the map URL to authenticate the session
-                        url="http://"+self.domainAndPort+"/m/"+self.mapID
-                        logging.info("sending API v0 authentication request to url "+url)
-                        try:
-                            r=self.s.get(url,timeout=10)
-                        except:
-                            logging.info("no response during authentication for API v0")
-                        else:
-                            logging.info("response code = "+str(r.status_code))
-                            if r.status_code==200:
-                                logging.info("API v0 session is now authenticated")
+        # self.apiUrlMid="/invalid/"
+        # url="http://"+self.domainAndPort+"/api/v1/map/"
+        # logging.info("searching for API v1: sending get to "+url)
+        # try:
+        #     r=self.s.get(url,timeout=10)
+        # except:
+        #     logging.error("no response from first get request; aborting; should get a response of 400 at this point for api v0")
+        #     return False
+        # else:
+        #     logging.info("response code = "+str(r.status_code))
+        #     if r.status_code==200:
+        #         # now validate the mapID, since the initial test doesn't care about mapID
+        #         mapUrl="http://"+self.domainAndPort+"/m/"+self.mapID
+        #         try:
+        #             r=self.s.get(mapUrl,timeout=10)
+        #         except:
+        #             logging.error("API version 1 detected, but the get request timed out so the mapID is not valid: "+mapUrl)
+        #             return False
+        #         else:
+        #             if r.status_code==200:
+        #                 # now we know the API is valid and the mapID is valid
+        #                 self.apiVersion=1
+        #                 self.apiUrlMid="/api/v1/map/[MAPID]/"
+        #             else:
+        #                 logging.error("API version 1 detected, but the map-specific URL '"+self.mapID+"' returned a code of "+str(r.status_code)+" so this session is not valid.")
+        #                 return False
+        #     else:
+        #         url="http://"+self.domainAndPort+"/rest/marker/"
+        #         logging.info("searching for API v0: sending get to "+url)
+        #         try:
+        #             r=self.s.get(url,timeout=10)
+        #         except:
+        #             logging.info("no response from second get request")
+        #         else:
+        #             logging.info("response code = "+str(r.status_code))
+        #             if r.status_code==200:
+        #                 self.apiVersion=0
+        #                 self.apiUrlMid="/rest/"
+        #                 # for v0, send a get to the map URL to authenticate the session
+        #                 url="http://"+self.domainAndPort+"/m/"+self.mapID
+        #                 logging.info("sending API v0 authentication request to url "+url)
+        #                 try:
+        #                     r=self.s.get(url,timeout=10)
+        #                 except:
+        #                     logging.info("no response during authentication for API v0")
+        #                 else:
+        #                     logging.info("response code = "+str(r.status_code))
+        #                     if r.status_code==200:
+        #                         logging.info("API v0 session is now authenticated")
+        
+        # try these hardcodes, instead of the above dummy-request, to see if it avoids the NPE's
+        self.apiVersion=1
+        self.apiUrlMid="/api/v1/map/[MAPID]/"
+
         logging.info("API version:"+str(self.apiVersion))
         # sync needs to be done here instead of in the caller, so that
         #  edit functions can have access to the full json
@@ -300,6 +318,7 @@ class SartopoSession():
             self.start()
         else: # do an initial since(0) even if sync is false
             self.doSync()
+        return True
             
     def doSync(self):
         self.syncing=True
@@ -308,7 +327,7 @@ class SartopoSession():
         # 1 - 'ids' will only exist on first sync or after a deletion, so, if 'ids' exists
         #     then just use it to replace the entire cached 'ids', and also do cleanup later
         #     by deleting any state->features from the cache whose 'id' value is not in 'ids'
-        # 2 - state->features is an array of changed existing objects, and the array will
+        # 2 - state->features is an array of changed existing features, and the array will
         #     have complete data for 'geometry', 'id', 'type', and 'properties', so, for each
         #     item in state->features, just replace the entire existing cached feature of
         #     the same id
@@ -317,7 +336,7 @@ class SartopoSession():
         rj=self.sendRequest('get','since/'+str(max(0,self.lastSuccessfulSyncTimestamp-500)),None,returnJson='ALL',timeout=self.syncTimeout)
         if rj and rj['status']=='ok':
             if self.syncDumpFile:
-                with open(self.insertBeforeExt(self.syncDumpFile,'.since'+str(self.lastSuccessfulSyncTimestamp)),"w") as f:
+                with open(self.insertBeforeExt(self.syncDumpFile,'.since'+str(self.lastSuccessfulSyncTimestamp-500)),"w") as f:
                     f.write(json.dumps(rj,indent=3))
             # response timestamp is an integer number of milliseconds; equivalent to
             # int(time.time()*1000))
@@ -331,7 +350,7 @@ class SartopoSession():
                 self.mapData['ids']=rjr['ids']
                 logging.info('  Updating "ids"')
             
-            # 2 - update existing features
+            # 2 - update existing features as needed
             if len(rjrsf)>0:
                 logging.info(json.dumps(rj,indent=3))
                 for f in rjrsf:
@@ -352,41 +371,49 @@ class SartopoSession():
                             #  - if f->prop->title exists, replace the entire prop dict
                             #  - if f->geometry exists, replace the entire geometry dict
                             if 'title' in prop.keys():
-                                logging.info('  Updating properties for '+featureClass+':'+title)
-                                self.mapData['state']['features'][i]['properties']=prop
-                                if self.propertyUpdateCallback:
-                                    self.propertyUpdateCallback(rjrfid,prop)
+                                if self.mapData['state']['features'][i]['properties']!=prop:
+                                    logging.info('  Updating properties for '+featureClass+':'+title)
+                                    self.mapData['state']['features'][i]['properties']=prop
+                                    if self.propertyUpdateCallback:
+                                        self.propertyUpdateCallback(f)
+                                else:
+                                    logging.info('  response contained properties for '+featureClass+':'+title+' but they matched the cache, so no cache update or callback is performed')
                             if title=='None':
                                 title=self.mapData['state']['features'][i]['properties']['title']
                             if 'geometry' in f.keys():
-                                logging.info('  Updating geometry for '+featureClass+':'+title)
-                                self.mapData['state']['features'][i]['geometry']=f['geometry']
-                                if self.geometryUpdateCallback:
-                                    self.geometryUpdateCallback(rjrfid,f['geometry'])
+                                if self.mapData['state']['features'][i]['geometry']!=f['geometry']:
+                                    logging.info('  Updating geometry for '+featureClass+':'+title)
+                                    self.mapData['state']['features'][i]['geometry']=f['geometry']
+                                    if self.geometryUpdateCallback:
+                                        self.geometryUpdateCallback(f)
+                                else:
+                                    logging.info('  response contained geometry for '+featureClass+':'+title+' but it matched the cache, so no cache update or callback is performed')
                             processed=True
                             break
                     # 2b - otherwise, create it - and add to ids so it doesn't get cleaned
                     if not processed:
                         logging.info('  Adding '+featureClass+':'+title)
                         self.mapData['state']['features'].append(f)
-                        if self.newFeatureCallback:
-                            self.newFeatureCallback(f)
                         if f['id'] not in self.mapData['ids'][prop['class']]:
                             self.mapData['ids'][prop['class']].append(f['id'])
+                        logging.info('mapData immediate:\n'+json.dumps(self.mapData,indent=3))
+                        if self.newFeatureCallback:
+                            self.newFeatureCallback(f)
 
-            # 3 - cleanup - ids will be part of the response whenever object(s) were added or deleted
+            # 3 - cleanup - ids will be part of the response whenever feature(s) were added or deleted
             self.mapIDs=sum(self.mapData['ids'].values(),[])
             mapSFIDs=[f['id'] for f in self.mapData['state']['features']]
 
-            logging.debug('\nself.mapIDs:'+str(self.mapIDs))
-            logging.debug('\n   mapSFIDs:'+str(mapSFIDs))
+            logging.info('mapData:\n'+json.dumps(self.mapData,indent=3))
+            logging.info('\nself.mapIDs:'+str(self.mapIDs))
+            logging.info('\n   mapSFIDs:'+str(mapSFIDs))
             for i in range(len(mapSFIDs)):
                 if mapSFIDs[i] not in self.mapIDs:
                     prop=self.mapData['state']['features'][i]['properties']
                     logging.info('  Deleting '+str(prop['class'])+':'+str(prop['title']))
                     logging.info('     [ id='+mapSFIDs[i]+' ]')
                     if self.deletedFeatureCallback:
-                        self.deletedFeatureCallback(mapSFIDs[i],self.mapData['state']['features'][i])
+                        self.deletedFeatureCallback(self.mapData['state']['features'][i])
                     del self.mapData['state']['features'][i]
     
             if self.syncDumpFile:
@@ -418,6 +445,7 @@ class SartopoSession():
         else:
             logging.error('Sync returned invalid or no response; sync aborted:'+str(rj))
             self.sync=False
+            self.apiVersion=-1 # downstream tools may use apiVersion as indicator of link status
         self.syncing=False
 
     # refresh - update the cache (self.mapData) by calling doSync once;
@@ -914,10 +942,10 @@ class SartopoSession():
         #     return self.sendRequest("post","since/"+str(since),j,id=str(existingId),returnJson="ID")
 
     def delMarker(self,existingId=""):
-        self.delObject("marker",existingId=existingId)
+        self.delFeature("marker",existingId=existingId)
 
-    def delObject(self,objType,existingId=""):
-        return self.sendRequest("delete",objType,None,id=str(existingId),returnJson="ALL")
+    def delFeature(self,fClass,id=""):
+        return self.sendRequest("delete",fClass,None,id=str(id),returnJson="ALL")
 
     # getFeatures - attempts to get data from the local cache (self.madData); refreshes and tries again if necessary
     #   determining if a refresh is necessary:
@@ -1015,10 +1043,10 @@ class SartopoSession():
         else:
             logging.error('getFeature: return from getFeatures was not a list: '+str(r))
 
-    # editObject(id=None,className=None,title=None,letter=None,properties=None,geometry=None)
-    # edit any properties and/or geometry of specified map object
+    # editFeature(id=None,className=None,title=None,letter=None,properties=None,geometry=None)
+    # edit any properties and/or geometry of specified map feature
 
-    #   - id, className, title, letter - used to identify the object to be edited;
+    #   - id, className, title, letter - used to identify the feature to be edited;
     #      if not enough info is given or it results in ambiguity, return with an error
     #         - id - optional argument; if specified, no search is needed
     #         - className - required argument, since it will be sent as part of the URL
@@ -1032,15 +1060,15 @@ class SartopoSession():
     #  (assuming sts is a SartopoSession object)
     
     #  1. move a marker
-    #    sts.editObject(className='Marker',title='t',geometry={'coordinates':[-120,39,0,0]})
+    #    sts.editFeature(className='Marker',title='t',geometry={'coordinates':[-120,39,0,0]})
 
     #  2. change assignment status to INPROGRESS
-    #    sts.editObject(className='Assignment',letter='AB',properties={'status':'INPROGRESS'})
+    #    sts.editFeature(className='Assignment',letter='AB',properties={'status':'INPROGRESS'})
 
     #  3. change assignment number
-    #    sts.editObject(className='Assignment',letter='AB',properties={'number':'111'})
+    #    sts.editFeature(className='Assignment',letter='AB',properties={'number':'111'})
 
-    def editObject(self,
+    def editFeature(self,
             id=None,
             className=None,
             title=None,
@@ -1048,21 +1076,21 @@ class SartopoSession():
             properties=None,
             geometry=None):
 
-        # PART 1: determine the exact id of the object to be edited
+        # PART 1: determine the exact id of the feature to be edited
         if id is None:
             # first, validate the arguments and adjust as needed
             if className is None:
                 logging.error('ClassName was not specified.')
                 return False
             if letter is not None:
-                if className is not 'Assignment':
+                if className != 'Assignment':
                     logging.warning('Letter was specified, but className was specified as other than Assignment.  ClassName Assignment will be used.')
                 className='Assignment'
             if title is None and letter is None:
                 logging.error('Either Title or Letter must be specified.')
                 return False
             if title is not None and letter is not None:
-                logging.warning('Both Title and Letter were specified.  Only one or the other can be used for the search.  Using Letter, in case the rest of the object title has changed.')
+                logging.warning('Both Title and Letter were specified.  Only one or the other can be used for the search.  Using Letter, in case the rest of the feature title has changed.')
                 title=None
             if title is not None:
                 ltKey='title'
@@ -1175,7 +1203,7 @@ class SartopoSession():
                     out.pop() # delete last vertex
                 # logging.info('\n --> '+str(len(out))+' points: '+str(out))
         else:
-            # logging.info('\n      object has less than three points; no spur removal attempted.')
+            # logging.info('\n      feature has less than three points; no spur removal attempted.')
             out=points
         # if len(points)!=len(out):
         #     logging.info('spur(s) were removed from the shape:\n    '+str(len(points))+' points: '+str(points)+'\n --> '+str(len(out))+' points: '+str(out))
@@ -1190,7 +1218,7 @@ class SartopoSession():
     #  the arguments (target, cutter) can be name (string), id (string), or feature (json)
 
     def cut(self,target,cutter,deleteCutter=True):
-        if isinstance(target,str): # if string, find object by name; if id, find object by id
+        if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
                 targetShape=self.getFeature(id=target)
@@ -1220,7 +1248,7 @@ class SartopoSession():
             return False
         logging.info('targetGeom:'+str(targetGeom))
 
-        if isinstance(cutter,str): # if string, find object by name; if id, find object by id
+        if isinstance(cutter,str): # if string, find feature by name; if id, find feature by id
             cutterStr=cutter
             if len(cutter)==36: # id
                 cutterShape=self.getFeature(id=cutter)
@@ -1253,7 +1281,7 @@ class SartopoSession():
         logging.info('cutterGeom:'+str(cutterGeom))
 
         if not cutterGeom.intersects(targetGeom):
-            logging.error(targetShape['properties']['title']+','+cutterShape['properties']['title']+': objects do not intersect; no operation performed')
+            logging.error(targetShape['properties']['title']+','+cutterShape['properties']['title']+': features do not intersect; no operation performed')
             return False
 
         #  shapely.ops.split only works if the second geometry completely splits the first;
@@ -1279,11 +1307,11 @@ class SartopoSession():
                     logging.error('cut: resulting GeometryCollection could not be converted to MultiPolygon or MultiLineString.  Operation aborted.')
                     return False
         if isinstance(result,Polygon):
-            if not self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}):
+            if not self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}):
                 logging.error('cut: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiPolygon):
-            if not self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}):
+            if not self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}):
                 logging.error('cut: target shape not found; operation aborted.')
                 return False
             suffix=0
@@ -1322,14 +1350,14 @@ class SartopoSession():
                         gpstype=tp['gpstype'],
                         status=tp['status'])
                 else:
-                    logging.error('cut: target object class was neither Shape nor Assigment; operation aborted.')
+                    logging.error('cut: target feature class was neither Shape nor Assigment; operation aborted.')
                     return False
         elif isinstance(result,LineString):
-            if not self.editObject(id=targetShape['id'],geometry={'coordinates':list(result.coords)}):
+            if not self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result.coords)}):
                 logging.error('cut: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiLineString):
-            if not self.editObject(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}):
+            if not self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}):
                 logging.error('cut: target shape not found; operation aborted.')
                 return False
             suffix=0
@@ -1367,15 +1395,15 @@ class SartopoSession():
                         gpstype=tp['gpstype'],
                         status=tp['status'])
                 else:
-                    logging.error('cut: target object class was neither Shape nor Assigment; operation aborted.')
+                    logging.error('cut: target feature class was neither Shape nor Assigment; operation aborted.')
                     return False
         if deleteCutter:
-            self.delObject(cutterShape['properties']['class'],existingId=cutterShape['id'])
+            self.delFeature(cutterShape['properties']['class'],existingId=cutterShape['id'])
 
     # expand - expand target polygon to include the area of p2 polygon
 
     def expand(self,target,p2,deleteP2=True):
-        if isinstance(target,str): # if string, find object by name; if id, find object by id
+        if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
                 targetShape=self.getFeature(id=target)
@@ -1397,11 +1425,11 @@ class SartopoSession():
         if targetType=='Polygon':
             targetGeom=Polygon(tgc) # Shapely object
         else:
-            logging.error('expand: target object '+targetStr+' is not a polygon: '+targetType)
+            logging.error('expand: target feature '+targetStr+' is not a polygon: '+targetType)
             return False
         logging.info('targetGeom:'+str(targetGeom))
 
-        if isinstance(p2,str): # if string, find object by name; if id, find object by id
+        if isinstance(p2,str): # if string, find feature by name; if id, find feature by id
             p2Str=p2
             if len(p2)==36: # id
                 p2Shape=self.getFeature(id=p2)
@@ -1425,23 +1453,23 @@ class SartopoSession():
         if p2Type=='Polygon':
             p2Geom=Polygon(cgc) # Shapely object
         else:
-            logging.error('expand: p2 object '+p2Str+' is not a polygon: '+p2Type)
+            logging.error('expand: p2 feature '+p2Str+' is not a polygon: '+p2Type)
             return False
         logging.info('p2Geom:'+str(p2Geom))
 
         if not p2Geom.intersects(targetGeom):
-            logging.error(targetShape['properties']['title']+','+p2Shape['properties']['title']+': objects do not intersect; no operation performed')
+            logging.error(targetShape['properties']['title']+','+p2Shape['properties']['title']+': features do not intersect; no operation performed')
             return False
 
         result=targetGeom|p2Geom
         logging.info('expand result:'+str(result))
 
-        if not self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}):
+        if not self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}):
             logging.error('expand: target shape not found; operation aborted.')
             return False
 
         if deleteP2:
-            self.delObject(p2Shape['properties']['class'],existingId=p2Shape['id'])
+            self.delFeature(p2Shape['properties']['class'],existingId=p2Shape['id'])
 
     # intersection2(targetGeom,boundaryGeom)
     # we want a function that can take the place of shapely.ops.intersection
@@ -1513,7 +1541,7 @@ class SartopoSession():
     #          grow the specified boundary polygon by the specified distance before cropping
 
     def crop(self,target,boundary,beyond=0.0001,deleteBoundary=False):
-        if isinstance(target,str): # if string, find object by name; if id, find object by id
+        if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
                 targetShape=self.getFeature(id=target)
@@ -1539,10 +1567,10 @@ class SartopoSession():
             tgc=self.removeSpurs(tgc)
             targetGeom=LineString(tgc)
         else:
-            logging.error('crop: target object '+targetStr+' is not a polygon or line: '+targetType)
+            logging.error('crop: target feature '+targetStr+' is not a polygon or line: '+targetType)
             return False
             
-        if isinstance(boundary,str): # if string, find object by name; if id, find object by id
+        if isinstance(boundary,str): # if string, find feature by name; if id, find feature by id
             boundaryStr=boundary
             if len(boundary)==36: # id
                 boundaryShape=self.getFeature(id=boundary)
@@ -1566,12 +1594,12 @@ class SartopoSession():
             cgc=self.removeSpurs(cgc)
             boundaryGeom=Polygon(cgc).buffer(beyond) # Shapely object
         else:
-            logging.error('crop: boundary object '+boundaryStr+' is not a polygon: '+boundaryType)
+            logging.error('crop: boundary feature '+boundaryStr+' is not a polygon: '+boundaryType)
             return False
         logging.info('crop: boundaryGeom:'+str(boundaryGeom))
 
         if not boundaryGeom.intersects(targetGeom):
-            logging.error(targetShape['properties']['title']+','+boundaryShape['properties']['title']+': objects do not intersect; no operation performed')
+            logging.error(targetShape['properties']['title']+','+boundaryShape['properties']['title']+': features do not intersect; no operation performed')
             return False
 
         # if target is a line, and boundary is a polygon, use intersection2; see notes above
@@ -1586,18 +1614,18 @@ class SartopoSession():
         tc=tp['class'] # Shape or Assignment
         tfid=tp.get('folderId',None)
 
-        # collect resulting object ids to return as the return value
+        # collect resulting feature ids to return as the return value
         rids=[]
 
         if isinstance(result,GeometryCollection): # apparently this will only be the case for polygons
             result=MultiPolygon(result)
         if isinstance(result,Polygon):
-            rids.append(self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}))
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}))
             if rids==[]:
                 logging.error('cut: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiPolygon):
-            rids.append(self.editObject(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}))
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}))
             if rids==[]:
                 logging.error('cut: target shape not found; operation aborted.')
                 return False
@@ -1637,14 +1665,14 @@ class SartopoSession():
                         gpstype=tp['gpstype'],
                         status=tp['status']))
                 else:
-                    logging.error('crop: target object class was neither Shape nor Assigment')
+                    logging.error('crop: target feature class was neither Shape nor Assigment')
         elif isinstance(result,LineString):
-            rids.append(self.editObject(id=targetShape['id'],geometry={'coordinates':list(result.coords)}))
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result.coords)}))
             if rids==[]:
                 logging.error('crop: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiLineString):
-            rids.append(self.editObject(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}))
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}))
             if rids==[]:
                 logging.error('crop: target shape not found; operation aborted.')
                 return False
@@ -1683,13 +1711,13 @@ class SartopoSession():
                         gpstype=tp['gpstype'],
                         status=tp['status']))
                 else:
-                    logging.error('crop: target object class was neither Shape nor Assigment')
+                    logging.error('crop: target feature class was neither Shape nor Assigment')
                     return False
 
         if deleteBoundary:
-            self.delObject(boundaryShape['properties']['class'],existingId=boundaryShape['id'])
+            self.delFeature(boundaryShape['properties']['class'],existingId=boundaryShape['id'])
 
-        return rids # resulting object IDs
+        return rids # resulting feature IDs
 
         
     def insertBeforeExt(self,fn,ins):
@@ -1713,7 +1741,7 @@ class SartopoSession():
 #   per stackoverflow.com/questions/12158048)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s 2] %(message)s',
+    format='%(asctime)s [%(module)s:%(lineno)d:%(levelname)s] %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
     ]
