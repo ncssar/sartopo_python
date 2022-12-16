@@ -129,10 +129,6 @@
 #                         apps should never need to access .mapData, but should only
 #                         make calls to getFeature/s (fix #23)
 #   8-9-21    TMG        add new objects to .mapData immediately (fix #28)
-#   1-4-22    TMG        remove initial 'dummy' request which was causing NPEs;
-#                         sync enhancements; handle exceptions in __init__; change
-#                         occurrences of 'object' to 'feature'; only update cached
-#                         features during sync if properties or geometry have changed
 #-----------------------------------------------------------------------------
 
 import hmac
@@ -145,14 +141,23 @@ import time
 import logging
 import sys
 import threading
-from threading import Thread
+import copy
 
+# import objgraph
+# import psutil
+
+# process=psutil.Process(os.getpid())
+
+# syncing=False
+
+# shapely.geometry improts will generate a logging message if numpy is not installed;
+#  numpy is not actually required
 from shapely.geometry import LineString,Point,Polygon,MultiLineString,MultiPolygon,GeometryCollection
-from shapely.ops import split
+from shapely.ops import split,unary_union
 
 # silent exception class to be raised during __init__ and handlded by the caller,
 #  since __init__ should always return None: https://stackoverflow.com/questions/20059766
-class STSException:
+class STSException(BaseException):
     pass
 
 class SartopoSession():
@@ -161,20 +166,25 @@ class SartopoSession():
             mapID=None,
             configpath=None,
             account=None,
-            id=None,
-            key=None,
+            id=None, # 12-character credential ID
+            key=None, # credential key
+            accountId=None, # 6-character accountId
+            accountIdInternet=None, # in case CTD requires a different accountId than sartopo.com/caltopo.com
             sync=True,
             syncInterval=5,
             syncTimeout=10,
             syncDumpFile=None,
+            cacheDumpFile=None,
             propertyUpdateCallback=None,
             geometryUpdateCallback=None,
             newFeatureCallback=None,
-            deletedFeatureCallback=None):
+            deletedFeatureCallback=None,
+            syncCallback=None,
+            useFiddlerProxy=False):
         self.s=requests.session()
         self.apiVersion=-1
         if not mapID or not isinstance(mapID,str) or len(mapID)<3:
-            logging.error('ERROR: you must specify a three-or-more-character sartopo map ID string (end of the URL) when opening a SartopoSession object.')
+            logging.warning('WARNING: you must specify a three-or-more-character sartopo map ID string (end of the URL) when opening a SartopoSession object.')
             raise STSException
         self.mapID=mapID
         self.domainAndPort=domainAndPort
@@ -186,6 +196,8 @@ class SartopoSession():
         self.mapData={'ids':{},'state':{'features':[]}}
         self.id=id
         self.key=key
+        self.accountId=accountId
+        self.accountIdInternet=accountIdInternet
         self.sync=sync
         self.syncTimeout=syncTimeout
         self.syncPause=False
@@ -193,56 +205,83 @@ class SartopoSession():
         self.geometryUpdateCallback=geometryUpdateCallback
         self.newFeatureCallback=newFeatureCallback
         self.deletedFeatureCallback=deletedFeatureCallback
+        self.syncCallback=syncCallback
         self.syncInterval=syncInterval
+        self.syncCompletedCount=0
         self.lastSuccessfulSyncTimestamp=0 # the server's integer milliseconds 'sincce' request completion time
         self.lastSuccessfulSyncTSLocal=0 # this object's integer milliseconds sync completion time
         self.syncDumpFile=syncDumpFile
+        self.cacheDumpFile=cacheDumpFile
+        self.useFiddlerProxy=useFiddlerProxy
+        self.syncing=False
         if not self.setupSession():
             raise STSException
         
     def setupSession(self):
-        if 'sartopo.com' in self.domainAndPort.lower():
-            id=None
-            key=None
-            # if configpath and account are specified,
-            #  conigpath must be the full pathname of a configparser-compliant
-            #  config file, and account must be the name of a section within it,
-            #  containing keys 'id' and 'key'.
-            # otherwise, those parameters must have been specified in this object's
-            #  constructor.
-            # if both are specified, first the config section is read and then
-            #  any parameters of this object are used to override the config file
-            #  values.
-            # if any of those three values are still not specified, abort.
-            if self.configpath is not None:
-                if os.path.isfile(self.configpath):
-                    if self.account is None:
-                        logging.error("config file '"+self.configpath+"' is specified, but no account name is specified.")
-                        return False
-                    config=configparser.ConfigParser()
-                    config.read(self.configpath)
-                    if self.account not in config.sections():
-                        logging.error("specified account '"+self.account+"' has no entry in config file '"+self.configpath+"'.")
-                        return False
-                    section=config[self.account]
-                    id=section.get("id",None)
-                    key=section.get("key",None)
-                    if id is None or key is None:
-                        logging.error("account entry '"+self.account+"' in config file '"+self.configpath+"' is not complete:\n  it must specify id and key.")
-                        return False
-                else:
-                    logging.error("specified config file '"+self.configpath+"' does not exist.")
+        # set a flag: is this an internet session?
+        #  if so, id and key are strictly required, and accountId is needed to print
+        #  if not, all three are only needed in order to print
+        internet=self.domainAndPort and self.domainAndPort.lower() in ['sartopo.com','caltopo.com']
+        id=None
+        key=None
+        accountId=None
+        accountIdInternet=None
+        # if configpath and account are specified,
+        #  conigpath must be the full pathname of a configparser-compliant
+        #  config file, and account must be the name of a section within it,
+        #  containing keys 'id' and 'key'.
+        # otherwise, those parameters must have been specified in this object's
+        #  constructor.
+        # if both are specified, first the config section is read and then
+        #  any parameters of this object are used to override the config file
+        #  values.
+        # if any of those three values are still not specified, abort.
+        if self.configpath is not None:
+            if os.path.isfile(self.configpath):
+                if self.account is None:
+                    logging.error("config file '"+self.configpath+"' is specified, but no account name is specified.")
                     return False
+                config=configparser.ConfigParser()
+                config.read(self.configpath)
+                if self.account not in config.sections():
+                    logging.error("specified account '"+self.account+"' has no entry in config file '"+self.configpath+"'.")
+                    return False
+                section=config[self.account]
+                id=section.get("id",None)
+                key=section.get("key",None)
+                accountId=section.get("accountId",None)
+                accountIdInternet=section.get("accountIdInternet",None)
+                if internet:
+                    if id is None or key is None:
+                        logging.error("account entry '"+self.account+"' in config file '"+self.configpath+"' is not complete:\n  it must specify 'id' and 'key'.")
+                        return False
+                    if accountId is None:
+                        logging.warning("account entry '"+self.account+"' in config file '"+self.configpath+"' does not specify 'accountId': you will not be able to generate PDF files from this session.")
+                else:
+                    if id is None or key is None or accountId is None:
+                        logging.warning("account entry '"+self.account+"' in config file '"+self.configpath+"' is not complete:\n  it must specify 'id', 'key', and 'accountId' if you want to generate PDF files from this session.")
+                    if accountIdInternet is None:
+                        logging.warning("account entry '"+self.account+"' in config file '"+self.configpath+"' does not specify 'accountIdInternet': if a different accountId is required for caltopo.com/saratopo.com vs. for CalTopo Desktop, you will not be able to send PDF generation jobs to the internet from this session.")
+            else:
+                logging.error("specified config file '"+self.configpath+"' does not exist.")
+                return False
 
-            # now allow values specified in constructor to override config file values
-            if self.id is not None:
-                id=self.id
-            if self.key is not None:
-                key=self.key
-            # finally, save them back as parameters of this object
-            self.id=id
-            self.key=key
+        # now allow values specified in constructor to override config file values
+        if self.id is not None:
+            id=self.id
+        if self.key is not None:
+            key=self.key
+        if self.accountId is not None:
+            accountId=self.accountId
+        if self.accountIdInternet is not None:
+            accountIdInternet=self.accountIdInternet
+        # finally, save them back as parameters of this object
+        self.id=id
+        self.key=key
+        self.accountId=accountId
+        self.accountIdInternet=accountIdInternet
 
+        if internet:
             if self.id is None:
                 logging.error("sartopo session is invalid: 'id' must be specified for online maps")
                 return False
@@ -311,16 +350,111 @@ class SartopoSession():
         self.apiVersion=1
         self.apiUrlMid="/api/v1/map/[MAPID]/"
 
-        logging.info("API version:"+str(self.apiVersion))
+        # To enable Fiddler support, so Fiddler can see outgoing requests sent from this code,
+        #  add 'proxies=self.proxyDict' argument to request calls and use locahost port 8888
+        #  (the default Fiddler proxy port number - configurable in Fiddler connection settings).
+        #  Note that if Fiddler is NOT running, but the proxies are set, this would throw
+        #  an exception each time.  So, if Fiddler proxies are requested, confirm here first.
+        self.proxyDict=None
+        if self.useFiddlerProxy:
+            logging.info('This session was requested to use the Fiddler proxy.  Verifying that the proxy host is running...')
+            try:
+                r=requests.get('http://127.0.0.1:8888')
+            except:
+                logging.warning('Fiddler proxy host does not appear to be running.  This session will not use Fiddler proxies.')
+            else:
+                logging.info('  Fiddler ping response appears valid; setting the proxies: r='+str(r))
+                self.proxyDict={
+                    'http':'http://127.0.0.1:8888',
+                    'https':'https://127.0.0.1:8888',
+                    'ftp':'ftp://127.0.0.1:8888'
+                }
+
+        self.sendUserdata() # to get session cookies, in case this client has not connected in a long time
+
+        # new map requested
+        # 1. send a POST request to /map - payload (tested on CTD 4225; won't work with <4221) =
+        if self.mapID=='[NEW]':
+            j={}
+            j['properties']={
+                'mapConfig':json.dumps({'activeLayers':[['mbt',1]]}),
+                'cfgLocked':True,
+                'title':'new',
+                'mode':'sar' # 'cal' for recreation, 'sar' for SAR
+            }
+            j['state']={
+                'type':'FeatureCollection',
+                'features':[
+                    # At least one feature must exist to set the 'updated' field of the map;
+                    #  otherwise it always shows up at the bottom of the map list when sorted
+                    #  chronologically.  Definitely best to have it show up adjacent to the
+                    #  incident map.
+                    {
+                        'geometry': {
+                            'coordinates': [-120,39,0,0],
+                            'type':'Point'
+                        },
+                        'id':'11111111-1111-1111-1111-111111111111',
+                        'type':'Feature',
+                        'properties':{
+                            'creator':accountId,
+                            'title':'NewMapDummyMarker',
+                            'class':'Marker'
+                        }
+                    }
+                ]
+            }
+            # logging.info('dap='+str(self.domainAndPort))
+            # logging.info('payload='+str(json.dumps(j,indent=3)))
+            r=self.sendRequest('post','[NEW]',j,domainAndPort=self.domainAndPort)
+            if r:
+                self.mapID=r.rstrip('/').split('/')[-1]
+                self.s=requests.session()
+                self.sendUserdata() # to get session cookies for new session
+                time.sleep(1) # to avoid a 401 on the subsequent get request
+                self.delMarker(id='11111111-1111-1111-1111-111111111111')
+            else:
+                logging.info('New map request failed.  See the log for details.')
+                return False
+
+        
+        # logging.info("API version:"+str(self.apiVersion))
         # sync needs to be done here instead of in the caller, so that
         #  edit functions can have access to the full json
+        self.syncThreadStarted=False
+        self.syncPauseManual=False
+
+        # regardless of whether sync is specified, we need to do the initial cache population
+        #   here in the main thread, so that mapData is populated right away
+        logging.info('Initial cache population begins.')
+        self.doSync()
+        logging.info('Initial cache population complete.')
+
         if self.sync:
             self.start()
-        else: # do an initial since(0) even if sync is false
-            self.doSync()
+
         return True
-            
+
+
+    def sendUserdata(self,activeLayers=[['mbt',1]],center=[-120,39],zoom=13):
+        j={
+            'map':{
+                # 'config':{
+                #     'activeLayers':activeLayers
+                # },
+                'center':center,
+                'zoom':zoom
+            }
+        }
+        # logging.info('dap='+str(self.domainAndPort))
+        # logging.info('payload='+str(json.dumps(j,indent=3)))
+        self.sendRequest('post','api/v0/userdata',j,domainAndPort=self.domainAndPort)
+
     def doSync(self):
+        # logging.info('sync marker: '+self.mapID+' begin')
+        if self.syncing:
+            logging.warning('sync-within-sync requested; returning to calling code.')
+            return False
         self.syncing=True
 
         # Keys under 'result':
@@ -332,36 +466,42 @@ class SartopoSession():
         #     item in state->features, just replace the entire existing cached feature of
         #     the same id
 
-        logging.info('Sending sartopo "since" request...')
+        # logging.info('Sending sartopo "since" request...')
         rj=self.sendRequest('get','since/'+str(max(0,self.lastSuccessfulSyncTimestamp-500)),None,returnJson='ALL',timeout=self.syncTimeout)
         if rj and rj['status']=='ok':
             if self.syncDumpFile:
-                with open(self.insertBeforeExt(self.syncDumpFile,'.since'+str(self.lastSuccessfulSyncTimestamp-500)),"w") as f:
+                with open(insertBeforeExt(self.syncDumpFile,'.since'+str(max(0,self.lastSuccessfulSyncTimestamp-500))),"w") as f:
                     f.write(json.dumps(rj,indent=3))
             # response timestamp is an integer number of milliseconds; equivalent to
             # int(time.time()*1000))
             self.lastSuccessfulSyncTimestamp=rj['result']['timestamp']
-            logging.info('Successful sartopo sync: timestamp='+str(self.lastSuccessfulSyncTimestamp))
+            # logging.info('Successful sartopo sync: timestamp='+str(self.lastSuccessfulSyncTimestamp))
+            if self.syncCallback:
+                self.syncCallback()
             rjr=rj['result']
             rjrsf=rjr['state']['features']
             
             # 1 - if 'ids' exists, use it verbatim; cleanup happens later
+            idsBefore=None
             if 'ids' in rjr.keys():
+                idsBefore=copy.deepcopy(self.mapData['ids'])
                 self.mapData['ids']=rjr['ids']
                 logging.info('  Updating "ids"')
             
             # 2 - update existing features as needed
             if len(rjrsf)>0:
-                logging.info(json.dumps(rj,indent=3))
+                logging.info('  processing '+str(len(rjrsf))+' feature(s):'+str([x['id'] for x in rjrsf]))
+                # logging.info(json.dumps(rj,indent=3))
                 for f in rjrsf:
                     rjrfid=f['id']
                     prop=f['properties']
                     title=str(prop.get('title',None))
                     featureClass=str(prop['class'])
-                    # 2a - if id already exists, replace it
                     processed=False
                     for i in range(len(self.mapData['state']['features'])):
-                        if self.mapData['state']['features'][i]['id']==rjrfid:
+                        # only modify existing cache data if id and class are both matches:
+                        #  subset apptracks can have the same id as the finished apptrack shape
+                        if self.mapData['state']['features'][i]['id']==rjrfid and self.mapData['state']['features'][i]['properties']['class']==featureClass:
                             # don't simply overwrite the entire feature entry:
                             #  - if only geometry was changed, indicated by properties['nop']=true,
                             #    then leave properties alone and just overwrite geometry;
@@ -373,6 +513,8 @@ class SartopoSession():
                             if 'title' in prop.keys():
                                 if self.mapData['state']['features'][i]['properties']!=prop:
                                     logging.info('  Updating properties for '+featureClass+':'+title)
+                                    # logging.info('    old:'+json.dumps(self.mapData['state']['features'][i]['properties']))
+                                    # logging.info('    new:'+json.dumps(prop))
                                     self.mapData['state']['features'][i]['properties']=prop
                                     if self.propertyUpdateCallback:
                                         self.propertyUpdateCallback(f)
@@ -383,7 +525,25 @@ class SartopoSession():
                             if 'geometry' in f.keys():
                                 if self.mapData['state']['features'][i]['geometry']!=f['geometry']:
                                     logging.info('  Updating geometry for '+featureClass+':'+title)
-                                    self.mapData['state']['features'][i]['geometry']=f['geometry']
+                                    # if geometry.incremental exists and is true, append new coordinates to existing coordinates
+                                    # otherwise, replace the entire geometry value
+                                    fg=f['geometry']
+                                    mdsfg=self.mapData['state']['features'][i]['geometry']
+                                    if fg.get('incremental',None):
+                                        mdsfgc=mdsfg['coordinates']
+                                        latestExistingTS=mdsfgc[-1][3]
+                                        fgc=fg.get('coordinates',[])
+                                        # avoid duplicates without walking the entire existing list of points;
+                                        #  assume that timestamps are strictly increasing in list item sequence
+                                        # walk forward through new points:
+                                        # if timestamp is more recent than latest existing point, then append the rest of the new point list
+                                        for n in range(len(fgc)):
+                                            if fgc[n][3]>latestExistingTS:
+                                                mdsfgc+=fgc[n:]
+                                                break
+                                        mdsfg['size']=len(mdsfgc)
+                                    else:
+                                        self.mapData['state']['features'][i]['geometry']=f['geometry']
                                     if self.geometryUpdateCallback:
                                         self.geometryUpdateCallback(f)
                                 else:
@@ -392,38 +552,76 @@ class SartopoSession():
                             break
                     # 2b - otherwise, create it - and add to ids so it doesn't get cleaned
                     if not processed:
-                        logging.info('  Adding '+featureClass+':'+title)
+                        # logging.info('Adding to cache:'+featureClass+':'+title)
                         self.mapData['state']['features'].append(f)
                         if f['id'] not in self.mapData['ids'][prop['class']]:
                             self.mapData['ids'][prop['class']].append(f['id'])
-                        logging.info('mapData immediate:\n'+json.dumps(self.mapData,indent=3))
+                        # logging.info('mapData immediate:\n'+json.dumps(self.mapData,indent=3))
                         if self.newFeatureCallback:
                             self.newFeatureCallback(f)
 
-            # 3 - cleanup - ids will be part of the response whenever feature(s) were added or deleted
-            self.mapIDs=sum(self.mapData['ids'].values(),[])
-            mapSFIDs=[f['id'] for f in self.mapData['state']['features']]
+            # 3 - cleanup - remove features from the cache whose ids are no longer in cached id list
+            #  (ids will be part of the response whenever feature(s) were added or deleted)
+            #  (finishing an apptrack moves the id from AppTracks to Shapes, so the id count is not affected)
+            #  (if the server does not remove the apptrack correctly after finishing, the same id will
+            #   be in AppTracks and in Shapes)
+            # beforeStr='mapData before cleanup:'+json.dumps(self.mapData,indent=3)
+            #  at this point in the code, the deleted feature has been removed from ids but is still part of state-features
+            # self.mapIDs=sum(self.mapData['ids'].values(),[])
+            # mapSFIDsBefore=[f['id'] for f in self.mapData['state']['features']]
+            # edit the cache directly: https://stackoverflow.com/a/1157174/3577105
 
-            logging.info('mapData:\n'+json.dumps(self.mapData,indent=3))
-            logging.info('\nself.mapIDs:'+str(self.mapIDs))
-            logging.info('\n   mapSFIDs:'+str(mapSFIDs))
-            for i in range(len(mapSFIDs)):
-                if mapSFIDs[i] not in self.mapIDs:
-                    prop=self.mapData['state']['features'][i]['properties']
-                    logging.info('  Deleting '+str(prop['class'])+':'+str(prop['title']))
-                    logging.info('     [ id='+mapSFIDs[i]+' ]')
-                    if self.deletedFeatureCallback:
-                        self.deletedFeatureCallback(self.mapData['state']['features'][i])
-                    del self.mapData['state']['features'][i]
-    
-            if self.syncDumpFile:
-                with open(self.insertBeforeExt(self.syncDumpFile,'.cache'+str(self.lastSuccessfulSyncTimestamp)),"w") as f:
+            if idsBefore:
+                deletedDict={}
+                deletedAnythingFlag=False
+                for c in idsBefore.keys():
+                    for id in idsBefore[c]:
+                        if id not in self.mapData['ids'][c]:
+                            self.mapData['state']['features'][:]=(f for f in self.mapData['state']['features'] if not(f['id']==id and f['properties']['class']==c))
+                            deletedDict.setdefault(c,[]).append(id)
+                            deletedAnythingFlag=True
+                            if self.deletedFeatureCallback:
+                                self.deletedFeatureCallback(id,c)
+                if deletedAnythingFlag:
+                    logging.info('deleted items have been removed from cache:\n'+json.dumps(deletedDict,indent=3))
+            
+
+            # l1=len(self.mapData['state']['features'])
+            # logging.info('before:'+str(l1)+':'+str(self.mapData['state']['features']))
+            # self.mapData['state']['features'][:]=(f for f in self.mapData['state']['features'] if f['id'] in self.mapIDs)
+            # mapSFIDs=[f['id'] for f in self.mapData['state']['features']]
+            # l2=len(self.mapData['state']['features'])
+            # logging.info('after:'+str(l1)+':'+str(self.mapData['state']['features']))
+            # if l2!=l1:
+            #     deletedIds=list(set(mapSFIDsBefore)-set(mapSFIDs))
+            #     logging.info('cleaned up '+str(l1-l2)+' feature(s) from the cache:'+str(deletedIds))
+            #     if self.deletedFeatureCallback:
+            #         for did in deletedIds:
+            #             self.deletedFeatureCallback(did)
+                # logging.info(beforeStr)
+                # logging.info('mapData after cleanup:'+json.dumps(self.mapData,indent=3))
+
+            # logging.info('mapData:\n'+json.dumps(self.mapData,indent=3))
+            # logging.info('\n'+self.mapID+':\n  mapIDs:'+str(self.mapIDs)+'\nmapSFIDs:'+str(mapSFIDs))
+
+            # bug: i is defined as an index into mapSFIDs but is used as an index into self.mapData['state']['features']:
+            # # for i in range(len(mapSFIDs)):
+            # #     if mapSFIDs[i] not in self.mapIDs:
+            # #         prop=self.mapData['state']['features'][i]['properties']
+            # #         logging.info('  Deleting '+mapSFIDs[i]+':'+str(prop['class'])+':'+str(prop['title']))
+            # #         if self.deletedFeatureCallback:
+            # #             self.deletedFeatureCallback(self.mapData['state']['features'][i])
+            # #         del self.mapData['state']['features'][i]
+            
+
+            if self.cacheDumpFile:
+                with open(insertBeforeExt(self.cacheDumpFile,'.cache'+str(max(0,self.lastSuccessfulSyncTimestamp))),"w") as f:
                     f.write('sync cleanup:')
-                    f.write('  mapIDs='+str(self.mapIDs)+'\n\n')
-                    f.write('  mapSFIDs='+str(mapSFIDs)+'\n\n')
+                    f.write('  mapIDs='+str(self.mapID)+'\n\n')
+                    # f.write('  mapSFIDs='+str(mapSFIDs)+'\n\n')
                     f.write(json.dumps(self.mapData,indent=3))
 
-            self.syncing=False
+            # self.syncing=False
             self.lastSuccessfulSyncTSLocal=int(time.time()*1000)
             if self.sync:
                 if not threading.main_thread().is_alive():
@@ -447,39 +645,60 @@ class SartopoSession():
             self.sync=False
             self.apiVersion=-1 # downstream tools may use apiVersion as indicator of link status
         self.syncing=False
+        # logging.info('sync marker: '+self.mapID+' end')
 
     # refresh - update the cache (self.mapData) by calling doSync once;
     #   only relevant if sync is off; if the latest refresh is within the sync interval value (even when sync is off),
     #   then don't do a refresh unless forceImmediate is True
     #  since doSync() would be called from this thread, it is always blocking
     def refresh(self,blocking=False,forceImmediate=False):
-        d=int(time.time()*1000)-self.lastSuccessfulSyncTSLocal # integer ms since last completed sync
-        logging.info('  refresh requested: '+str(d)+'ms since last completed sync')
-        if d>(self.syncInterval*1000):
-            logging.info('    this is longer than the syncInterval: syncing now')
-            self.doSync()
+        msg='refresh requested for map '+self.mapID+': '
+        if self.syncing:
+            msg+='sync already in progress'
+            logging.info(msg)
         else:
-            logging.info('    this is shorter than the syncInterval')
-            if forceImmediate:
-                logging.info('    but forceImmedate is specified: syncing now')
+            d=int(time.time()*1000)-self.lastSuccessfulSyncTSLocal # integer ms since last completed sync
+            msg+=str(d)+'ms since last completed sync; '
+            if d>(self.syncInterval*1000):
+                msg+='longer than syncInterval: syncing now'
+                logging.info(msg)
                 self.doSync()
             else:
-                logging.info('    and forceImmediate is not specified: not syncing now')
-
-    def stop(self):
-        logging.info('Sartopo syncing terminated.')
-        self.sync=False
-
+                msg+='shorter than syncInterval; '
+                if forceImmediate:
+                    msg+='forceImmediate specified: syncing now'
+                    logging.info(msg)
+                    self.doSync()
+                else:
+                    msg+='forceImmediate not specified: not syncing now'
+                    # logging.info(msg)
+    
     def __del__(self):
-        logging.info('SartopoSession instance deleted.')
+        logging.info('SartopoSession instance deleted for map '+self.mapID+'.')
         if self.sync:
             self.stop()
 
     def start(self):
         self.sync=True
-        logging.info('Sartopo syncing initiated.')
-        Thread(target=self._syncLoop).start()
+        if self.syncThreadStarted:
+            logging.info('Sartopo sync is already running for map '+self.mapID+'.')
+        else:
+            threading.Thread(target=self._syncLoop).start()
+            logging.info('Sartopo syncing initiated for map '+self.mapID+'.')
+            self.syncThreadStarted=True
 
+    def stop(self):
+        logging.info('Sartopo sync terminating for map '+self.mapID+'.')
+        self.sync=False
+
+    def pause(self):
+        logging.info('Pausing sync for map '+self.mapID+'...')
+        self.syncPauseManual=True
+
+    def resume(self):
+        logging.info('Resuming sync for map '+self.mapID+'.')
+        self.syncPauseManual=False
+    
     # _syncLoop - should only be called from self.start(), which calls _syncLoop in a new thread.
     #  This is just a loop that calls doSync.  To prevent an endless loop, doSync must be
     #  able to terminate the thread if the main thread has ended; also note that any other
@@ -487,16 +706,48 @@ class SartopoSession():
     #  iterative rather than recursive (which would eventually hit recursion limit issues),
     #  and it allows the blocking sleep call to happen here instead of inside doSync.
     def _syncLoop(self):
+        if self.syncCompletedCount==0:
+            logging.info('This is the first sync attempt; pausing for the normal sync interval before starting sync.')
+            time.sleep(self.syncInterval)
         while self.sync:
-            while self.syncPause:
-                logging.info('  sync is paused - sleeping for one second')
-                time.sleep(1)
-            self.doSync()
+            if not self.syncPauseManual:
+                self.syncPauseMessageGiven=False
+                while self.syncPause:
+                    if not threading.main_thread().is_alive():
+                        logging.info('Main thread has ended; sync is stopping...')
+                        self.syncPause=False
+                        self.sync=False
+                    if not self.syncPauseMessageGiven:
+                        logging.info(self.mapID+': sync pause begins; sync will not happen until sync pause ends')
+                        self.syncPauseMessageGiven=True
+                    time.sleep(1)
+                if self.syncPauseMessageGiven:
+                    logging.info(self.mapID+': sync pause ends; resuming sync')
+                    self.syncPauseMessageGiven=False
+                syncWaited=0
+                while self.syncing and syncWaited<20: # wait for any current callbacks within doSync() to complete, with timeout of 20 sec
+                    logging.info(' [sync from _syncLoop is waiting for current sync processing to finish, up to '+str(20-syncWaited)+' more seconds...]')
+                    time.sleep(1)
+                    syncWaited+=1
+                try:
+                    self.doSync()
+                    self.syncCompletedCount+=1
+                except Exception as e:
+                    logging.exception('Exception during sync of map '+self.mapID+'; stopping sync:') # logging.exception logs details and traceback
+                    # remove sync blockers, to let the thread shut down cleanly, avoiding a zombie loop when sync restart is attempted
+                    self.syncPause=False
+                    self.syncing=False
+                    self.syncThreadStarted=False
+                    self.sync=False
             if self.sync: # don't bother with the sleep if sync is no longer True
                 time.sleep(self.syncInterval)
 
-    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None):
+    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None):
+        # objgraph.show_growth()
+        # logging.info('RAM:'+str(process.memory_info().rss/1024**2)+'MB')
+        self.syncPause=True
         timeout=timeout or self.syncTimeout
+        newMap='[NEW]' in apiUrlEnd  # specific mapID that indicates a new map should be created
         if self.apiVersion<0:
             logging.error("sendRequest: sartopo session is invalid; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
             return False
@@ -515,13 +766,36 @@ class SartopoSession():
             apiUrlEnd=apiUrlEnd+"/"+id
         mid=mid.replace("[MAPID]",self.mapID)
         apiUrlEnd=apiUrlEnd.replace("[MAPID]",self.mapID)
-        url="http://"+self.domainAndPort+mid+apiUrlEnd
-        logging.info("sending "+str(type)+" to "+url)
-        self.syncPause=True
+        domainAndPort=domainAndPort or self.domainAndPort # use arg value if specified
+        if not domainAndPort:
+            logging.error("sendRequest was attempted but no valid domainAndPort was specified.")
+            return False
+        prefix='http://'
+        # set a flag: is this an internet request?
+        accountId=self.accountId
+        internet=domainAndPort.lower() in ['sartopo.com','caltopo.com']
+        if internet:
+            if self.accountIdInternet:
+                accountId=self.accountIdInternet
+            else:
+                logging.warning('A request is about to be sent to the internet, but accountIdInternet was not specified.  The request will use accountId, but will fail if that ID does not have valid permissions at the internet host.')
+            prefix='https://'
+            if not self.key or not self.id:
+                logging.error("There was an attempt to send an internet request, but 'id' and/or 'key' was not specified for this session.  The request will not be sent.")
+                return False
+        url=prefix+domainAndPort+mid+apiUrlEnd
+        wrapInJsonKey=True
+        if newMap:
+            url=prefix+domainAndPort+'/api/v1/acct/'+accountId+'/CollaborativeMap' # works for CTD 4221 and up
+        if '/since/' not in url:
+            logging.info("sending "+str(type)+" to "+url)
         if type=="post":
-            params={}
-            params["json"]=json.dumps(j)
-            if "sartopo.com" in self.domainAndPort.lower():
+            if wrapInJsonKey:
+                params={}
+                params["json"]=json.dumps(j)
+            else:
+                params=j
+            if internet:
                 expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
                 data="POST "+mid+apiUrlEnd+"\n"+str(expires)+"\n"+json.dumps(j)
                 # logging.info("pre-hashed data:"+data)                
@@ -531,12 +805,20 @@ class SartopoSession():
                 params["id"]=self.id
                 params["expires"]=expires
                 params["signature"]=token
-            logging.info("SENDING POST to '"+url+"':")
-            logging.info(json.dumps(params,indent=3))
-            r=self.s.post(url,data=params,timeout=timeout)
+                paramsPrint=copy.deepcopy(params)
+                paramsPrint['id']='.....'
+                paramsPrint['signature']='.....'
+            else:
+                paramsPrint=params
+            # logging.info("SENDING POST to '"+url+"':")
+            # logging.info(json.dumps(paramsPrint,indent=3))
+            # don't print the entire PDF generation request - upstream code can print a PDF data summary
+            if 'PDFLink' not in url:
+                logging.info(jsonForLog(paramsPrint))
+            r=self.s.post(url,data=params,timeout=timeout,proxies=self.proxyDict,allow_redirects=False)
         elif type=="get": # no need for json in GET; sending null JSON causes downstream error
-#             logging.info("SENDING GET to '"+url+"':")
-            r=self.s.get(url,timeout=timeout)
+            # logging.info("SENDING GET to '"+url+"':")
+            r=self.s.get(url,timeout=timeout,proxies=self.proxyDict)
         elif type=="delete":
             params={}
             if "sartopo.com" in self.domainAndPort.lower():
@@ -550,51 +832,123 @@ class SartopoSession():
                 params["id"]=self.id
                 params["expires"]=expires
                 params["signature"]=token
+            #     paramsPrint=copy.deepcopy(params)
+            #     paramsPrint['id']='.....'
+            #     paramsPrint['signature']='.....'
+            # else:
+            #     paramsPrint=params
             # logging.info("SENDING DELETE to '"+url+"':")
-            # logging.info(json.dumps(params,indent=3))
+            # logging.info(json.dumps(paramsPrint,indent=3))
             # logging.info("Key:"+str(self.key))
-            r=self.s.delete(url,params=params,timeout=timeout)   ## use params for query vs data for body data
+            r=self.s.delete(url,params=params,timeout=timeout,proxies=self.proxyDict)   ## use params for query vs data for body data
             # logging.info("URL:"+str(url))
             # logging.info("Ris:"+str(r))
         else:
             logging.error("sendRequest: Unrecognized request type:"+str(type))
             self.syncPause=False
             return False
-#         logging.info("response code = "+str(r.status_code))
-#         logging.info("response:")
-#         try:
-#             logging.info(json.dumps(r.json(),indent=3))
-#         except:
-#             logging.info(r.text)
-        if returnJson:
-            logging.info('response:'+str(r))
-            try:
-                rj=r.json()
-            except:
-                logging.error("sendRequest: response had no decodable json")
+
+        if r.status_code!=200:
+            logging.info("response code = "+str(r.status_code))
+
+        if newMap:
+            # for CTD 4221 and newer, and internet, a new map request should return 200, and the response data
+            #  should contain the new map ID in response['result']['id']
+            # for CTD 4214, a new map request should return 3xx response (redirect); if allow_redirects=False is
+            #  in the response, the redirect target will appear as the 'Location' response header.
+            if r.status_code==200:
+                try:
+                    rj=r.json()
+                except:
+                    logging.error('New map request failed: response had do decodable json:'+str(r.status_code)+':'+r.text)
+                    self.syncPause=False
+                    return False
+                else:
+                    rjr=rj.get('result')
+                    newUrl=None
+                    if rjr:
+                        newUrl=rjr['id']
+                    if newUrl:
+                        logging.info('New map URL:'+newUrl)
+                        self.syncPause=False
+                        return newUrl
+                    else:
+                        logging.error('No new map URL was returned in the response json:'+str(r.status_code)+':'+json.dumps(rj))
+                        self.syncPause=False
+                        return False
+            else:
+                logging.error('New map request failed:'+str(r.status_code)+':'+r.text)
                 self.syncPause=False
                 return False
-            else:
-                logging.info('rj:'+str(rj))
-                if returnJson=="ID":
-                    id=None
-                    if 'result' in rj and 'id' in rj['result']:
-                        id=rj['result']['id']
-                    elif 'id' in rj:
-                        id=rj['id']
-                    elif not rj['result']['state']['features']:  # response if no new info
+
+            # old redirect method worked with CTD 4214:
+            # if url.endswith('/map'):
+            #     if 300<=r.status_code<=399:
+            #         # logging.info("response headers:"+str(json.dumps(dict(r.headers),indent=3)))
+            #         newUrl=r.headers.get('Location',None)
+            #         if newUrl:
+            #             logging.info('New map URL:'+newUrl)
+            #             self.syncPause=False
+            #             return newUrl
+            #         else:
+            #             logging.info('No new map URL was returned in the response header.')
+            #             self.syncPause=False
+            #             return False
+            #     else:
+            #         logging.info('Unexpected response from new map request:'+str(r.status_code)+':'+r.text)
+            #         return False
+            # else:
+            #     if r.status_code==200:
+            #         logging.info('200 response from new map request:'+r.text)
+            #         return False
+            #     else:
+            #         logging.info('Unexpected response from new map request:'+str(r.status_code)+':'+r.text)
+            #         return False
+
+
+        else:
+            if returnJson:
+                # logging.info('response:'+str(r))
+                try:
+                    rj=r.json()
+                except:
+                    logging.error("sendRequest: response had no decodable json:"+str(r))
+                    self.syncPause=False
+                    return False
+                else:
+                    if 'status' in rj and rj['status'].lower()!='ok':
+                        logging.warning('response status other than "ok":  '+str(rj))
                         self.syncPause=False
-                        return 0
-                    elif 'result' in rj and 'id' in rj['result']['state']['features'][0]:
-                        id=rj['result']['state']['features'][0]['id']
-                    else:
-                        logging.info("sendRequest: No valid ID was returned from the request:")
-                        logging.info(json.dumps(rj,indent=3))
-                    self.syncPause=False
-                    return id
-                if returnJson=="ALL":
-                    self.syncPause=False
-                    return rj
+                        return rj
+                    if returnJson=="ID":
+                        id=None
+                        if 'result' in rj and 'id' in rj['result']:
+                            id=rj['result']['id']
+                        elif 'id' in rj:
+                            id=rj['id']
+                        elif not rj['result']['state']['features']:  # response if no new info
+                            self.syncPause=False
+                            return 0
+                        elif 'result' in rj and 'id' in rj['result']['state']['features'][0]:
+                            id=rj['result']['state']['features'][0]['id']
+                        else:
+                            logging.info("sendRequest: No valid ID was returned from the request:")
+                            logging.info(json.dumps(rj,indent=3))
+                        self.syncPause=False
+                        return id
+                    if returnJson=="ALL":
+                        # since CTD 4221 returns 'title' as an empty string for all assignments,
+                        #  set 'title' to <letter><space><number> for all assignments here
+                        # this code looks fairly resource intensive; for a map with 50 assignments, initial sync
+                        #  is about 6.5% slower with this if clause than without, but it would be good to profile
+                        #  memory consumption too - is this calling .keys() and creating new lists each time?
+                        #  maybe better to wrap it all in try/except, but, would that iterate over all features?
+                        if 'result' in rj.keys() and 'state' in rj['result'].keys() and 'features' in rj['result']['state'].keys():
+                            alist=[f for f in rj['result']['state']['features'] if 'properties' in f.keys() and 'class' in f['properties'].keys() and f['properties']['class'].lower()=='assignment']
+                            for a in alist:
+                                a['properties']['title']=a['properties']['letter']+' '+a['properties']['number']
+                        self.syncPause=False
+                        return rj
         self.syncPause=False
         
     def addFolder(self,
@@ -769,7 +1123,7 @@ class SartopoSession():
             description='',
             previousEfforts='',
             transportation='',
-            timeAllocated='',
+            timeAllocated=0,
             primaryFrequency='',
             secondaryFrequency='',
             preparedBy='',
@@ -852,7 +1206,7 @@ class SartopoSession():
             description='',
             previousEfforts='',
             transportation='',
-            timeAllocated='',
+            timeAllocated=0,
             primaryFrequency='',
             secondaryFrequency='',
             preparedBy='',
@@ -941,22 +1295,30 @@ class SartopoSession():
         #     logging.info("At request adding points to track:"+str(existingId)+":"+str(since)+":"+str(j))
         #     return self.sendRequest("post","since/"+str(since),j,id=str(existingId),returnJson="ID")
 
-    def delMarker(self,existingId=""):
-        self.delFeature("marker",existingId=existingId)
+    def delMarker(self,id=""):
+        self.delFeature(id=id,fClass="marker")
 
-    def delFeature(self,fClass,id=""):
+    def delFeature(self,id="",fClass=None):
+        if not fClass:
+            f=self.getFeature(id=id)
+            if f:
+                fClass=f['properties']['class']
+            else:
+                logging.error('delFeature: requested id "'+id+'" does not exist in the cache')
+                return False
         return self.sendRequest("delete",fClass,None,id=str(id),returnJson="ALL")
 
     # getFeatures - attempts to get data from the local cache (self.madData); refreshes and tries again if necessary
     #   determining if a refresh is necessary:
     #   - if the requested feature/s is/are not in the cache, and it has been longer than syncInterval since the last refresh,
-    #      then do a new refresh; otherwise return [False]
+    #      then do a new refresh; otherwise return an empty list []
     #   - if the requested feature/s IS/ARE in the cache, do we need to do a refresh anyway?  Only if forceRefresh is True.
     def getFeatures(self,
             featureClass=None,
             title=None,
             id=None,
             featureClassExcludeList=[],
+            letterOnly=False,
             allowMultiTitleMatch=False,
             since=0,
             timeout=False,
@@ -981,34 +1343,61 @@ class SartopoSession():
             titleMatchCount=0
             rval=[]
             features=self.mapData['state']['features']
+            # logging.info('features:\n'+json.dumps(features,indent=3))
             for feature in features:
-                if feature['id']==id:
-                    rval.append(feature)
-                    break
-                prop=feature['properties']
-                c=prop['class']
-                if featureClass is None and c not in featureClassExcludeList:
-                    if prop['title']==title:
-                        titleMatchCount+=1
-                        rval.append(feature)
+                prop=feature.get('properties',None)
+                if prop and isinstance(prop,dict):
+                    pk=prop.keys()
                 else:
-                    if c==featureClass:
-                        if title is None:
+                    logging.error('getFeatures: "properties" does not exist or is not a dict:'+str(feature))
+                    return []
+                c=prop['class']
+                # logging.info('checking class='+c+'  id='+feature['id'])
+                if feature['id']==id:
+                    # logging.info(' id match:'+id)
+                    if featureClass:
+                        # logging.info('   featureClass specified:'+featureClass)
+                        if c.lower()==featureClass.lower():
                             rval.append(feature)
-                        else:
-                            if prop['title']==title:
+                            # logging.info('     match')
+                            break
+                        # else:
+                            # logging.info('     but class '+c+' did not match')
+                    else:
+                        rval.append(feature)
+                        break
+                if id is None and (c==featureClass or (featureClass is None and c not in featureClassExcludeList)):
+                    if title is None:
+                        rval.append(feature)
+                    if 'title' in pk:
+                        if letterOnly:
+                            s=prop['title'].split()
+                            # avoid exception when title exists but is blank
+                            if len(s)>0:
+                                if s[0]==title: # since assignments title may include number (not desired for edits) 
+                                    titleMatchCount+=1
+                                    rval.append(feature)
+                        else:        
+                            if prop['title'].rstrip()==title: # since assignments without number could still have a space after letter
                                 titleMatchCount+=1
-                                rval.append(feature) # return the entire json object
+                                rval.append(feature)
+                            elif 'letter' in pk: # if the title wasn't a match, try the letter if it exists
+                                if prop.get('letter','').rstrip()==title:
+                                    titleMatchCount+=1
+                                    rval.append(feature)
+                    else:
+                        logging.error('getFeatures: no title key exists:'+str(feature))
             if len(rval)==0:
                 # question: do we want to try a refresh and try one more time?
                 logging.info('getFeatures: No features match the specified criteria.')
-                return [False]
+                logging.info('  (was looking for featureClass='+str(featureClass)+'  title='+str(title)+'  id='+str(id)+')')
+                return []
             if titleMatchCount>1:
                 if allowMultiTitleMatch:
                     return rval
                 else:
-                    logging.error('getFeatures: More than one feature matches the specified title.')
-                    return [False]
+                    logging.warning('getFeatures: More than one feature matches the specified title.')
+                    return []
             else:
                 return rval
 
@@ -1019,27 +1408,38 @@ class SartopoSession():
             title=None,
             id=None,
             featureClassExcludeList=[],
+            letterOnly=False,
             allowMultiTitleMatch=False,
             since=0,
-            timeout=False):
+            timeout=False,
+            forceRefresh=False):
         r=self.getFeatures(
             featureClass=featureClass,
             title=title,
             id=id,
             featureClassExcludeList=featureClassExcludeList,
+            letterOnly=letterOnly,
             allowMultiTitleMatch=allowMultiTitleMatch,
             since=since,
-            timeout=timeout)
+            timeout=timeout,
+            forceRefresh=forceRefresh)
         if isinstance(r,list):
             if len(r)==1:
                 return r[0]
             elif len(r)<1:
-                logging.error('getFeature: no match')
-                return -1
+                logging.warning('getFeature: no match')
+                return False
             else:
-                logging.error('getFeature: more than one match')
+                msg='getFeature: more than one match found while looking for feature:'
+                if featureClass:
+                    msg+=' featureClass='+str(featureClass)
+                if title:
+                    msg+=' title='+str(title)
+                if id:
+                    msg+=' id='+str(id)
+                logging.warning(msg)
                 logging.info(str(r))
-                return -1
+                return False
         else:
             logging.error('getFeature: return from getFeatures was not a list: '+str(r))
 
@@ -1076,21 +1476,22 @@ class SartopoSession():
             properties=None,
             geometry=None):
 
+        logging.info('editFeature called')
         # PART 1: determine the exact id of the feature to be edited
         if id is None:
             # first, validate the arguments and adjust as needed
             if className is None:
-                logging.error('ClassName was not specified.')
+                logging.error(' ClassName was not specified.')
                 return False
             if letter is not None:
                 if className != 'Assignment':
-                    logging.warning('Letter was specified, but className was specified as other than Assignment.  ClassName Assignment will be used.')
+                    logging.warning(' Letter was specified, but className was specified as other than Assignment.  ClassName Assignment will be used.')
                 className='Assignment'
             if title is None and letter is None:
-                logging.error('Either Title or Letter must be specified.')
+                logging.error(' Either Title or Letter must be specified.')
                 return False
             if title is not None and letter is not None:
-                logging.warning('Both Title and Letter were specified.  Only one or the other can be used for the search.  Using Letter, in case the rest of the feature title has changed.')
+                logging.warning(' Both Title and Letter were specified.  Only one or the other can be used for the search.  Using Letter, in case the rest of the feature title has changed.')
                 title=None
             if title is not None:
                 ltKey='title'
@@ -1107,23 +1508,23 @@ class SartopoSession():
             features=[f for f in self.mapData['state']['features'] if f['properties'].get(ltKey,None)==ltVal and f['properties']['class'].lower()==className.lower()]
                 
             if len(features)==0:
-                logging.error('no feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
+                logging.warning(' no feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
                 return False
             if len(features)>1:
-                logging.error('more than one feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
+                logging.warning(' more than one feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
                 return False
             feature=features[0]
-            logging.info('feature found: '+str(feature))
+            logging.info(' feature found: '+str(feature))
 
         else:
-            logging.info('id specified: '+id)
+            logging.info(' id specified: '+id)
             features=[f for f in self.mapData['state']['features'] if f['id']==id]
             # logging.info(json.dumps(self.mapData,indent=3))
             if len(features)==1:
                 feature=features[0]
                 className=feature['properties']['class']
             else:
-                logging.info('no match!')
+                logging.info('  no match!')
                 return False
 
         # PART 2: merge the properties and/or geometry dictionaries, and send the request
@@ -1154,6 +1555,9 @@ class SartopoSession():
 
         geomToWrite=None
         if geometry is not None:
+            if isinstance(geometry,dict) and 'coordinates' in geometry.keys():
+                geometry['size']=len(geometry['coordinates'])
+            # logging.info('geometry specified (size was recalculated if needed):\n'+json.dumps(geometry))
             geomToWrite=feature['geometry']
             for key in geometry.keys():
                 geomToWrite[key]=geometry[key]
@@ -1184,10 +1588,45 @@ class SartopoSession():
         logging.info('\n     '+str(len(points))+' points: '+str(points)+'\n --> '+str(len(out))+' points: '+str(out))
         return out
 
+    # getUsedSuffixList - get a list of integers of all used suffixes for the
+    #   specified base title
+    #   ex: if features exist in the cache with titles 'a','a:1','a:3','a:stuff','other'
+    #   then getUsedSuffixList('a') should return [1,3]
+    def getUsedSuffixList(self,base):
+        # build list of all titles (or letters as appropriate) from the cache
+        #  try 'letter' first; if not found, use 'title'; default to 'NO-TITLE'
+        # logging.info('getUsedSuffixList called: base='+str(base))
+        allTitles=[]
+        for f in self.mapData['state']['features']:
+            title='NO-TITLE'
+            p=f.get('properties')
+            if p:
+                title=p.get('letter')
+                if not title:
+                    title=p.get('title')
+            if title: # title could be None at this point
+                allTitles.append(title)
+        # logging.info('  allTitles='+str(allTitles))
+        # extract the list of used suffixes
+        suffixStrings=[x.split(':')[-1] for x in allTitles if x.startswith(base+':')]
+        rval=[int(x) for x in suffixStrings if x.isnumeric()] # only positive integers, as integers
+        logging.info('getUsedSuffixList: base='+str(base)+'  rval='+str(rval))
+        return rval
+
+    # getNextAvailableSuffix - get the next available suffix given a list of used titles; limit at 100
+    def getNextAvailableSuffix(self,usedSuffixList):
+        keepLooking=True
+        suffix=1
+        while keepLooking and suffix<100:
+            if suffix not in usedSuffixList:
+                keepLooking=False
+            else:
+                suffix+=1
+        return suffix
+
     # removeSpurs - self-intersecting polygons can be caused by single-point
     #   'spurs': a,b,c,d,c,e,f  where c,d,c is the spur.  Change a sequence
     #   like this to a,b,c,e,f.
-
     def removeSpurs(self,points):
         # logging.info('removeSpurs called')
         # ls=LineString(points)
@@ -1196,12 +1635,13 @@ class SartopoSession():
         if len(points)>3:
             out=points[0:2]
             for i in range(2,len(points)):
-                if points[i]!=points[i-2]:
-                    out.append(points[i])
-                else:
-                    logging.info('spur removed at '+str(points[i-1]))
-                    out.pop() # delete last vertex
-                # logging.info('\n --> '+str(len(out))+' points: '+str(out))
+                if points[i][0:2]!=points[i-1][0:2]: # skip this point if it is the same as the previous point
+                    if points[i][0:2]!=points[i-2][0:2]:
+                        out.append(points[i])
+                    else:
+                        logging.info('spur removed at '+str(points[i-1]))
+                        out.pop() # delete last vertex
+                    # logging.info('\n --> '+str(len(out))+' points: '+str(out))
         else:
             # logging.info('\n      feature has less than three points; no spur removal attempted.')
             out=points
@@ -1217,7 +1657,7 @@ class SartopoSession():
     #   - slice a line, using a line
     #  the arguments (target, cutter) can be name (string), id (string), or feature (json)
 
-    def cut(self,target,cutter,deleteCutter=True):
+    def cut(self,target,cutter,deleteCutter=True,useResultNameSuffix=True):
         if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
@@ -1230,7 +1670,7 @@ class SartopoSession():
             if isinstance(targetShape,dict):
                 targetStr=targetShape.get('title','NO TITLE')
         if not targetShape:
-            logging.error('Target shape '+targetStr+' not found; operation aborted.')
+            logging.warning('Target shape '+targetStr+' not found; operation aborted.')
             return False
 
         tg=targetShape['geometry']
@@ -1260,7 +1700,7 @@ class SartopoSession():
             if isinstance(cutterShape,dict):
                 cutterStr=cutterShape.get('title','NO TITLE')
         if not cutterShape:
-            logging.error('Cutter shape '+cutterStr+' not found; operation aborted.')
+            logging.warning('Cutter shape '+cutterStr+' not found; operation aborted.')
             return False
 
         logging.info('cut: target='+targetStr+'  cutter='+cutterStr)
@@ -1281,7 +1721,7 @@ class SartopoSession():
         logging.info('cutterGeom:'+str(cutterGeom))
 
         if not cutterGeom.intersects(targetGeom):
-            logging.error(targetShape['properties']['title']+','+cutterShape['properties']['title']+': features do not intersect; no operation performed')
+            logging.warning(targetShape['properties']['title']+','+cutterShape['properties']['title']+': features do not intersect; no operation performed')
             return False
 
         #  shapely.ops.split only works if the second geometry completely splits the first;
@@ -1297,6 +1737,21 @@ class SartopoSession():
         tc=tp['class'] # Shape or Assignment
         tfid=tp.get('folderId',None)
 
+        # collect resulting feature ids to return as the return value
+        rids=[]
+
+        # use the unsiffixed name as the base (everything before colon-followed-by-integer)
+        #  so that a cut of a:2 would produce a:3 rather than a:2:1
+        if tc=='Assignment':
+            base=tp['letter']
+        else:
+            base=tp['title']
+        # accomodate base names that include colon
+        baseParse=base.split(':')
+        if len(baseParse)>1 and baseParse[-1].isnumeric():
+            base=':'.join(baseParse[:-1])
+        usedSuffixList=self.getUsedSuffixList(base)
+
         if isinstance(result,GeometryCollection): # polygons, linestrings, or both
             try:
                 result=MultiPolygon(result)
@@ -1307,19 +1762,24 @@ class SartopoSession():
                     logging.error('cut: resulting GeometryCollection could not be converted to MultiPolygon or MultiLineString.  Operation aborted.')
                     return False
         if isinstance(result,Polygon):
-            if not self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}):
-                logging.error('cut: target shape not found; operation aborted.')
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}))
+            if rids==[]:
+                logging.warning('cut: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiPolygon):
-            if not self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}):
-                logging.error('cut: target shape not found; operation aborted.')
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}))
+            if rids==[]:
+                logging.warning('cut: target shape not found; operation aborted.')
                 return False
-            suffix=0
             for r in result[1:]:
-                suffix+=1
                 if tc=='Shape':
-                    self.addPolygon(list(r.exterior.coords),
-                        title=tp['title']+':'+str(suffix),
+                    title=tp['title']
+                    if useResultNameSuffix:
+                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        title=base+':'+str(suffix)
+                        usedSuffixList.append(suffix)
+                    rids.append(self.addPolygon(list(r.exterior.coords),
+                        title=title,
                         stroke=tp['stroke'],
                         fill=tp['fill'],
                         strokeOpacity=tp['stroke-opacity'],
@@ -1327,78 +1787,95 @@ class SartopoSession():
                         fillOpacity=tp['fill-opacity'],
                         description=tp['description'],
                         folderId=tfid,
-                        gpstype=tp['gpstype'])
+                        gpstype=tp['gpstype']))
                 elif tc=='Assignment':
-                    self.addAreaAssignment(list(r.exterior.coords),
+                    letter=tp['letter']
+                    if useResultNameSuffix:
+                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        letter=base+':'+str(suffix)
+                        usedSuffixList.append(suffix)
+                    rids.append(self.addAreaAssignment(list(r.exterior.coords),
                         number=tp['number'],
-                        letter=tp['letter']+':'+str(suffix),
-                        opId=tp.get('operationalPeriodId',None),
-                        folderId=tp.get('folderId',None),
-                        resourceType=tp['resourceType'],
-                        teamSize=tp['teamSize'],
-                        priority=tp['priority'],
-                        responsivePOD=tp['responsivePOD'],
-                        unresponsivePOD=tp['unresponsivePOD'],
-                        cluePOD=tp['cluePOD'],
-                        description=tp['description'],
-                        previousEfforts=tp['previousEfforts'],
-                        transportation=tp['transportation'],
-                        timeAllocated=tp['timeAllocated'],
-                        primaryFrequency=tp['primaryFrequency'],
-                        secondaryFrequency=tp['secondaryFrequency'],
-                        preparedBy=tp['preparedBy'],
-                        gpstype=tp['gpstype'],
-                        status=tp['status'])
+                        letter=letter,
+                        opId=tp.get('operationalPeriodId',''),
+                        folderId=tp.get('folderId',None), # empty string will create an unnamed folder!
+                        resourceType=tp.get('resourceType',''),
+                        teamSize=tp.get('teamSize',0),
+                        priority=tp.get('priority',''),
+                        responsivePOD=tp.get('responsivePOD',''),
+                        unresponsivePOD=tp.get('unresponsivePOD',''),
+                        cluePOD=tp.get('cluePOD',''),
+                        description=tp.get('description',''),
+                        previousEfforts=tp.get('previousEfforts',''),
+                        transportation=tp.get('transportation',''),
+                        timeAllocated=tp.get('timeAllocated',0),
+                        primaryFrequency=tp.get('primaryFrequency',''),
+                        secondaryFrequency=tp.get('secondaryFrequency',''),
+                        preparedBy=tp.get('preparedBy',''),
+                        gpstype=tp.get('gpstype',''),
+                        status=tp.get('status','')))
                 else:
-                    logging.error('cut: target feature class was neither Shape nor Assigment; operation aborted.')
+                    logging.warning('cut: target feature class was neither Shape nor Assigment; operation aborted.')
                     return False
         elif isinstance(result,LineString):
-            if not self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result.coords)}):
-                logging.error('cut: target shape not found; operation aborted.')
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result.coords)}))
+            if rids==[]:
+                logging.warning('cut: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiLineString):
-            if not self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}):
-                logging.error('cut: target shape not found; operation aborted.')
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}))
+            if rids==[]:
+                logging.warning('cut: target shape not found; operation aborted.')
                 return False
-            suffix=0
             for r in result[1:]:
-                suffix+=1
                 if tc=='Shape':
-                    self.addLine(list(r.coords),
-                        title=tp['title']+':'+str(suffix),
+                    title=tp['title']
+                    if useResultNameSuffix:
+                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        title+=':'+str(suffix)
+                        usedSuffixList.append(suffix)
+                    rids.append(self.addLine(list(r.coords),
+                        title=title,
                         color=tp['stroke'],
                         opacity=tp['stroke-opacity'],
                         width=tp['stroke-width'],
                         pattern=tp['pattern'],
                         description=tp['description'],
                         folderId=tfid,
-                        gpstype=tp['gpstype'])
+                        gpstype=tp['gpstype']))
                 elif tc=='Assignment':
-                    self.addLineAssignment(list(r.coords),
+                    letter=tp['letter']
+                    if useResultNameSuffix:
+                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        letter+=':'+str(suffix)
+                        usedSuffixList.append(suffix)
+                    rids.append(self.addLineAssignment(list(r.coords),
                         number=tp['number'],
-                        letter=tp['letter']+':'+str(suffix),
-                        opId=tp.get('operationalPeriodId',None),
-                        folderId=tp.get('folderId',None),
-                        resourceType=tp['resourceType'],
-                        teamSize=tp['teamSize'],
-                        priority=tp['priority'],
-                        responsivePOD=tp['responsivePOD'],
-                        unresponsivePOD=tp['unresponsivePOD'],
-                        cluePOD=tp['cluePOD'],
-                        description=tp['description'],
-                        previousEfforts=tp['previousEfforts'],
-                        transportation=tp['transportation'],
-                        timeAllocated=tp['timeAllocated'],
-                        primaryFrequency=tp['primaryFrequency'],
-                        secondaryFrequency=tp['secondaryFrequency'],
-                        preparedBy=tp['preparedBy'],
-                        gpstype=tp['gpstype'],
-                        status=tp['status'])
+                        letter=letter,
+                        opId=tp.get('operationalPeriodId',''),
+                        folderId=tp.get('folderId',None), # empty string will create an unnamed folder!
+                        resourceType=tp.get('resourceType',''),
+                        teamSize=tp.get('teamSize',0),
+                        priority=tp.get('priority',''),
+                        responsivePOD=tp.get('responsivePOD',''),
+                        unresponsivePOD=tp.get('unresponsivePOD',''),
+                        cluePOD=tp.get('cluePOD',''),
+                        description=tp.get('description',''),
+                        previousEfforts=tp.get('previousEfforts',''),
+                        transportation=tp.get('transportation',''),
+                        timeAllocated=tp.get('timeAllocated',0),
+                        primaryFrequency=tp.get('primaryFrequency',''),
+                        secondaryFrequency=tp.get('secondaryFrequency',''),
+                        preparedBy=tp.get('preparedBy',''),
+                        gpstype=tp.get('gpstype',''),
+                        status=tp.get('status','')))
                 else:
                     logging.error('cut: target feature class was neither Shape nor Assigment; operation aborted.')
                     return False
         if deleteCutter:
-            self.delFeature(cutterShape['properties']['class'],existingId=cutterShape['id'])
+            self.delFeature(id=cutterShape['id'],fClass=cutterShape['properties']['class'])
+
+        return rids # resulting feature IDs
 
     # expand - expand target polygon to include the area of p2 polygon
 
@@ -1415,7 +1892,7 @@ class SartopoSession():
             if isinstance(targetShape,dict):
                 targetStr=targetShape.get('title','NO TITLE')
         if not targetShape:
-            logging.error('Target shape '+targetStr+' not found; operation aborted.')
+            logging.warning('Target shape '+targetStr+' not found; operation aborted.')
             return False
         
         tg=targetShape['geometry']
@@ -1425,7 +1902,7 @@ class SartopoSession():
         if targetType=='Polygon':
             targetGeom=Polygon(tgc) # Shapely object
         else:
-            logging.error('expand: target feature '+targetStr+' is not a polygon: '+targetType)
+            logging.warning('expand: target feature '+targetStr+' is not a polygon: '+targetType)
             return False
         logging.info('targetGeom:'+str(targetGeom))
 
@@ -1441,7 +1918,7 @@ class SartopoSession():
             if isinstance(p2Shape,dict):
                 p2Str=p2Shape.get('title','NO TITLE')
         if not p2Shape:
-            logging.error('expand: second polygon '+p2Str+' not found; operation aborted.')
+            logging.warning('expand: second polygon '+p2Str+' not found; operation aborted.')
             return False
 
         logging.info('expand: target='+targetStr+'  p2='+p2Str)
@@ -1453,23 +1930,30 @@ class SartopoSession():
         if p2Type=='Polygon':
             p2Geom=Polygon(cgc) # Shapely object
         else:
-            logging.error('expand: p2 feature '+p2Str+' is not a polygon: '+p2Type)
+            logging.warning('expand: p2 feature '+p2Str+' is not a polygon: '+p2Type)
             return False
         logging.info('p2Geom:'+str(p2Geom))
 
         if not p2Geom.intersects(targetGeom):
-            logging.error(targetShape['properties']['title']+','+p2Shape['properties']['title']+': features do not intersect; no operation performed')
+            logging.warning(targetShape['properties']['title']+','+p2Shape['properties']['title']+': features do not intersect; no operation performed')
             return False
 
         result=targetGeom|p2Geom
         logging.info('expand result:'+str(result))
 
         if not self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}):
-            logging.error('expand: target shape not found; operation aborted.')
+            logging.warning('expand: target shape not found; operation aborted.')
             return False
 
         if deleteP2:
-            self.delFeature(p2Shape['properties']['class'],existingId=p2Shape['id'])
+            self.delFeature(id=p2Shape['id'],fClass=p2Shape['properties']['class'])
+
+        return True # success
+
+    def buffer2(self,boundaryGeom,beyond):
+        a=boundaryGeom.buffer(0) # split bowties into separate polygons
+        merged=unary_union(a)
+        return merged.buffer(beyond)
 
     # intersection2(targetGeom,boundaryGeom)
     # we want a function that can take the place of shapely.ops.intersection
@@ -1481,11 +1965,7 @@ class SartopoSession():
     #  A and B both inside boundary?  --> append A to output coord list
     #  A inside, B outside --> append A; append point at instersection of this segment with boundary; don't append B
     #  A outside, B inside --> append B; append point at intersection of this segment with boundary; don't append A
-    #  A outside, B outside --> don't append either
-
-    # known issue: straight segments that are 'clipped' by the boundary corner,
-    #  i.e. A and B are both outside, but a portion of the AB segment is inside,
-    #  will be omitted from the result, since only the drawn vertices are checked.
+    #  A outside, B outside --> don't append either point; instead, append the intersection as a new line segment
 
     def intersection2(self,targetGeom,boundaryGeom):
         outLines=[]
@@ -1521,6 +2001,18 @@ class SartopoSession():
                     nextInsidePointStartsNewLine=False
                 # the midpoint will be the first point of a new line
                 outLines[-1].append(list(mp.coords)[0])
+            else: # neither endpoint is inside the boundary: save the portion within the boundary, if any
+                abl=LineString([ap,bp])
+                mp=abl.intersection(boundaryGeom.exterior)
+                # the result will be a single disjoint line segment inside the boundary,
+                #  with both vertices touching the boundary;
+                # the result is a multipoint, which has no .coords attribute
+                #  see https://stackoverflow.com/a/51060918
+                # (or LineString Empty if none of the segment is inside the boundary)
+                if mp.geom_type=='MultiPoint' and not mp.is_empty:
+                    mpcoords=[(p.x,p.y) for p in mp]
+                    nextInsidePointStartsNewLine=True
+                    outLines.append(mpcoords)
 
         # don't forget to check the last vertex!
         fc=targetCoords[-1]
@@ -1532,15 +2024,109 @@ class SartopoSession():
         # return the Shapely object(s)
         if len(outLines)>1:
             rval=MultiLineString(outLines)
-        else:
+        elif len(outLines)==1:
             rval=LineString(outLines[0])
+        else:
+            rval=None
         return rval
 
+
+    # getBounds - return the bounding box (minx,miny,maxx,maxy), oversized by 'pad',
+    #               that bounds the listed objects
+
+    def getBounds(self,objectList,padDeg=0.0001,padPct=None):
+        rval=[9e12,9e12,-9e12,-9e12]
+        for obj in objectList:
+            if isinstance(obj,str): # if string, find feature by name; if id, find feature by id
+                objStr=obj
+                if len(obj)==36: # id
+                    objShape=self.getFeature(id=obj)
+                else:
+                    objShape=self.getFeature(title=obj,featureClassExcludeList=['Folder','OperationalPeriod'])
+            else:
+                objShape=obj
+                objStr='NO TITLE'
+                if isinstance(objShape,dict):
+                    objStr=objShape.get('title','NO TITLE')
+            if not objShape:
+                logging.warning('Object shape '+objStr+' not found; operation aborted.')
+                return False
+            og=objShape['geometry']
+            objType=og['type']
+            # logging.info('geometry:'+json.dumps(og,indent=3))
+            if objType=='Polygon':
+                ogc=og['coordinates'][0]
+                ogc=self.removeSpurs(ogc)
+                objGeom=Polygon(self.twoify(ogc)) # Shapely object
+            elif objType=='LineString':
+                ogc=og['coordinates']
+                ogc=self.removeSpurs(ogc)
+                objGeom=LineString(self.twoify(ogc)) # Shapely object
+            elif objType=='Point':
+                ogc=og['coordinates'][0:2]
+                objGeom=Point(self.twoify(ogc)) # Shapely object
+            else:
+                logging.warning('crop: feature '+objStr+' is not a polygon or line or point: '+objType)
+                return False
+            bbox=objGeom.bounds
+            rval=[min(bbox[0],rval[0]),min(bbox[1],rval[1]),max(bbox[2],rval[2]),max(bbox[3],rval[3])]
+        if not padPct:
+            pad=padDeg
+        else:
+            if padPct<1: # if specified as a ratio
+                padPct=padPct*100
+            pad=max(abs(rval[2]-rval[0]),abs(rval[3]-rval[1]))*padPct*0.01
+        rval=[rval[0]-pad,rval[1]-pad,rval[2]+pad,rval[3]+pad]
+        return rval
+
+    # twoify - turn four-element-vertex-data into two-element-vertex-data so that
+    #  the shapely functions can operate on it
+    def twoify(self,points):
+        if not isinstance(points,list):
+            return points
+        if isinstance(points[0],list): # the arg is a list of points
+            return [p[0:2] for p in points]
+        else: # the arg is just one point
+            return points[0:2]
+
+    # fourify - try to use four-element-vertex data from original data; called by
+    #  geometry operations during resulting shape creation / editing
+    def fourify(self,points,origPoints):
+        # no use trying to fourify if the orig points list is not all four-element points
+        if len(origPoints[0])!=4 or len(origPoints[-1])!=4:
+            return points
+        # make sure both are lists of lists, since points may initially be a list of tuples
+        if isinstance(points[0],tuple):
+            points=list(map(list,points))
+        # logging.info('fourify called:\npoints='+str(points)+'\norigPoints='+str(origPoints))
+        if len(points[0])==4 and len(points[-1])==4: # it's already a four-element list
+            return points
+        # logging.info('fourify: '+str(len(points))+' points: '+str(points[0:3])+' ... '+str(points[-3:]))
+        # logging.info('orig: '+str(len(origPoints))+' points: '+str(origPoints[0:3])+' ... '+str(origPoints[-3:]))
+        for i in range(len(points)):
+            found=False
+            for j in range(len(origPoints)):
+                if origPoints[j][0:2]==points[i][0:2]:
+                    points[i]=origPoints[j]
+                    found=True
+                    break
+            # generated endpoints (possibly first and/or last point after crop) won't have timestamps;
+            #  for the new first point, use the timestamp from the original first point;
+            #  for the new last point, use the timestamp from the original last point
+            if not found:
+                if i==0:
+                    points[i]=points[i][0:2]+[0,origPoints[0][3]]
+                elif i==len(points)-1:
+                    points[i]=points[i][0:2]+[0,origPoints[-1][3]]
+                else:
+                    logging.error('Fourify - could not find a matching point, not at beginning or end of new line:')
+                    logging.info('not found: '+str(len(points))+' points:  points['+str(i)+']='+str(points[i]))
+        return points
 
     # crop - remove portions of a line or polygon that are outside a boundary polygon;
     #          grow the specified boundary polygon by the specified distance before cropping
 
-    def crop(self,target,boundary,beyond=0.0001,deleteBoundary=False):
+    def crop(self,target,boundary,beyond=0.0001,deleteBoundary=False,useResultNameSuffix=False,drawSizedBoundary=False,noDraw=False):
         if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
@@ -1553,21 +2139,25 @@ class SartopoSession():
             if isinstance(targetShape,dict):
                 targetStr=targetShape.get('title','NO TITLE')
         if not targetShape:
-            logging.error('Target shape '+targetStr+' not found; operation aborted.')
+            logging.warning('Target shape '+targetStr+' not found; operation aborted.')
             return False
 
         tg=targetShape['geometry']
+        tgc_orig=None
         targetType=tg['type']
         if targetType=='Polygon':
             tgc=tg['coordinates'][0]
             tgc=self.removeSpurs(tgc)
             targetGeom=Polygon(tgc) # Shapely object
         elif targetType=='LineString':
-            tgc=tg['coordinates']
+            tgc_orig=tg['coordinates']
+            tgc=self.twoify(tgc_orig)
+            # logging.info('tgc before ('+str(len(tgc))+' points):'+str(tgc))
             tgc=self.removeSpurs(tgc)
+            # logging.info('tgc after ('+str(len(tgc))+' points):'+str(tgc))
             targetGeom=LineString(tgc)
         else:
-            logging.error('crop: target feature '+targetStr+' is not a polygon or line: '+targetType)
+            logging.warning('crop: target feature '+targetStr+' is not a polygon or line: '+targetType)
             return False
             
         if isinstance(boundary,str): # if string, find feature by name; if id, find feature by id
@@ -1582,7 +2172,7 @@ class SartopoSession():
             if isinstance(boundaryShape,dict):
                 boundaryStr=boundaryShape.get('title','NO TITLE')
         if not boundaryShape:
-            logging.error('crop: boundary shape '+boundaryStr+' not found; operation aborted.')
+            logging.warning('crop: boundary shape '+boundaryStr+' not found; operation aborted.')
             return False
 
         logging.info('crop: target='+targetStr+'  boundary='+boundaryStr)
@@ -1591,15 +2181,28 @@ class SartopoSession():
         boundaryType=cg['type']
         if boundaryType=='Polygon':
             cgc=cg['coordinates'][0]
-            cgc=self.removeSpurs(cgc)
-            boundaryGeom=Polygon(cgc).buffer(beyond) # Shapely object
+            boundaryGeom=self.buffer2(Polygon(cgc),beyond)
+        elif boundaryType=='LineString':
+            cgc=self.twoify(cg['coordinates'])
+            boundaryGeom=LineString(cgc).buffer(beyond)
         else:
-            logging.error('crop: boundary feature '+boundaryStr+' is not a polygon: '+boundaryType)
+            logging.warning('crop: boundary feature '+boundaryStr+' is not a polygon or line: '+boundaryType)
             return False
-        logging.info('crop: boundaryGeom:'+str(boundaryGeom))
+        # logging.info('crop: boundaryGeom:'+str(boundaryGeom))
+        if drawSizedBoundary:
+            tp=targetShape['properties']
+            self.addPolygon(list(boundaryGeom.exterior.coords),
+                title='sizedCropBoundary',
+                stroke=tp['stroke'],
+                fill=tp['fill'],
+                strokeOpacity=tp['stroke-opacity'],
+                strokeWidth=tp['stroke-width'],
+                fillOpacity=tp['fill-opacity'],
+                description=tp['description'],
+                gpstype=tp['gpstype'])
 
         if not boundaryGeom.intersects(targetGeom):
-            logging.error(targetShape['properties']['title']+','+boundaryShape['properties']['title']+': features do not intersect; no operation performed')
+            logging.warning(targetShape['properties']['title']+','+boundaryShape['properties']['title']+': features do not intersect; no operation performed')
             return False
 
         # if target is a line, and boundary is a polygon, use intersection2; see notes above
@@ -1607,34 +2210,69 @@ class SartopoSession():
             result=self.intersection2(targetGeom,boundaryGeom)
         else:
             result=targetGeom&boundaryGeom # could be MultiPolygon or MultiLinestring or GeometryCollection
-        logging.info('crop result:'+str(result))
+        # logging.info('crop targetGeom:'+str(targetGeom))
+        # logging.info('crop boundaryGeom:'+str(boundaryGeom))
+        # logging.info('crop result:'+str(result))
+
+        # if specified, only return the coordinate list(s) instead of editing / adding map features
+        if noDraw:
+            # return a list of line segments with points as lists rather than tuples; a.k.a. a list of lists of lists
+            if isinstance(result,LineString):
+                return [list(map(list,result.coords))]
+            elif isinstance(result,MultiLineString):
+                return [list(map(list,ls.coords)) for ls in result]
+            else:
+                logging.error('Unexpected noDraw crop result type '+str(result.__class__.__name__))
+                return False
 
         # preserve target properties when adding new features
         tp=targetShape['properties']
         tc=tp['class'] # Shape or Assignment
         tfid=tp.get('folderId',None)
 
+        # use the unsiffixed name as the base (everything before colon-followed-by-integer)
+        #  so that a cut of a:2 would produce a:3 rather than a:2:1
+        if tc=='Assignment':
+            base=tp['letter']
+        else:
+            base=tp['title']
+        # accomodate base names that include colon
+        baseParse=base.split(':')
+        if len(baseParse)>1 and baseParse[-1].isnumeric():
+            base=':'.join(baseParse[:-1])
+        usedSuffixList=self.getUsedSuffixList(base)
+
         # collect resulting feature ids to return as the return value
         rids=[]
 
         if isinstance(result,GeometryCollection): # apparently this will only be the case for polygons
-            result=MultiPolygon(result)
+            try:
+                result=MultiPolygon(result)
+            except:
+                try:
+                    result=MultiLineString(result)
+                except:
+                    logging.error('crop: resulting GeometryCollection could not be converted to MultiPolygon or MultiLineString.  Operation aborted.')
+                    return False
         if isinstance(result,Polygon):
             rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result.exterior.coords)]}))
             if rids==[]:
-                logging.error('cut: target shape not found; operation aborted.')
+                logging.warning('crop: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiPolygon):
             rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}))
             if rids==[]:
-                logging.error('cut: target shape not found; operation aborted.')
+                logging.warning('crop: target shape not found; operation aborted.')
                 return False
-            suffix=0
             for r in result[1:]:
-                suffix+=1
                 if tc=='Shape':
+                    title=tp['title']
+                    if useResultNameSuffix:
+                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        title=base+':'+str(suffix)
+                        usedSuffixList.append(suffix)
                     rids.append(self.addPolygon(list(r.exterior.coords),
-                        title=tp['title']+':'+str(suffix),
+                        title=title,
                         stroke=tp['stroke'],
                         fill=tp['fill'],
                         strokeOpacity=tp['stroke-opacity'],
@@ -1644,44 +2282,53 @@ class SartopoSession():
                         folderId=tfid,
                         gpstype=tp['gpstype']))
                 elif tc=='Assignment':
+                    letter=tp['letter']
+                    if useResultNameSuffix:
+                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        letter=base+':'+str(suffix)
+                        usedSuffixList.append(suffix)
                     rids.append(self.addAreaAssignment(list(r.exterior.coords),
                         number=tp['number'],
-                        letter=tp['letter']+':'+str(suffix),
-                        opId=tp.get('operationalPeriodId',None),
-                        folderId=tp.get('folderId',None),
-                        resourceType=tp['resourceType'],
-                        teamSize=tp['teamSize'],
-                        priority=tp['priority'],
-                        responsivePOD=tp['responsivePOD'],
-                        unresponsivePOD=tp['unresponsivePOD'],
-                        cluePOD=tp['cluePOD'],
-                        description=tp['description'],
-                        previousEfforts=tp['previousEfforts'],
-                        transportation=tp['transportation'],
-                        timeAllocated=tp['timeAllocated'],
-                        primaryFrequency=tp['primaryFrequency'],
-                        secondaryFrequency=tp['secondaryFrequency'],
-                        preparedBy=tp['preparedBy'],
-                        gpstype=tp['gpstype'],
-                        status=tp['status']))
+                        letter=letter,
+                        opId=tp.get('operationalPeriodId',''),
+                        folderId=tp.get('folderId',None), # empty string will create an unnamed folder!
+                        resourceType=tp.get('resourceType',''),
+                        teamSize=tp.get('teamSize',0),
+                        priority=tp.get('priority',''),
+                        responsivePOD=tp.get('responsivePOD',''),
+                        unresponsivePOD=tp.get('unresponsivePOD',''),
+                        cluePOD=tp.get('cluePOD',''),
+                        description=tp.get('description',''),
+                        previousEfforts=tp.get('previousEfforts',''),
+                        transportation=tp.get('transportation',''),
+                        timeAllocated=tp.get('timeAllocated',0),
+                        primaryFrequency=tp.get('primaryFrequency',''),
+                        secondaryFrequency=tp.get('secondaryFrequency',''),
+                        preparedBy=tp.get('preparedBy',''),
+                        gpstype=tp.get('gpstype',''),
+                        status=tp.get('status','')))
                 else:
-                    logging.error('crop: target feature class was neither Shape nor Assigment')
+                    logging.warning('crop: target feature class was neither Shape nor Assigment')
         elif isinstance(result,LineString):
-            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result.coords)}))
+            # logging.info('adding shape to result list')
+            four=self.fourify(list(result.coords),tgc_orig)
+            # logging.info('four:'+str(four))
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':four}))
             if rids==[]:
-                logging.error('crop: target shape not found; operation aborted.')
+                logging.warning('crop: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiLineString):
             rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}))
             if rids==[]:
-                logging.error('crop: target shape not found; operation aborted.')
+                logging.warning('crop: target shape not found; operation aborted.')
                 return False
-            suffix=0
             for r in result[1:]:
-                suffix+=1
                 if tc=='Shape':
+                    title=tp['title']
+                    if useResultNameSuffix:
+                        title=title+':'+str(suffix)
                     rids.append(self.addLine(list(r.coords),
-                        title=tp['title']+':'+str(suffix),
+                        title=title,
                         color=tp['stroke'],
                         opacity=tp['stroke-opacity'],
                         width=tp['stroke-width'],
@@ -1690,59 +2337,119 @@ class SartopoSession():
                         folderId=tfid,
                         gpstype=tp['gpstype']))
                 elif tc=='Assignment':
+                    letter=tp['letter']
+                    if useResultNameSuffix:
+                        letter=letter+':'+str(suffix)
                     rids.append(self.addLineAssignment(list(r.coords),
                         number=tp['number'],
-                        letter=tp['letter']+':'+str(suffix),
-                        opId=tp.get('operationalPeriodId',None),
-                        folderId=tp.get('folderId',None),
-                        resourceType=tp['resourceType'],
-                        teamSize=tp['teamSize'],
-                        priority=tp['priority'],
-                        responsivePOD=tp['responsivePOD'],
-                        unresponsivePOD=tp['unresponsivePOD'],
-                        cluePOD=tp['cluePOD'],
-                        description=tp['description'],
-                        previousEfforts=tp['previousEfforts'],
-                        transportation=tp['transportation'],
-                        timeAllocated=tp['timeAllocated'],
-                        primaryFrequency=tp['primaryFrequency'],
-                        secondaryFrequency=tp['secondaryFrequency'],
-                        preparedBy=tp['preparedBy'],
-                        gpstype=tp['gpstype'],
-                        status=tp['status']))
+                        letter=letter,
+                        opId=tp.get('operationalPeriodId',''),
+                        folderId=tp.get('folderId',None), # empty string will create an unnamed folder!
+                        resourceType=tp.get('resourceType',''),
+                        teamSize=tp.get('teamSize',0),
+                        priority=tp.get('priority',''),
+                        responsivePOD=tp.get('responsivePOD',''),
+                        unresponsivePOD=tp.get('unresponsivePOD',''),
+                        cluePOD=tp.get('cluePOD',''),
+                        description=tp.get('description',''),
+                        previousEfforts=tp.get('previousEfforts',''),
+                        transportation=tp.get('transportation',''),
+                        timeAllocated=tp.get('timeAllocated',0),
+                        primaryFrequency=tp.get('primaryFrequency',''),
+                        secondaryFrequency=tp.get('secondaryFrequency',''),
+                        preparedBy=tp.get('preparedBy',''),
+                        gpstype=tp.get('gpstype',''),
+                        status=tp.get('status','')))
                 else:
-                    logging.error('crop: target feature class was neither Shape nor Assigment')
+                    logging.warning('crop: target feature class was neither Shape nor Assigment')
                     return False
 
         if deleteBoundary:
-            self.delFeature(boundaryShape['properties']['class'],existingId=boundaryShape['id'])
+            self.delFeature(id=boundaryShape['id'],fClass=boundaryShape['properties']['class'])
 
         return rids # resulting feature IDs
 
         
-    def insertBeforeExt(self,fn,ins):
-        if '.' in fn:
-            lastSlashIndex=-1
-            lastBackSlashIndex=-1
-            if '/' in fn:
-                lastSlashIndex=fn.rindex('/')
-            if '\\' in fn:
-                lastBackSlashIndex=fn.rindex('\\')
-            lastSepIndex=max(lastBackSlashIndex,lastSlashIndex)
-            try:
-                lastDotIndex=fn.rindex('.',lastSepIndex)
-                return fn[:lastDotIndex]+ins+fn[lastDotIndex:]
-            except:
-                pass
-        return fn+ins
+def insertBeforeExt(fn,ins):
+    if '.' in fn:
+        lastSlashIndex=-1
+        lastBackSlashIndex=-1
+        if '/' in fn:
+            lastSlashIndex=fn.rindex('/')
+        if '\\' in fn:
+            lastBackSlashIndex=fn.rindex('\\')
+        lastSepIndex=max(0,lastBackSlashIndex,lastSlashIndex)
+        try:
+            lastDotIndex=fn.rindex('.',lastSepIndex)
+            return fn[:lastDotIndex]+ins+fn[lastDotIndex:]
+        except:
+            pass
+    return fn+ins
+
 
 # print by default; let the caller change this if needed
 # (note, caller would need to clear all handlers first,
 #   per stackoverflow.com/questions/12158048)
 logging.basicConfig(
     level=logging.INFO,
+    datefmt='%H:%M:%S',
     format='%(asctime)s [%(module)s:%(lineno)d:%(levelname)s] %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
     ]
 )
+
+# handle uncaught exceptions at the top level or in a thread;
+#  deal with the fact that sys.excepthook and threading.excepthook use different arguments
+#   sys.excepthook wants a 3-tuple; threading.excepthook wants an instance of
+#   _thread._ExceptHookArgs, which provides a 4-namedtuple
+def handle_exception(*args):
+    if len(args)==1:
+        a=args[0]
+        [exc_type,exc_value,exc_traceback,thread]=[a.exc_type,a.exc_value,a.exc_traceback,a.thread]
+    else:
+        [exc_type,exc_value,exc_traceback]=args
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+    prefix='Uncaught exception:' # not in a thread
+    try:
+        if thread and thread.__class__.__name__=='Thread':
+            prefix='Uncaught exception in '+thread.name+':' # in a thread
+    except UnboundLocalError:
+        pass
+    logging.critical(prefix, exc_info=(exc_type, exc_value, exc_traceback))
+sys.excepthook = handle_exception
+threading.excepthook = handle_exception
+
+# pare down json for logging messages to reduce log size and clutter
+def jsonForLog(orig):
+    rval=copy.deepcopy(orig)
+    try:
+        ok=orig.keys()
+        wrapped=False
+        if len(ok)==1 and 'json' in ok:
+            wrapped=True
+            rval=json.loads(rval['json'])
+        gc=rval['geometry']['coordinates']
+        if isinstance(gc[0][0],list): # list of segments
+            segCount=len(gc)
+            suffix=''
+            if segCount>1:
+                suffix='s'
+            countStr=str(segCount)+' segment'+suffix+' ('
+            for seg in gc:
+                countStr+=str(len(seg))+','
+            countStr=countStr.rstrip(',')
+            countStr+=' points)'
+            rval['geometry']['coordinates']=countStr
+        else:
+            suffix=''
+            if len(gc)>1:
+                suffix='s'
+            rval['geometry']['coordinates']=str(len(gc))+' point'+suffix
+        if wrapped:
+            rval={'json':json.dumps(rval)}
+    except:
+        pass
+    return str(rval)
