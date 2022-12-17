@@ -946,13 +946,14 @@ class SartopoSession():
                         if 'result' in rj.keys() and 'state' in rj['result'].keys() and 'features' in rj['result']['state'].keys():
                             alist=[f for f in rj['result']['state']['features'] if 'properties' in f.keys() and 'class' in f['properties'].keys() and f['properties']['class'].lower()=='assignment']
                             for a in alist:
-                                a['properties']['title']=a['properties']['letter']+' '+a['properties']['number']
+                                a['properties']['title']=str(a['properties'].get('letter',''))+' '+str(a['properties'].get('number',''))
                         self.syncPause=False
                         return rj
         self.syncPause=False
         
     def addFolder(self,
             label="New Folder",
+            timeout=None,
             queue=False):
         j={}
         j['properties']={}
@@ -963,7 +964,7 @@ class SartopoSession():
         else:
             # return self.sendRequest("post","folder",j,returnJson="ID")
             # add to .mapData immediately
-            rj=self.sendRequest('post','folder',j,returnJson='ALL')
+            rj=self.sendRequest('post','folder',j,returnJson='ALL',timeout=timeout)
             rjr=rj['result']
             id=rjr['id']
             self.mapData['ids'].setdefault('Folder',[]).append(id)
@@ -982,6 +983,7 @@ class SartopoSession():
             existingId=None,
             update=0,
             size=1,
+            timeout=None,
             queue=False):
         j={}
         jp={}
@@ -1010,7 +1012,7 @@ class SartopoSession():
         else:
             # return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
             # add to .mapData immediately
-            rj=self.sendRequest('post','marker',j,id=existingId,returnJson='ALL')
+            rj=self.sendRequest('post','marker',j,id=existingId,returnJson='ALL',timeout=timeout)
             rjr=rj['result']
             id=rjr['id']
             self.mapData['ids'].setdefault('Marker',[]).append(id)
@@ -1028,8 +1030,8 @@ class SartopoSession():
             gpstype='TRACK',
             folderId=None,
             existingId=None,
-            queue=False,
-            timeout=10):
+            timeout=None,
+            queue=False):
         j={}
         jp={}
         jg={}
@@ -1074,6 +1076,7 @@ class SartopoSession():
             fill='#FF0000',
             gpstype='TRACK',
             existingId=None,
+            timeout=None,
             queue=False):
         j={}
         jp={}
@@ -1101,7 +1104,7 @@ class SartopoSession():
         else:
             # return self.sendRequest('post','Shape',j,id=existingId,returnJson='ID')
             # add to .mapData immediately
-            rj=self.sendRequest('post','Shape',j,id=existingId,returnJson='ALL')
+            rj=self.sendRequest('post','Shape',j,id=existingId,returnJson='ALL',timeout=timeout)
             rjr=rj['result']
             id=rjr['id']
             self.mapData['ids'].setdefault('Shape',[]).append(id)
@@ -1130,14 +1133,15 @@ class SartopoSession():
             gpstype='TRACK',
             status='DRAFT',
             existingId=None,
+            timeout=None,
             queue=False):
         j={}
         jp={}
         jg={}
         if number is not None:
-            jp['number']=number
+            jp['number']=str(number)
         if letter is not None:
-            jp['letter']=letter
+            jp['letter']=str(letter)
         if opId is not None:
             jp['operationalPeriodId']=opId
         if folderId is not None:
@@ -1168,7 +1172,7 @@ class SartopoSession():
             self.queue.setdefault('Assignment',[]).append(j)
             return 0
         else:
-            return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID')
+            return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID',timeout=timeout)
 
     # buffers: in the web interface, adding a buffer results in two requests:
     #   1. api/v0/geodata/buffer - payload = drawn centerline, response = polygon points
@@ -1213,14 +1217,15 @@ class SartopoSession():
             gpstype='TRACK',
             status='DRAFT',
             existingId=None,
+            timeout=None,
             queue=False):
         j={}
         jp={}
         jg={}
         if number is not None:
-            jp['number']=number
+            jp['number']=str(number)
         if letter is not None:
-            jp['letter']=letter
+            jp['letter']=str(letter)
         if opId is not None:
             jp['operationalPeriodId']=opId
         if folderId is not None:
@@ -1251,7 +1256,7 @@ class SartopoSession():
             self.queue.setdefault('Assignment',[]).append(j)
             return 0
         else:
-            return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID')
+            return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID',timeout=timeout)
 
     def flush(self,timeout=20):
         self.sendRequest('post','api/v0/map/[MAPID]/save',self.queue,timeout=timeout)
@@ -1260,7 +1265,16 @@ class SartopoSession():
     # def center(self,lat,lon,z):
     #     .
 
-    def addAppTrack(self,points,cnt=None,startTrack=True,title="New AppTrack",since=0,description="",folderId=None,existingId=""):
+    def addAppTrack(self,
+            points,
+            title="New AppTrack",
+            description="",
+            cnt=None,
+            startTrack=True,
+            since=0,
+            folderId=None,
+            existingId="",
+            timeout=None):
         j={}
         jp={}
         jg={}
@@ -1290,15 +1304,15 @@ class SartopoSession():
         # if 1 == 1:
         ##if startTrack == 1:
         logging.info("At request first time track"+str(existingId)+":"+str(j))
-        return self.sendRequest("post","Shape",j,id=str(existingId),returnJson="ID")
+        return self.sendRequest("post","Shape",j,id=str(existingId),returnJson="ID",timeout=timeout)
         # else:
         #     logging.info("At request adding points to track:"+str(existingId)+":"+str(since)+":"+str(j))
         #     return self.sendRequest("post","since/"+str(since),j,id=str(existingId),returnJson="ID")
 
-    def delMarker(self,id=""):
-        self.delFeature(id=id,fClass="marker")
+    def delMarker(self,id="",timeout=None):
+        self.delFeature(id=id,fClass="marker",timeout=timeout)
 
-    def delFeature(self,id="",fClass=None):
+    def delFeature(self,id="",fClass=None,timeout=None):
         if not fClass:
             f=self.getFeature(id=id)
             if f:
@@ -1306,7 +1320,7 @@ class SartopoSession():
             else:
                 logging.error('delFeature: requested id "'+id+'" does not exist in the cache')
                 return False
-        return self.sendRequest("delete",fClass,None,id=str(id),returnJson="ALL")
+        return self.sendRequest("delete",fClass,None,id=str(id),returnJson="ALL",timeout=timeout)
 
     # getFeatures - attempts to get data from the local cache (self.madData); refreshes and tries again if necessary
     #   determining if a refresh is necessary:
@@ -1321,7 +1335,7 @@ class SartopoSession():
             letterOnly=False,
             allowMultiTitleMatch=False,
             since=0,
-            timeout=False,
+            timeout=None,
             forceRefresh=False):
         timeout=timeout or self.syncTimeout
         # rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
@@ -1411,7 +1425,7 @@ class SartopoSession():
             letterOnly=False,
             allowMultiTitleMatch=False,
             since=0,
-            timeout=False,
+            timeout=None,
             forceRefresh=False):
         r=self.getFeatures(
             featureClass=featureClass,
@@ -1474,7 +1488,8 @@ class SartopoSession():
             title=None,
             letter=None,
             properties=None,
-            geometry=None):
+            geometry=None,
+            timeout=None):
 
         logging.info('editFeature called')
         # PART 1: determine the exact id of the feature to be edited
@@ -1568,7 +1583,7 @@ class SartopoSession():
         if geomToWrite is not None:
             j['geometry']=geomToWrite
 
-        return self.sendRequest('post',className,j,id=feature['id'],returnJson='ID')
+        return self.sendRequest('post',className,j,id=feature['id'],returnJson='ID',timeout=timeout)
 
     # removeDuplicatePoints - walk a list of points - if a given point is
     #   very close to the previous point, delete it (<0.00001 degrees)
