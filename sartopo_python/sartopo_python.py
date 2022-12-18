@@ -1795,14 +1795,14 @@ class SartopoSession():
                         usedSuffixList.append(suffix)
                     rids.append(self.addPolygon(list(r.exterior.coords),
                         title=title,
-                        stroke=tp['stroke'],
-                        fill=tp['fill'],
-                        strokeOpacity=tp['stroke-opacity'],
-                        strokeWidth=tp['stroke-width'],
-                        fillOpacity=tp['fill-opacity'],
-                        description=tp['description'],
+                        stroke=tp.get('stroke',None),
+                        fill=tp.get('fill',None),
+                        strokeOpacity=tp.get('stroke-opacity',None),
+                        strokeWidth=tp.get('stroke-width',None),
+                        fillOpacity=tp.get('fill-opacity',None),
+                        description=tp.get('description',None),
                         folderId=tfid,
-                        gpstype=tp['gpstype']))
+                        gpstype=tp.get('gpstype',None)))
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
@@ -1851,13 +1851,13 @@ class SartopoSession():
                         usedSuffixList.append(suffix)
                     rids.append(self.addLine(list(r.coords),
                         title=title,
-                        color=tp['stroke'],
-                        opacity=tp['stroke-opacity'],
-                        width=tp['stroke-width'],
-                        pattern=tp['pattern'],
-                        description=tp['description'],
+                        color=tp.get('stroke',None),
+                        opacity=tp.get('stroke-opacity',None),
+                        width=tp.get('stroke-width',None),
+                        pattern=tp.get('pattern',None),
+                        description=tp.get('description',None),
                         folderId=tfid,
-                        gpstype=tp['gpstype']))
+                        gpstype=tp.get('gpstype',None)))
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
@@ -2208,13 +2208,13 @@ class SartopoSession():
             tp=targetShape['properties']
             self.addPolygon(list(boundaryGeom.exterior.coords),
                 title='sizedCropBoundary',
-                stroke=tp['stroke'],
-                fill=tp['fill'],
-                strokeOpacity=tp['stroke-opacity'],
-                strokeWidth=tp['stroke-width'],
-                fillOpacity=tp['fill-opacity'],
-                description=tp['description'],
-                gpstype=tp['gpstype'])
+                stroke=tp.get('stroke',None),
+                fill=tp.get('fill',None),
+                strokeOpacity=tp.get('stroke-opacity',None),
+                strokeWidth=tp.get('stroke-width',None),
+                fillOpacity=tp.get('fill-opacity',None),
+                description=tp.get('description',None),
+                gpstype=tp.get('gpstype',None))
 
         if not boundaryGeom.intersects(targetGeom):
             logging.warning(targetShape['properties']['title']+','+boundaryShape['properties']['title']+': features do not intersect; no operation performed')
@@ -2288,14 +2288,14 @@ class SartopoSession():
                         usedSuffixList.append(suffix)
                     rids.append(self.addPolygon(list(r.exterior.coords),
                         title=title,
-                        stroke=tp['stroke'],
-                        fill=tp['fill'],
-                        strokeOpacity=tp['stroke-opacity'],
-                        strokeWidth=tp['stroke-width'],
-                        fillOpacity=tp['fill-opacity'],
-                        description=tp['description'],
+                        stroke=tp.get('stroke',None),
+                        fill=tp.get('fill',None),
+                        strokeOpacity=tp.get('stroke-opacity',None),
+                        strokeWidth=tp.get('stroke-width',None),
+                        fillOpacity=tp.get('fill-opacity',None),
+                        description=tp.get('description',None),
                         folderId=tfid,
-                        gpstype=tp['gpstype']))
+                        gpstype=tp.get('gpstype',None)))
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
@@ -2344,13 +2344,13 @@ class SartopoSession():
                         title=title+':'+str(suffix)
                     rids.append(self.addLine(list(r.coords),
                         title=title,
-                        color=tp['stroke'],
-                        opacity=tp['stroke-opacity'],
-                        width=tp['stroke-width'],
-                        pattern=tp['pattern'],
-                        description=tp['description'],
+                        color=tp.get('stroke',None),
+                        opacity=tp.get('stroke-opacity',None),
+                        width=tp.get('stroke-width',None),
+                        pattern=tp.get('pattern',None),
+                        description=tp.get('description',None),
                         folderId=tfid,
-                        gpstype=tp['gpstype']))
+                        gpstype=tp.get('gpstype',None)))
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
