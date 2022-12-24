@@ -214,6 +214,7 @@ class SartopoSession():
         self.cacheDumpFile=cacheDumpFile
         self.useFiddlerProxy=useFiddlerProxy
         self.syncing=False
+        self.accountData=None
         if not self.setupSession():
             raise STSException
         
@@ -449,6 +450,24 @@ class SartopoSession():
         # logging.info('dap='+str(self.domainAndPort))
         # logging.info('payload='+str(json.dumps(j,indent=3)))
         self.sendRequest('post','api/v0/userdata',j,domainAndPort=self.domainAndPort)
+
+    def getAccountData(self):
+        logging.info('Getting account data:')
+        prefix='http://'
+        url=prefix+self.domainAndPort+'/sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
+        logging.info('  sending GET request to '+url)
+        rj=self.s.get(url)
+        self.accountData=rj.json()['result']['account']
+        # logging.info(json.dumps(self.accountData,indent=3))
+        return self.accountData
+
+    # getMapList: return a chronologically sorted list (most recent first) of lists [mapTitle,mapId,updated]
+    def getMapList(self,accountFilter=None):
+        self.mapList=[]
+        for tenant in self.accountData['tenants']:
+            self.mapList.append([tenant['properties']['title'],tenant['id'],tenant['properties']['updated']])
+        self.mapList.sort(key=lambda x: x[2],reverse=True)
+        return self.mapList
 
     def doSync(self):
         # logging.info('sync marker: '+self.mapID+' begin')
