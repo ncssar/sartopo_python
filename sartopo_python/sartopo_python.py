@@ -459,12 +459,27 @@ class SartopoSession():
         rj=self.s.get(url)
         self.accountData=rj.json()['result']['account']
         # logging.info(json.dumps(self.accountData,indent=3))
+        self.groupAccountHandles=[]
+        groupAccounts=self.accountData.get('groupAccounts',[])
+        for groupAccount in groupAccounts:
+            self.groupAccountHandles.append(groupAccount['handle'])
+        logging.info('Group account handles: '+str(self.groupAccountHandles))
         return self.accountData
 
     # getMapList: return a chronologically sorted list (most recent first) of lists [mapTitle,mapId,updated]
-    def getMapList(self,accountFilter=None):
+    #   accountHanlde argument is used to specify what team account name to access
+    def getMapList(self,accountHandle=None):
+        if not self.accountData:
+            self.getAccountData()
+        if accountHandle and accountHandle not in self.groupAccountHandles:
+            logging.warning('attempt to get map list for team account "'+accountHandle+'", but the signed-in user is not a member of that account; returning an empty map list.')
+            return []
         self.mapList=[]
-        for tenant in self.accountData['tenants']:
+        if accountHandle:
+            tenants=[ga for ga in self.accountData['groupAccounts'] if ga['handle']==accountHandle][0]['tenants']
+        else:
+            tenants=self.accountData['tenants']
+        for tenant in tenants:
             self.mapList.append([tenant['properties']['title'],tenant['id'],tenant['properties']['updated']])
         self.mapList.sort(key=lambda x: x[2],reverse=True)
         return self.mapList
