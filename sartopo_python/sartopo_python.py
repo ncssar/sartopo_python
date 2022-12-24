@@ -183,9 +183,6 @@ class SartopoSession():
             useFiddlerProxy=False):
         self.s=requests.session()
         self.apiVersion=-1
-        if not mapID or not isinstance(mapID,str) or len(mapID)<3:
-            logging.warning('WARNING: you must specify a three-or-more-character sartopo map ID string (end of the URL) when opening a SartopoSession object.')
-            raise STSException
         self.mapID=mapID
         self.domainAndPort=domainAndPort
         # configpath, account, id, and key are used to build
@@ -215,9 +212,22 @@ class SartopoSession():
         self.useFiddlerProxy=useFiddlerProxy
         self.syncing=False
         self.accountData=None
+        if self.mapID:
+            self.openMap(self.mapID)
+        else:
+            logging.info('Opening a SartopoSession object with no associated map.  Use .openMap(<mapID>) later to associate a map with this object.')
+
+    def openMap(self,mapID=None):
+        if self.mapID and self.lastSuccessfulSyncTimestamp>0:
+            logging.warning('WARNING: this SartopoSession object is already connected to map '+self.mapID+'.  Call to openMap ignored.')
+            return
+        if not mapID or not isinstance(mapID,str) or len(mapID)<3 or len(mapID)>5:
+            logging.warning('WARNING: map ID must be a three-to-five-character sartopo map ID string (end of the URL).  No map will be opened for this SartopoSession object.')
+            raise STSException
+        self.mapID=mapID
         if not self.setupSession():
             raise STSException
-        
+
     def setupSession(self):
         # set a flag: is this an internet session?
         #  if so, id and key are strictly required, and accountId is needed to print
@@ -708,8 +718,11 @@ class SartopoSession():
                     # logging.info(msg)
     
     def __del__(self):
-        logging.info('SartopoSession instance deleted for map '+self.mapID+'.')
-        if self.sync:
+        suffix=''
+        if self.mapID:
+            suffix=' for map '+self.mapID
+        logging.info('SartopoSession instance deleted'+suffix+'.')
+        if self.sync and self.lastSuccessfulSyncTimestamp>0:
             self.stop()
 
     def start(self):
