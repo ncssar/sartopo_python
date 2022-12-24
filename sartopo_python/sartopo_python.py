@@ -496,6 +496,9 @@ class SartopoSession():
 
     def doSync(self):
         # logging.info('sync marker: '+self.mapID+' begin')
+        if not self.mapID or self.apiVersion<0:
+            logging.error('sync request invalid: this sartopo session is not associated with a map.')
+            return False
         if self.syncing:
             logging.warning('sync-within-sync requested; returning to calling code.')
             return False
@@ -696,6 +699,9 @@ class SartopoSession():
     #   then don't do a refresh unless forceImmediate is True
     #  since doSync() would be called from this thread, it is always blocking
     def refresh(self,blocking=False,forceImmediate=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('refresh request invalid: this sartopo session is not associated with a map.')
+            return False
         msg='refresh requested for map '+self.mapID+': '
         if self.syncing:
             msg+='sync already in progress'
@@ -726,6 +732,9 @@ class SartopoSession():
             self.stop()
 
     def start(self):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('start request invalid: this sartopo session is not associated with a map.')
+            return False
         self.sync=True
         if self.syncThreadStarted:
             logging.info('Sartopo sync is already running for map '+self.mapID+'.')
@@ -735,14 +744,23 @@ class SartopoSession():
             self.syncThreadStarted=True
 
     def stop(self):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('stop request invalid: this sartopo session is not associated with a map.')
+            return False
         logging.info('Sartopo sync terminating for map '+self.mapID+'.')
         self.sync=False
 
     def pause(self):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('pause request invalid: this sartopo session is not associated with a map.')
+            return False
         logging.info('Pausing sync for map '+self.mapID+'...')
         self.syncPauseManual=True
 
     def resume(self):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('resume request invalid: this sartopo session is not associated with a map.')
+            return False
         logging.info('Resuming sync for map '+self.mapID+'.')
         self.syncPauseManual=False
     
@@ -796,7 +814,7 @@ class SartopoSession():
         timeout=timeout or self.syncTimeout
         newMap='[NEW]' in apiUrlEnd  # specific mapID that indicates a new map should be created
         if self.apiVersion<0:
-            logging.error("sendRequest: sartopo session is invalid; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
+            logging.error("sendRequest: sartopo session is invalid or is not associated with a map; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
             return False
         mid=self.apiUrlMid
         if 'api/' in apiUrlEnd.lower():
@@ -1002,6 +1020,9 @@ class SartopoSession():
             label="New Folder",
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addFolder request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         j['properties']={}
         j['properties']['title']=label
@@ -1032,6 +1053,9 @@ class SartopoSession():
             size=1,
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addMarker request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1079,6 +1103,9 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addLine request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1125,6 +1152,9 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addPolygon request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1182,6 +1212,9 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addLineAssignment request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1266,6 +1299,9 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addAreaAssignment request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1322,6 +1358,9 @@ class SartopoSession():
             folderId=None,
             existingId="",
             timeout=None):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addAppTrack request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1360,6 +1399,9 @@ class SartopoSession():
         self.delFeature(id=id,fClass="marker",timeout=timeout)
 
     def delFeature(self,id="",fClass=None,timeout=None):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
+            return False
         if not fClass:
             f=self.getFeature(id=id)
             if f:
@@ -1384,6 +1426,9 @@ class SartopoSession():
             since=0,
             timeout=None,
             forceRefresh=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('getFeatures request invalid: this sartopo session is not associated with a map.')
+            return []
         timeout=timeout or self.syncTimeout
         # rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
         # call refresh now; refresh will decide whether it needs to do a new doSync call, based
@@ -1474,6 +1519,9 @@ class SartopoSession():
             since=0,
             timeout=None,
             forceRefresh=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('getFeature request invalid: this sartopo session is not associated with a map.')
+            return False
         r=self.getFeatures(
             featureClass=featureClass,
             title=title,
@@ -1538,7 +1586,10 @@ class SartopoSession():
             geometry=None,
             timeout=None):
 
-        logging.info('editFeature called')
+        # logging.info('editFeature called')
+        if not self.mapID or self.apiVersion<0:
+            logging.error('editFeature request invalid: this sartopo session is not associated with a map.')
+            return False
         # PART 1: determine the exact id of the feature to be edited
         if id is None:
             # first, validate the arguments and adjust as needed
@@ -1658,6 +1709,9 @@ class SartopoSession():
         # build list of all titles (or letters as appropriate) from the cache
         #  try 'letter' first; if not found, use 'title'; default to 'NO-TITLE'
         # logging.info('getUsedSuffixList called: base='+str(base))
+        if not self.mapID or self.apiVersion<0:
+            logging.error('getUsedSuffixList request invalid: this sartopo session is not associated with a map.')
+            return False
         allTitles=[]
         for f in self.mapData['state']['features']:
             title='NO-TITLE'
@@ -1720,6 +1774,9 @@ class SartopoSession():
     #  the arguments (target, cutter) can be name (string), id (string), or feature (json)
 
     def cut(self,target,cutter,deleteCutter=True,useResultNameSuffix=True):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('cut request invalid: this sartopo session is not associated with a map.')
+            return False
         if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
@@ -1942,6 +1999,9 @@ class SartopoSession():
     # expand - expand target polygon to include the area of p2 polygon
 
     def expand(self,target,p2,deleteP2=True):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('expand request invalid: this sartopo session is not associated with a map.')
+            return False
         if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
@@ -2097,6 +2157,9 @@ class SartopoSession():
     #               that bounds the listed objects
 
     def getBounds(self,objectList,padDeg=0.0001,padPct=None):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('getBounds request invalid: this sartopo session is not associated with a map.')
+            return False
         rval=[9e12,9e12,-9e12,-9e12]
         for obj in objectList:
             if isinstance(obj,str): # if string, find feature by name; if id, find feature by id
@@ -2189,6 +2252,9 @@ class SartopoSession():
     #          grow the specified boundary polygon by the specified distance before cropping
 
     def crop(self,target,boundary,beyond=0.0001,deleteBoundary=False,useResultNameSuffix=False,drawSizedBoundary=False,noDraw=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('crop request invalid: this sartopo session is not associated with a map.')
+            return False
         if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
