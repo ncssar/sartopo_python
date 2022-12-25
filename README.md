@@ -175,7 +175,7 @@ Requests to localhost do not require any authentication; requests to sartopo.com
 
 If the sartopo session object was created with 'sartopo.com' as part of the URL, then this module will sign all requests before sending.
 
-Authenticaion information required to generate the signed requests includes an account expiration timestamp, a public key, and an ID code.  For a good explanation of how to determine those three items, see the README at https://github.com/elliottshane/sme-sartopo-mapsrv.
+Authenticaion information required to generate the signed requests includes a request expiration timestamp (just a couple minutes in the future is fine), a public key, and an ID code.  For a good explanation of how to determine those three items, see the README at https://github.com/elliottshane/sme-sartopo-mapsrv.
 
 Once those three items are determined, they should be stored in a configparser-compatible file that should look like the following:
 ```
