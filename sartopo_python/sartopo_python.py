@@ -1558,15 +1558,17 @@ class SartopoSession():
         #   }
         # }
 
-        propToWrite=None
+        #56 - include all properties in the edit request, even if no properties are being edited
+        # propToWrite=None
+        propToWrite=feature['properties']
         if properties is not None:
             keys=properties.keys()
-            propToWrite=feature['properties']
+            # propToWrite=feature['properties']
             for key in keys:
                 propToWrite[key]=properties[key]
             # write the correct title for assignments, since sartopo does not internally recalcualte it
             if className.lower()=='assignment':
-                propToWrite['title']=propToWrite['letter']+' '+propToWrite['number'].strip()
+                propToWrite['title']=(propToWrite['letter']+' '+propToWrite['number']).strip()
 
         geomToWrite=None
         if geometry is not None:
