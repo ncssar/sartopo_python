@@ -212,8 +212,13 @@ class SartopoSession():
         self.useFiddlerProxy=useFiddlerProxy
         self.syncing=False
         self.accountData=None
+        # call setupSession even if this is a mapless session, to read the config file, setup fidddler proxy, get userdata/cookies, etc.
+        if not self.setupSession():
+            raise STSException
+        # if a map is specified, open it (or create it if '[NEW'])
         if self.mapID:
-            self.openMap(self.mapID)
+            if not self.openMap(self.mapID):
+                raise STSException
         else:
             logging.info('Opening a SartopoSession object with no associated map.  Use .openMap(<mapID>) later to associate a map with this object.')
 
@@ -225,8 +230,70 @@ class SartopoSession():
             logging.warning('WARNING: map ID must be a three-to-five-character sartopo map ID string (end of the URL).  No map will be opened for this SartopoSession object.')
             raise STSException
         self.mapID=mapID
-        if not self.setupSession():
-            raise STSException
+        # new map requested
+        # 1. send a POST request to /map - payload (tested on CTD 4225; won't work with <4221) =
+        if self.mapID=='[NEW]':
+            j={}
+            j['properties']={
+                'mapConfig':json.dumps({'activeLayers':[['mbt',1]]}),
+                'cfgLocked':True,
+                'title':'new',
+                'mode':'sar' # 'cal' for recreation, 'sar' for SAR
+            }
+            j['state']={
+                'type':'FeatureCollection',
+                'features':[
+                    # At least one feature must exist to set the 'updated' field of the map;
+                    #  otherwise it always shows up at the bottom of the map list when sorted
+                    #  chronologically.  Definitely best to have it show up adjacent to the
+                    #  incident map.
+                    {
+                        'geometry': {
+                            'coordinates': [-120,39,0,0],
+                            'type':'Point'
+                        },
+                        'id':'11111111-1111-1111-1111-111111111111',
+                        'type':'Feature',
+                        'properties':{
+                            'creator':accountId,
+                            'title':'NewMapDummyMarker',
+                            'class':'Marker'
+                        }
+                    }
+                ]
+            }
+            # logging.info('dap='+str(self.domainAndPort))
+            # logging.info('payload='+str(json.dumps(j,indent=3)))
+            r=self.sendRequest('post','[NEW]',j,domainAndPort=self.domainAndPort)
+            if r:
+                self.mapID=r.rstrip('/').split('/')[-1]
+                self.s=requests.session()
+                self.sendUserdata() # to get session cookies for new session
+                time.sleep(1) # to avoid a 401 on the subsequent get request
+                self.delMarker(id='11111111-1111-1111-1111-111111111111')
+            else:
+                logging.info('New map request failed.  See the log for details.')
+                return False
+
+        
+        # logging.info("API version:"+str(self.apiVersion))
+        # sync needs to be done here instead of in the caller, so that
+        #  edit functions can have access to the full json
+        self.syncThreadStarted=False
+        self.syncPauseManual=False
+
+        # regardless of whether sync is specified, we need to do the initial cache population
+        #   here in the main thread, so that mapData is populated right away
+        logging.info('Initial cache population begins.')
+        self.doSync()
+        logging.info('Initial cache population complete.')
+
+        if self.sync:
+            self.start()
+
+        return True
+        # if not self.setupSession():
+        #     raise STSException
 
     def setupSession(self):
         # set a flag: is this an internet session?
@@ -381,68 +448,9 @@ class SartopoSession():
                     'ftp':'ftp://127.0.0.1:8888'
                 }
 
-        self.sendUserdata() # to get session cookies, in case this client has not connected in a long time
-
-        # new map requested
-        # 1. send a POST request to /map - payload (tested on CTD 4225; won't work with <4221) =
-        if self.mapID=='[NEW]':
-            j={}
-            j['properties']={
-                'mapConfig':json.dumps({'activeLayers':[['mbt',1]]}),
-                'cfgLocked':True,
-                'title':'new',
-                'mode':'sar' # 'cal' for recreation, 'sar' for SAR
-            }
-            j['state']={
-                'type':'FeatureCollection',
-                'features':[
-                    # At least one feature must exist to set the 'updated' field of the map;
-                    #  otherwise it always shows up at the bottom of the map list when sorted
-                    #  chronologically.  Definitely best to have it show up adjacent to the
-                    #  incident map.
-                    {
-                        'geometry': {
-                            'coordinates': [-120,39,0,0],
-                            'type':'Point'
-                        },
-                        'id':'11111111-1111-1111-1111-111111111111',
-                        'type':'Feature',
-                        'properties':{
-                            'creator':accountId,
-                            'title':'NewMapDummyMarker',
-                            'class':'Marker'
-                        }
-                    }
-                ]
-            }
-            # logging.info('dap='+str(self.domainAndPort))
-            # logging.info('payload='+str(json.dumps(j,indent=3)))
-            r=self.sendRequest('post','[NEW]',j,domainAndPort=self.domainAndPort)
-            if r:
-                self.mapID=r.rstrip('/').split('/')[-1]
-                self.s=requests.session()
-                self.sendUserdata() # to get session cookies for new session
-                time.sleep(1) # to avoid a 401 on the subsequent get request
-                self.delMarker(id='11111111-1111-1111-1111-111111111111')
-            else:
-                logging.info('New map request failed.  See the log for details.')
-                return False
-
-        
-        # logging.info("API version:"+str(self.apiVersion))
-        # sync needs to be done here instead of in the caller, so that
-        #  edit functions can have access to the full json
-        self.syncThreadStarted=False
-        self.syncPauseManual=False
-
-        # regardless of whether sync is specified, we need to do the initial cache population
-        #   here in the main thread, so that mapData is populated right away
-        logging.info('Initial cache population begins.')
-        self.doSync()
-        logging.info('Initial cache population complete.')
-
-        if self.sync:
-            self.start()
+        # self.sendUserdata() # to get session cookies, in case this client has not connected in a long time
+        #  but this requires a mapID to form the signature in the post request, so won't work for a mapless session
+        #  maybe the getMapData request is sufficient to get the cookies?
 
         return True
 
@@ -463,17 +471,31 @@ class SartopoSession():
 
     def getAccountData(self):
         logging.info('Getting account data:')
-        prefix='http://'
-        url=prefix+self.domainAndPort+'/sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
-        logging.info('  sending GET request to '+url)
-        rj=self.s.get(url)
-        self.accountData=rj.json()['result']['account']
-        # logging.info(json.dumps(self.accountData,indent=3))
-        self.groupAccountHandles=[]
-        groupAccounts=self.accountData.get('groupAccounts',[])
-        for groupAccount in groupAccounts:
-            self.groupAccountHandles.append(groupAccount['handle'])
-        logging.info('Group account handles: '+str(self.groupAccountHandles))
+        prefix='https://'
+        # url=prefix+self.domainAndPort+'/sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
+        # url='sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
+        # url='sideload/account/'+self.accountId+'.json' # send the rest as a parameter
+        # url=prefix+self.domainAndPort+'/acct/'+self.accountId+'/since/0'
+        url='api/v1/acct/'+self.accountId+'/since/0'
+        # logging.info('  sending GET request to '+url)
+        # rj=self.s.get(url)
+        rj=self.sendRequest('get',url,returnJson='ALL',prependMapUrl=False)
+        # url='api/v1/acct/'+self.accountId+'/since/0'
+        # rj=self.sendRequest('get',url,returnJson='ALL')
+        # print('rj:'+str(rj)+'  '+rj.text)
+        print('rj:'+str(rj))
+        try:
+            self.accountData=rj.json()['result']['account']
+        except:
+            logging.info('Response had no decodable json.')
+            self.accountData=False
+        else:
+            # logging.info(json.dumps(self.accountData,indent=3))
+            self.groupAccountHandles=[]
+            groupAccounts=self.accountData.get('groupAccounts',[])
+            for groupAccount in groupAccounts:
+                self.groupAccountHandles.append(groupAccount['handle'])
+            logging.info('Group account handles: '+str(self.groupAccountHandles))
         return self.accountData
 
     # getMapList: return a chronologically sorted list (most recent first) of lists [mapTitle,mapId,updated]
@@ -481,6 +503,9 @@ class SartopoSession():
     def getMapList(self,accountHandle=None):
         if not self.accountData:
             self.getAccountData()
+        if not self.accountData:
+            logging.info('Account data could not be retrieved.')
+            return []
         if accountHandle and accountHandle not in self.groupAccountHandles:
             logging.warning('attempt to get map list for team account "'+accountHandle+'", but the signed-in user is not a member of that account; returning an empty map list.')
             return []
@@ -514,6 +539,9 @@ class SartopoSession():
         #     the same id
 
         # logging.info('Sending sartopo "since" request...')
+
+        # self.lastSuccessfulSyncTimestamp=0
+
         rj=self.sendRequest('get','since/'+str(max(0,self.lastSuccessfulSyncTimestamp-500)),None,returnJson='ALL',timeout=self.syncTimeout)
         if rj and rj['status']=='ok':
             if self.syncDumpFile:
@@ -807,7 +835,8 @@ class SartopoSession():
             if self.sync: # don't bother with the sleep if sync is no longer True
                 time.sleep(self.syncInterval)
 
-    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None):
+    def sendRequest(self,type,apiUrlEnd,j=None,id="",returnJson=None,timeout=None,domainAndPort=None,exactUrl=False,prependMapUrl=True):
+        logging.info('sendRequest called: type='+type+'  apiUrlEnd='+apiUrlEnd)
         # objgraph.show_growth()
         # logging.info('RAM:'+str(process.memory_info().rss/1024**2)+'MB')
         self.syncPause=True
@@ -819,7 +848,7 @@ class SartopoSession():
         mid=self.apiUrlMid
         if 'api/' in apiUrlEnd.lower():
             mid='/'
-        else:
+        elif prependMapUrl:
             apiUrlEnd=apiUrlEnd.lower()
             if self.apiVersion>0:
                 apiUrlEnd=apiUrlEnd.capitalize()
@@ -829,8 +858,9 @@ class SartopoSession():
         #  destination and also a part of the pre-hashed data for signed requests
         if id and id!="": # sending online request with slash at the end causes failure
             apiUrlEnd=apiUrlEnd+"/"+id
-        mid=mid.replace("[MAPID]",self.mapID)
-        apiUrlEnd=apiUrlEnd.replace("[MAPID]",self.mapID)
+        if self.mapID:
+            mid=mid.replace("[MAPID]",self.mapID)
+            apiUrlEnd=apiUrlEnd.replace("[MAPID]",self.mapID)
         domainAndPort=domainAndPort or self.domainAndPort # use arg value if specified
         if not domainAndPort:
             logging.error("sendRequest was attempted but no valid domainAndPort was specified.")
@@ -848,6 +878,8 @@ class SartopoSession():
             if not self.key or not self.id:
                 logging.error("There was an attempt to send an internet request, but 'id' and/or 'key' was not specified for this session.  The request will not be sent.")
                 return False
+        if not prependMapUrl:
+            mid='/'
         url=prefix+domainAndPort+mid+apiUrlEnd
         wrapInJsonKey=True
         if newMap:
@@ -863,7 +895,7 @@ class SartopoSession():
             if internet:
                 expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
                 data="POST "+mid+apiUrlEnd+"\n"+str(expires)+"\n"+json.dumps(j)
-                # logging.info("pre-hashed data:"+data)                
+                logging.info("pre-hashed data:"+data)                
                 token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
                 token=base64.b64encode(token).decode()
                 # logging.info("hashed data:"+str(token))
@@ -882,8 +914,35 @@ class SartopoSession():
                 logging.info(jsonForLog(paramsPrint))
             r=self.s.post(url,data=params,timeout=timeout,proxies=self.proxyDict,allow_redirects=False)
         elif type=="get": # no need for json in GET; sending null JSON causes downstream error
-            # logging.info("SENDING GET to '"+url+"':")
-            r=self.s.get(url,timeout=timeout,proxies=self.proxyDict)
+            # 1-29-23 from MJ: online GET requests should contain the signature (and id?) encoded in the URL
+            # if not prependMapUrl:
+            #     mid=''
+            logging.info("SENDING GET to '"+url+"':")
+            params={}
+            if internet:
+                expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
+                # test url from Matt 2-15-23:
+                # https://sartopo.com/api/v1/acct/11UEE9/since/0?expires=1676664113969&signature=36esQOp0MqnYpb5ecywA1ZGLZGmZ30x6gswZHaWvnlQ%3D&json=&id=PJLLK0N9DR1F
+                # expires=1676664113969
+                data="GET "+mid+apiUrlEnd+"\n"+str(expires)+'\n' # the last newline is needed because the json (blank in this case) goes after it
+                # data='https://sartopo.com'+mid+apiUrlEnd+"\n"+str(expires)
+                # data='GET /api/v1/acct/'+self.accountId+'/since/0'+'\n'+str(expires)+'\n' # yes we need that final \n - in the post request, the json goes after it
+                logging.info("pre-hashed data:"+data)              
+                token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
+                token=base64.b64encode(token).decode()
+                logging.info("hashed data:"+str(token))
+                params["expires"]=expires
+                params["signature"]=token
+                params['json']='' # this correctly yields '&json=&<nextparam>=...' in the url
+                params["id"]=self.id
+                paramsPrint=copy.deepcopy(params)
+                paramsPrint['id']='.....'
+                paramsPrint['signature']='.....'
+            r=self.s.get(url,params=params,timeout=timeout,proxies=self.proxyDict)
+            logging.info('GET REQUEST SENT: '+r.url)
+            # p=requests.Request('GET',url,params=params).prepare()
+            # logging.info('generated url for get request: '+p.url)
+            # return
         elif type=="delete":
             params={}
             if "sartopo.com" in self.domainAndPort.lower():
