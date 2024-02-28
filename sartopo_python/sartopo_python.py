@@ -749,6 +749,15 @@ class SartopoSession():
             if self.sync: # don't bother with the sleep if sync is no longer True
                 time.sleep(self.syncInterval)
 
+    # return the token needed for signed request
+    #  (to be used as they value for the 'signature' key of request params dict)
+    def getToken(self,data):
+        # logging.info("pre-hashed data:"+data)                
+        token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
+        token=base64.b64encode(token).decode()
+        # logging.info("hashed data:"+str(token))
+        return token
+
     def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None):
         # objgraph.show_growth()
         # logging.info('RAM:'+str(process.memory_info().rss/1024**2)+'MB')
@@ -796,22 +805,19 @@ class SartopoSession():
             url=prefix+domainAndPort+'/api/v1/acct/'+accountId+'/CollaborativeMap' # works for CTD 4221 and up
         if '/since/' not in url:
             logging.info("sending "+str(type)+" to "+url)
+        params={}
+        paramsPrint={}
         if type=="post":
             if wrapInJsonKey:
-                params={}
                 params["json"]=json.dumps(j)
             else:
                 params=j
             if internet:
                 expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
                 data="POST "+mid+apiUrlEnd+"\n"+str(expires)+"\n"+json.dumps(j)
-                # logging.info("pre-hashed data:"+data)                
-                token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
-                token=base64.b64encode(token).decode()
-                # logging.info("hashed data:"+str(token))
                 params["id"]=self.id
                 params["expires"]=expires
-                params["signature"]=token
+                params["signature"]=self.getToken(data)
                 paramsPrint=copy.deepcopy(params)
                 paramsPrint['id']='.....'
                 paramsPrint['signature']='.....'
@@ -822,30 +828,46 @@ class SartopoSession():
             # don't print the entire PDF generation request - upstream code can print a PDF data summary
             if 'PDFLink' not in url:
                 logging.info(jsonForLog(paramsPrint))
+            # send the dict in the request body for POST requests, using the 'data' arg instead of 'params'
             r=self.s.post(url,data=params,timeout=timeout,proxies=self.proxyDict,allow_redirects=False)
         elif type=="get": # no need for json in GET; sending null JSON causes downstream error
             # logging.info("SENDING GET to '"+url+"':")
-            r=self.s.get(url,timeout=timeout,proxies=self.proxyDict)
-        elif type=="delete":
-            params={}
-            if "sartopo.com" in self.domainAndPort.lower():
+            if internet:
                 expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
-                data="DELETE "+mid+apiUrlEnd+"\n"+str(expires)+"\n"  #last newline needed as placeholder for json
-                # logging.info("pre-hashed data:"+data)                
-                token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
-                token=base64.b64encode(token).decode()
-#                 logging.info("hashed data:"+str(token))
+                data="GET "+mid+apiUrlEnd+"\n"+str(expires)+"\n"  #last newline needed as placeholder for json
                 params["json"]=''   # no body, but is required
                 params["id"]=self.id
                 params["expires"]=expires
-                params["signature"]=token
-            #     paramsPrint=copy.deepcopy(params)
-            #     paramsPrint['id']='.....'
-            #     paramsPrint['signature']='.....'
-            # else:
-            #     paramsPrint=params
-            # logging.info("SENDING DELETE to '"+url+"':")
-            # logging.info(json.dumps(paramsPrint,indent=3))
+                params["signature"]=self.getToken(data)
+                paramsPrint=copy.deepcopy(params)
+                paramsPrint['id']='.....'
+                paramsPrint['signature']='.....'
+                # 'data' argument sends dict in body; 'params' sends dict in URL query string,
+                #   which is needed by signed GET requests such as api/v1/acct/....../since/0
+                #   and for all requests to maps with 'secret' permission; so, might as well just
+                #   sign all GET requests to the internet, rather than try to determine permission
+                r=self.s.get(url,params=params,timeout=timeout,proxies=self.proxyDict,allow_redirects=False)
+            else:
+                r=self.s.get(url,timeout=timeout,proxies=self.proxyDict)
+            logging.info("SENDING GET to '"+url+"':")
+            logging.info(json.dumps(paramsPrint,indent=3))
+            # logging.info('Prepared request URL:')
+            # logging.info(r.request.url)
+        elif type=="delete":
+            if internet:
+                expires=int(time.time()*1000)+120000 # 2 minutes from current time, in milliseconds
+                data="DELETE "+mid+apiUrlEnd+"\n"+str(expires)+"\n"  #last newline needed as placeholder for json
+                params["json"]=''   # no body, but is required
+                params["id"]=self.id
+                params["expires"]=expires
+                params["signature"]=self.getToken(data)
+                paramsPrint=copy.deepcopy(params)
+                paramsPrint['id']='.....'
+                paramsPrint['signature']='.....'
+            else:
+                paramsPrint=params
+            logging.info("SENDING DELETE to '"+url+"':")
+            logging.info(json.dumps(paramsPrint,indent=3))
             # logging.info("Key:"+str(self.key))
             r=self.s.delete(url,params=params,timeout=timeout,proxies=self.proxyDict)   ## use params for query vs data for body data
             # logging.info("URL:"+str(url))
@@ -961,7 +983,7 @@ class SartopoSession():
                         self.syncPause=False
                         return rj
         self.syncPause=False
-        
+
     def addFolder(self,
             label="New Folder",
             timeout=None,
