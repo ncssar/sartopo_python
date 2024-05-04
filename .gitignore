@@ -8,4 +8,5 @@ sartopo_python/__pycache__/sartopo_python.cpython-37.pyc
 *.pyc
 sartopo_python/test2.py
 sartopo_python/test_cases
-sartopo_python/*test*
+sartopo_python/*test
+*_cache.cache*

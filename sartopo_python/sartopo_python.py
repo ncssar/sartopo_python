@@ -1819,6 +1819,8 @@ class SartopoSession():
             base=':'.join(baseParse[:-1])
         usedSuffixList=self.getUsedSuffixList(base)
 
+        # logging.info('cut result class:'+str(result.__class__.__name__))
+
         if isinstance(result,GeometryCollection): # polygons, linestrings, or both
             try:
                 result=MultiPolygon(result)
@@ -1835,11 +1837,12 @@ class SartopoSession():
                 return False
         elif isinstance(result,MultiPolygon):
             ##### EDIT FEATURE is used to update the original feature information (geometry)
-            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}))
+            resultGeoms=result.geoms
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(resultGeoms[0].exterior.coords)]}))
             if rids==[]:
                 logging.warning('cut: target shape not found; operation aborted.')
                 return False
-            for r in result[1:]:
+            for r in list(resultGeoms)[1:]:
                 if tc=='Shape':
                     title=tp['title']
                     if useResultNameSuffix:
@@ -1891,11 +1894,12 @@ class SartopoSession():
                 logging.warning('cut: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiLineString):
-            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}))
+            resultGeoms=result.geoms
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':list(resultGeoms[0].coords)}))
             if rids==[]:
                 logging.warning('cut: target shape not found; operation aborted.')
                 return False
-            for r in result[1:]:
+            for r in [g for g in resultGeoms][1:]:
                 if tc=='Shape':
                     title=tp['title']
                     if useResultNameSuffix:
@@ -2078,7 +2082,7 @@ class SartopoSession():
                 #  see https://stackoverflow.com/a/51060918
                 # (or LineString Empty if none of the segment is inside the boundary)
                 if mp.geom_type=='MultiPoint' and not mp.is_empty:
-                    mpcoords=[(p.x,p.y) for p in mp]
+                    mpcoords=[(p.x,p.y) for p in list(mp.geoms)]
                     nextInsidePointStartsNewLine=True
                     outLines.append(mpcoords)
 
@@ -2280,6 +2284,7 @@ class SartopoSession():
             result=targetGeom&boundaryGeom # could be MultiPolygon or MultiLinestring or GeometryCollection
         # logging.info('crop targetGeom:'+str(targetGeom))
         # logging.info('crop boundaryGeom:'+str(boundaryGeom))
+        # logging.info('crop result class:'+str(result.__class__.__name__))
         # logging.info('crop result:'+str(result))
 
         # if specified, only return the coordinate list(s) instead of editing / adding map features
@@ -2328,11 +2333,12 @@ class SartopoSession():
                 logging.warning('crop: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiPolygon):
-            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(result[0].exterior.coords)]}))
+            resultGeoms=result.geoms
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':[list(resultGeoms[0].exterior.coords)]}))
             if rids==[]:
                 logging.warning('crop: target shape not found; operation aborted.')
                 return False
-            for r in result[1:]:
+            for r in [g for g in resultGeoms][1:]:
                 if tc=='Shape':
                     title=tp['title']
                     if useResultNameSuffix:
@@ -2386,11 +2392,12 @@ class SartopoSession():
                 logging.warning('crop: target shape not found; operation aborted.')
                 return False
         elif isinstance(result,MultiLineString):
-            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':list(result[0].coords)}))
+            resultGeoms=result.geoms
+            rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':list(resultGeoms[0].coords)}))
             if rids==[]:
                 logging.warning('crop: target shape not found; operation aborted.')
                 return False
-            for r in result[1:]:
+            for r in [g for g in resultGeoms][1:]:
                 if tc=='Shape':
                     title=tp['title']
                     if useResultNameSuffix:
