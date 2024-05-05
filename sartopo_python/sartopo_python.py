@@ -211,8 +211,8 @@ class SartopoSession():
         self.cacheDumpFile=cacheDumpFile
         self.useFiddlerProxy=useFiddlerProxy
         self.syncing=False
+        self.caseSensitiveComparisons=caseSensitiveComparisons
         self.accountData=None
-        # call setupSession even if this is a mapless session, to read the config file, setup fidddler proxy, get userdata/cookies, etc.
         if not self.setupSession():
             raise STSException
         # if a map is specified, open it (or create it if '[NEW'])
@@ -469,55 +469,65 @@ class SartopoSession():
         # logging.info('payload='+str(json.dumps(j,indent=3)))
         self.sendRequest('post','api/v0/userdata',j,domainAndPort=self.domainAndPort)
 
+    # terminology:
+    # 'account' means a few different things in CalTopo:
+    #
+    # - the 'account' that is currently signed in
+    #     --> this is refered to just by the word 'account' throughout this code
+    #
+    # - each entry in the app main menu that is appended by the word 'Data' -
+    #    these are 'group' accounts or 'team' accounts of which the currently signed in 'account' is a member
+    #     --> this is referred to by the word 'groupAccount' throughout this code
+    # 
     def getAccountData(self):
         logging.info('Getting account data:')
-        prefix='https://'
-        # url=prefix+self.domainAndPort+'/sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
-        # url='sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
-        # url='sideload/account/'+self.accountId+'.json' # send the rest as a parameter
-        # url=prefix+self.domainAndPort+'/acct/'+self.accountId+'/since/0'
-        url='api/v1/acct/'+self.accountId+'/since/0'
-        # logging.info('  sending GET request to '+url)
-        # rj=self.s.get(url)
-        rj=self.sendRequest('get',url,returnJson='ALL',prependMapUrl=False)
-        # url='api/v1/acct/'+self.accountId+'/since/0'
-        # rj=self.sendRequest('get',url,returnJson='ALL')
-        # print('rj:'+str(rj)+'  '+rj.text)
-        print('rj:'+str(rj))
-        try:
-            self.accountData=rj.json()['result']['account']
-        except:
-            logging.info('Response had no decodable json.')
-            self.accountData=False
-        else:
-            # logging.info(json.dumps(self.accountData,indent=3))
-            self.groupAccountHandles=[]
-            groupAccounts=self.accountData.get('groupAccounts',[])
-            for groupAccount in groupAccounts:
-                self.groupAccountHandles.append(groupAccount['handle'])
-            logging.info('Group account handles: '+str(self.groupAccountHandles))
+        # url=self.urlPrefix+self.domainAndPort+'/sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
+        # url='/sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
+        url='/api/v1/acct/'+self.accountId+'/since/0'
+        logging.info('  sending GET request 2 to '+url)
+        # rj=self.sendRequest('get',exactUrl=url,returnJson='ALL')
+        rj=self.sendRequest('get',url,j=None,returnJson='ALL')
+        # response structure 2-23-24:
+        #  result: dict
+        #    features: list of dicts
+        #    groups: list of dicts
+        #    ids: dict of lists
+        #    accounts: list of dicts
+        #    timestamp: int # of msec
+        #    rels: list of dicts
+        #  status: str
+        #  timestamp: int # of msec
+        #  maps are in the 'features' list, with "type":"Feature" and "properties"["class"]:"CollaborativeMap"
+        # with open('acct_since_0.json','w') as outfile:
+        #     outfile.write(json.dumps(rj,indent=3))
+        self.accountData=rj['result']
+        # logging.info(json.dumps(self.accountData,indent=3))
+        # self.groupAccountTitles=[]
+        self.groupAccounts=[x for x in self.accountData.get('accounts',{})
+                if 'properties' in x.keys() and 'team' in x['properties'].get('subscriptionType')]
+        # for groupAccount in groupAccounts:
+        #     self.groupAccountTitles.append(groupAccount.get('title','NO_TITLE'))
+        logging.info('The signed-in user is a member of these group accounts: '+str([x['properties']['title'] for x in self.groupAccounts]))
         return self.accountData
 
-    # getMapList: return a chronologically sorted list (most recent first) of lists [mapTitle,mapId,updated]
-    #   accountHanlde argument is used to specify what team account name to access
-    def getMapList(self,accountHandle=None):
+    def getMapList(self,groupAccountTitle=None):
         if not self.accountData:
             self.getAccountData()
-        if not self.accountData:
-            logging.info('Account data could not be retrieved.')
-            return []
-        if accountHandle and accountHandle not in self.groupAccountHandles:
-            logging.warning('attempt to get map list for team account "'+accountHandle+'", but the signed-in user is not a member of that account; returning an empty map list.')
-            return []
-        self.mapList=[]
-        if accountHandle:
-            tenants=[ga for ga in self.accountData['groupAccounts'] if ga['handle']==accountHandle][0]['tenants']
-        else:
-            tenants=self.accountData['tenants']
-        for tenant in tenants:
-            self.mapList.append([tenant['properties']['title'],tenant['id'],tenant['properties']['updated']])
-        self.mapList.sort(key=lambda x: x[2],reverse=True)
-        return self.mapList
+        # if groupAccountTitle and groupAccountTitle not in self.groupAccountTitles:
+        #     logging.warning('attempt to get map list for team account "'+groupAccountTitle+'", but the signed-in user is not a member of that account; returning an empty map list.')
+        #     return []
+        # self.mapList=[]
+        # if groupAccountTitle:
+
+        # # if groupAccountTitle:
+        # #     tenants=[ga for ga in self.accountData['accounts'] if ga['title']==accountTitle][0]['tenants']
+        # # else:
+        # #     tenants=self.accountData['tenants']
+        # # for tenant in tenants:
+        # #     self.mapList.append([tenant['properties']['title'],tenant['id'],tenant['properties']['updated']])
+        # self.mapList.sort(key=lambda x: x[2],reverse=True)
+
+        # return self.mapList
 
     def doSync(self):
         # logging.info('sync marker: '+self.mapID+' begin')
@@ -835,8 +845,16 @@ class SartopoSession():
             if self.sync: # don't bother with the sleep if sync is no longer True
                 time.sleep(self.syncInterval)
 
-    def sendRequest(self,type,apiUrlEnd,j=None,id="",returnJson=None,timeout=None,domainAndPort=None,exactUrl=False,prependMapUrl=True):
-        logging.info('sendRequest called: type='+type+'  apiUrlEnd='+apiUrlEnd)
+    # return the token needed for signed request
+    #  (to be used as they value for the 'signature' key of request params dict)
+    def getToken(self,data):
+        logging.info('  getToken:  pre-hashed data:'+data)                
+        token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
+        token=base64.b64encode(token).decode()
+        logging.info('  getToken:  hashed data:'+str(token))
+        return token
+
+    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None):
         # objgraph.show_growth()
         # logging.info('RAM:'+str(process.memory_info().rss/1024**2)+'MB')
         self.syncPause=True
@@ -847,8 +865,11 @@ class SartopoSession():
             return False
         mid=self.apiUrlMid
         if 'api/' in apiUrlEnd.lower():
-            mid='/'
-        elif prependMapUrl:
+            if apiUrlEnd[0]=='/':
+                mid=''
+            else:
+                mid='/'
+        else:
             apiUrlEnd=apiUrlEnd.lower()
             if self.apiVersion>0:
                 apiUrlEnd=apiUrlEnd.capitalize()
