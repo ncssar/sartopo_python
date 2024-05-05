@@ -216,6 +216,7 @@ class SartopoSession():
         self.useFiddlerProxy=useFiddlerProxy
         self.syncing=False
         self.caseSensitiveComparisons=caseSensitiveComparisons
+        self.accountData=None
         if not self.setupSession():
             raise STSException
         
@@ -456,6 +457,66 @@ class SartopoSession():
         # logging.info('dap='+str(self.domainAndPort))
         # logging.info('payload='+str(json.dumps(j,indent=3)))
         self.sendRequest('post','api/v0/userdata',j,domainAndPort=self.domainAndPort)
+
+# terminology:
+    # 'account' means a few different things in CalTopo:
+    #
+    # - the 'account' that is currently signed in
+    #     --> this is refered to just by the word 'account' throughout this code
+    #
+    # - each entry in the app main menu that is appended by the word 'Data' -
+    #    these are 'group' accounts or 'team' accounts of which the currently signed in 'account' is a member
+    #     --> this is referred to by the word 'groupAccount' throughout this code
+    # 
+    def getAccountData(self):
+        logging.info('Getting account data:')
+        # url=self.urlPrefix+self.domainAndPort+'/sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
+        # url='/sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
+        url='/api/v1/acct/'+self.accountId+'/since/0'
+        logging.info('  sending GET request 2 to '+url)
+        # rj=self.sendRequest('get',exactUrl=url,returnJson='ALL')
+        rj=self.sendRequest('get',url,j=None,returnJson='ALL')
+        # response structure 2-23-24:
+        #  result: dict
+        #    features: list of dicts
+        #    groups: list of dicts
+        #    ids: dict of lists
+        #    accounts: list of dicts
+        #    timestamp: int # of msec
+        #    rels: list of dicts
+        #  status: str
+        #  timestamp: int # of msec
+        #  maps are in the 'features' list, with "type":"Feature" and "properties"["class"]:"CollaborativeMap"
+        # with open('acct_since_0.json','w') as outfile:
+        #     outfile.write(json.dumps(rj,indent=3))
+        self.accountData=rj['result']
+        # logging.info(json.dumps(self.accountData,indent=3))
+        # self.groupAccountTitles=[]
+        self.groupAccounts=[x for x in self.accountData.get('accounts',{})
+                if 'properties' in x.keys() and 'team' in x['properties'].get('subscriptionType')]
+        # for groupAccount in groupAccounts:
+        #     self.groupAccountTitles.append(groupAccount.get('title','NO_TITLE'))
+        logging.info('The signed-in user is a member of these group accounts: '+str([x['properties']['title'] for x in self.groupAccounts]))
+        return self.accountData
+
+    def getMapList(self,groupAccountTitle=None):
+        if not self.accountData:
+            self.getAccountData()
+        # if groupAccountTitle and groupAccountTitle not in self.groupAccountTitles:
+        #     logging.warning('attempt to get map list for team account "'+groupAccountTitle+'", but the signed-in user is not a member of that account; returning an empty map list.')
+        #     return []
+        # self.mapList=[]
+        # if groupAccountTitle:
+
+        # # if groupAccountTitle:
+        # #     tenants=[ga for ga in self.accountData['accounts'] if ga['title']==accountTitle][0]['tenants']
+        # # else:
+        # #     tenants=self.accountData['tenants']
+        # # for tenant in tenants:
+        # #     self.mapList.append([tenant['properties']['title'],tenant['id'],tenant['properties']['updated']])
+        # self.mapList.sort(key=lambda x: x[2],reverse=True)
+
+        # return self.mapList
 
     def doSync(self):
         # logging.info('sync marker: '+self.mapID+' begin')
@@ -769,7 +830,10 @@ class SartopoSession():
             return False
         mid=self.apiUrlMid
         if 'api/' in apiUrlEnd.lower():
-            mid='/'
+            if apiUrlEnd[0]=='/':
+                mid=''
+            else:
+                mid='/'
         else:
             apiUrlEnd=apiUrlEnd.lower()
             if self.apiVersion>0:
