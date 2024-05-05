@@ -468,27 +468,26 @@ class SartopoSession():
     #    these are 'group' accounts or 'team' accounts of which the currently signed in 'account' is a member
     #     --> this is referred to by the word 'groupAccount' throughout this code
     # 
+    # response structure 2-23-24, confirmed 5-5-24:
+    #  result: dict
+    #    features: list of dicts
+    #    groups: list of dicts
+    #    ids: dict of lists
+    #    accounts: list of dicts
+    #    timestamp: int # of msec
+    #    rels: list of dicts
+    #  status: str
+    #  timestamp: int # of msec
+    #
+    #  - maps (not bookmarks) are in the 'features' list, with type:Feature and properties.class:CollaborativeMap
+    #  - bookmarks (not maps) are in the 'rels' list, with properties.class:UserAccountMapRel
+
     def getAccountData(self):
         logging.info('Getting account data:')
-        # url=self.urlPrefix+self.domainAndPort+'/sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
-        # url='/sideload/account/'+self.accountId+'.json?json=%7B%22full%22%3Atrue%7D'
         url='/api/v1/acct/'+self.accountId+'/since/0'
         logging.info('  sending GET request 2 to '+url)
         # rj=self.sendRequest('get',exactUrl=url,returnJson='ALL')
         rj=self.sendRequest('get',url,j=None,returnJson='ALL')
-        # response structure 2-23-24:
-        #  result: dict
-        #    features: list of dicts
-        #    groups: list of dicts
-        #    ids: dict of lists
-        #    accounts: list of dicts
-        #    timestamp: int # of msec
-        #    rels: list of dicts
-        #  status: str
-        #  timestamp: int # of msec
-        #  maps are in the 'features' list, with "type":"Feature" and "properties"["class"]:"CollaborativeMap"
-        # with open('acct_since_0.json','w') as outfile:
-        #     outfile.write(json.dumps(rj,indent=3))
         self.accountData=rj['result']
         # logging.info(json.dumps(self.accountData,indent=3))
         # self.groupAccountTitles=[]
@@ -497,16 +496,41 @@ class SartopoSession():
         # for groupAccount in groupAccounts:
         #     self.groupAccountTitles.append(groupAccount.get('title','NO_TITLE'))
         logging.info('The signed-in user is a member of these group accounts: '+str([x['properties']['title'] for x in self.groupAccounts]))
+        logging.info('t1')
         return self.accountData
 
     def getMapList(self,groupAccountTitle=None):
         if not self.accountData:
             self.getAccountData()
-        # if groupAccountTitle and groupAccountTitle not in self.groupAccountTitles:
-        #     logging.warning('attempt to get map list for team account "'+groupAccountTitle+'", but the signed-in user is not a member of that account; returning an empty map list.')
-        #     return []
-        # self.mapList=[]
-        # if groupAccountTitle:
+        logging.info('t2')
+        # groupAccountTitles=[x['properties']['title'] for x in self.groupAccounts]
+        if not groupAccountTitle:
+            return []
+        logging.info('t3')
+        groupAccountIds=[x['id'] for x in self.groupAccounts if x['properties']['title']==groupAccountTitle]
+        logging.info('t4')
+        if type(groupAccountIds)==list:
+            if len(groupAccountIds)==0:
+                logging.warning('attempt to get map list for group account "'+groupAccountTitle+'", but the signed-in user is not a member of that group account; returning an empty map list.')
+                return []
+            elif len(groupAccountIds)>1:
+                logging.warning('the signed-in user is a member of more than one group account with the requested name "'+groupAccountTitle+'"; returning an empty list.')
+                return []
+        else:
+            logging.warning('groupAccountIds was not a list; returning an empty list.')
+            return []
+        logging.info('t5')
+        gid=groupAccountIds[0]
+        logging.info('t6  gid='+str(gid))
+        self.mapList=[f for f in self.accountData['features']
+                if 'properties' in f.keys()
+                and f['properties'].get('class','')=='CollaborativeMap'
+                and f['properties'].get('accountId','')==gid]
+        # self.mapList=[rel for rel in self.accountData['rels']
+        #         if 'properties' in rel.keys()
+        #         and rel['properties'].get('class','')=='UserAccountMapRel'
+        #         and rel['properties'].get('accountId','')==gid]
+        logging.info('t7')
 
         # # if groupAccountTitle:
         # #     tenants=[ga for ga in self.accountData['accounts'] if ga['title']==accountTitle][0]['tenants']
@@ -516,7 +540,7 @@ class SartopoSession():
         # #     self.mapList.append([tenant['properties']['title'],tenant['id'],tenant['properties']['updated']])
         # self.mapList.sort(key=lambda x: x[2],reverse=True)
 
-        # return self.mapList
+        return self.mapList
 
     def doSync(self):
         # logging.info('sync marker: '+self.mapID+' begin')
