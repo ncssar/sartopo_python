@@ -496,19 +496,41 @@ class SartopoSession():
         # for groupAccount in groupAccounts:
         #     self.groupAccountTitles.append(groupAccount.get('title','NO_TITLE'))
         logging.info('The signed-in user is a member of these group accounts: '+str([x['properties']['title'] for x in self.groupAccounts]))
-        logging.info('t1')
         return self.accountData
 
-    def getMapList(self,groupAccountTitle=None):
-        if not self.accountData:
+    # after getAccountData, all of the required data is available in self.accountData;
+    #  getMapList is just a convenience function that returns a chronologically sorted
+    #  list of map name strings, and corresponding mapIDs, for maps (and optionally
+    #  bookmarks) in a specified group account title; contents of all subfolders of the
+    #  specified group account are returned in the same flat list
+    # return value is a chronologically-sorted list of dicts (most recently updated first):
+    # SAR Training maps:
+    # [
+    #   {
+    #       "id": "NHPLQ",
+    #       "title": "Academy White Cloud 2024 Day 5",
+    #       "updated": 1714957566248,
+    #       "type": "map"
+    #   },
+    #   {
+    #       "id": "C96M9",
+    #       "title": "Nevada City Enduro 2024",
+    #       "updated": 1714922628438,
+    #       "type": "map"
+    #   },
+    #   ...,
+    #   {
+    #       "id": "46M61",
+    #       "title": "Omega Adademy 2024",
+    #       "updated": 1714522622568,
+    #       "type": "bookmark"
+    #   },...]
+    def getMapList(self,groupAccountTitle=None,includeBookmarks=True,refresh=False,namesOnly=False):
+        if refresh or not self.accountData:
             self.getAccountData()
-        logging.info('t2')
-        # groupAccountTitles=[x['properties']['title'] for x in self.groupAccounts]
         if not groupAccountTitle:
             return []
-        logging.info('t3')
         groupAccountIds=[x['id'] for x in self.groupAccounts if x['properties']['title']==groupAccountTitle]
-        logging.info('t4')
         if type(groupAccountIds)==list:
             if len(groupAccountIds)==0:
                 logging.warning('attempt to get map list for group account "'+groupAccountTitle+'", but the signed-in user is not a member of that group account; returning an empty map list.')
@@ -519,28 +541,43 @@ class SartopoSession():
         else:
             logging.warning('groupAccountIds was not a list; returning an empty list.')
             return []
-        logging.info('t5')
         gid=groupAccountIds[0]
-        logging.info('t6  gid='+str(gid))
-        self.mapList=[f for f in self.accountData['features']
+        theList=[]
+        maps=[f for f in self.accountData['features']
                 if 'properties' in f.keys()
                 and f['properties'].get('class','')=='CollaborativeMap'
                 and f['properties'].get('accountId','')==gid]
-        # self.mapList=[rel for rel in self.accountData['rels']
-        #         if 'properties' in rel.keys()
-        #         and rel['properties'].get('class','')=='UserAccountMapRel'
-        #         and rel['properties'].get('accountId','')==gid]
-        logging.info('t7')
-
-        # # if groupAccountTitle:
-        # #     tenants=[ga for ga in self.accountData['accounts'] if ga['title']==accountTitle][0]['tenants']
-        # # else:
-        # #     tenants=self.accountData['tenants']
-        # # for tenant in tenants:
-        # #     self.mapList.append([tenant['properties']['title'],tenant['id'],tenant['properties']['updated']])
-        # self.mapList.sort(key=lambda x: x[2],reverse=True)
-
-        return self.mapList
+        for map in maps:
+            mp=map['properties']
+            md={
+                'id':map['id'],
+                'title':mp['title'],
+                'updated':mp['updated'],
+                'type':'map'
+            }
+            if md not in theList:
+                theList.append(md)
+        if includeBookmarks:
+            bookmarks=[rel for rel in self.accountData['rels']
+                    if 'properties' in rel.keys()
+                    and rel['properties'].get('class','')=='UserAccountMapRel'
+                    and rel['properties'].get('accountId','')==gid]
+            for bookmark in bookmarks:
+                bp=bookmark['properties']
+                bd={
+                    'id':bp['mapId'],
+                    'title':bp['title'],
+                    'updated':bp['mapUpdated'],
+                    'type':'bookmark'
+                }
+                if bd not in theList:
+                    theList.append(bd)
+        # chronological sort by update timestamp
+        theList.sort(key=lambda x: x['updated'],reverse=True)
+        if namesOnly:
+            return [x['title'] for x in theList]
+        else:
+            return theList
 
     def doSync(self):
         # logging.info('sync marker: '+self.mapID+' begin')
