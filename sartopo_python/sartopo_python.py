@@ -509,28 +509,28 @@ class SartopoSession():
     #  bookmarks) in a specified group account title; contents of all subfolders of the
     #  specified group account are returned in the same flat list
     # return value is a chronologically-sorted list of dicts (most recently updated first):
-    # SAR Training maps:
+    # getMapList('SAR Training Data') -->
     # [
     #   {
-    #       "id": "NHPLQ",
+    #       "id": ".....",
     #       "title": "Academy White Cloud 2024 Day 5",
     #       "updated": 1714957566248,
     #       "type": "map"
     #   },
     #   {
-    #       "id": "C96M9",
+    #       "id": ".....",
     #       "title": "Nevada City Enduro 2024",
     #       "updated": 1714922628438,
     #       "type": "map"
     #   },
     #   ...,
     #   {
-    #       "id": "46M61",
+    #       "id": ".....",
     #       "title": "Omega Adademy 2024",
     #       "updated": 1714522622568,
     #       "type": "bookmark"
     #   },...]
-    def getMapList(self,groupAccountTitle=None,includeBookmarks=True,refresh=False,namesOnly=False):
+    def getMapList(self,groupAccountTitle=None,includeBookmarks=True,refresh=False,titlesOnly=False):
         if refresh or not self.accountData:
             self.getAccountData()
         if not groupAccountTitle:
@@ -579,7 +579,7 @@ class SartopoSession():
                     theList.append(bd)
         # chronological sort by update timestamp
         theList.sort(key=lambda x: x['updated'],reverse=True)
-        if namesOnly:
+        if titlesOnly:
             return [x['title'] for x in theList]
         else:
             return theList
