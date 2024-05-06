@@ -482,19 +482,24 @@ class SartopoSession():
     #  - maps (not bookmarks) are in the 'features' list, with type:Feature and properties.class:CollaborativeMap
     #  - bookmarks (not maps) are in the 'rels' list, with properties.class:UserAccountMapRel
 
-    def getAccountData(self):
+    def getAccountData(self,fromFileName=None):
         logging.info('Getting account data:')
-        url='/api/v1/acct/'+self.accountId+'/since/0'
-        logging.info('  sending GET request 2 to '+url)
-        # rj=self.sendRequest('get',exactUrl=url,returnJson='ALL')
-        rj=self.sendRequest('get',url,j=None,returnJson='ALL')
-        self.accountData=rj['result']
-        # logging.info(json.dumps(self.accountData,indent=3))
-        # self.groupAccountTitles=[]
+        if fromFileName:
+            self.accoundData={}
+            with open(fromFileName) as j:
+                print('reading account data from file "'+fromFileName+'"')
+                self.accountData=json.load(j)
+                if 'result' in self.accountData.keys():
+                    self.accountData=self.accountData['result']
+        else:
+            url='/api/v1/acct/'+self.accountId+'/since/0'
+            logging.info('  sending GET request 2 to '+url)
+            rj=self.sendRequest('get',url,j=None,returnJson='ALL')
+            self.accountData=rj['result']
+            # with open('acct_since_0.json','w') as outfile:
+            #     outfile.write(json.dumps(rj,indent=3))
         self.groupAccounts=[x for x in self.accountData.get('accounts',{})
                 if 'properties' in x.keys() and 'team' in x['properties'].get('subscriptionType')]
-        # for groupAccount in groupAccounts:
-        #     self.groupAccountTitles.append(groupAccount.get('title','NO_TITLE'))
         logging.info('The signed-in user is a member of these group accounts: '+str([x['properties']['title'] for x in self.groupAccounts]))
         return self.accountData
 
