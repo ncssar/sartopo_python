@@ -430,9 +430,9 @@ class SartopoSession():
     # - the 'account' that is currently signed in
     #     --> this is refered to just by the word 'account' throughout this code
     #
-    # - each entry in the app main menu that is appended by the word 'Data' -
-    #    these are 'group' accounts or 'team' accounts of which the currently signed in 'account' is a member
-    #     --> this is referred to by the word 'groupAccount' throughout this code
+    # - if the account's properties.subscriptionType value includes the word 'team',
+    #    it's a 'groupAccount' (this includes MAI accounts);
+    #    otherwise, it's a 'personalAccount' - normally there should just be one of these
     # 
     # response structure 2-23-24, confirmed 5-5-24:
     #  result: dict
@@ -464,9 +464,17 @@ class SartopoSession():
             self.accountData=rj['result']
             # with open('acct_since_0.json','w') as outfile:
             #     outfile.write(json.dumps(rj,indent=3))
-        self.groupAccounts=[x for x in self.accountData.get('accounts',{})
-                if 'properties' in x.keys() and 'team' in x['properties'].get('subscriptionType')]
-        logging.info('The signed-in user is a member of these group accounts: '+str([x['properties']['title'] for x in self.groupAccounts]))
+        # self.groupAccounts=[x for x in self.accountData.get('accounts',{})
+        #         if 'properties' in x.keys() and 'team' in x['properties'].get('subscriptionType')]
+        self.groupAccounts=[]
+        self.personalAccounts=[]
+        for account in self.accountData.get('accounts',[]):
+            if 'properties' in account.keys():
+                if 'team' in account['properties'].get('subscriptionType',''):
+                    self.groupAccounts.append(account)
+                else:
+                    self.personalAccounts.append(account)
+        # logging.info('The signed-in user is a member of these group accounts: '+str([x['properties']['title'] for x in self.groupAccounts]))
         return self.accountData
 
     # after getAccountData, all of the required data is available in self.accountData;
@@ -496,59 +504,105 @@ class SartopoSession():
     #       "updated": 1714522622568,
     #       "type": "bookmark"
     #   },...]
-    def getMapList(self,groupAccountTitle=None,includeBookmarks=True,refresh=False,titlesOnly=False):
+    def getMapList(self,groupAccountTitle=None,includeBookmarks=False,refresh=False,titlesOnly=False):
         if refresh or not self.accountData:
             self.getAccountData()
-        if not groupAccountTitle:
-            return []
-        groupAccountIds=[x['id'] for x in self.groupAccounts if x['properties']['title']==groupAccountTitle]
-        if type(groupAccountIds)==list:
-            if len(groupAccountIds)==0:
-                logging.warning('attempt to get map list for group account "'+groupAccountTitle+'", but the signed-in user is not a member of that group account; returning an empty map list.')
+        mapLists=[]
+        rval=[]
+        if groupAccountTitle:
+            groupAccountIds=[x['id'] for x in self.groupAccounts if x['properties']['title']==groupAccountTitle]
+            if type(groupAccountIds)==list:
+                if len(groupAccountIds)==0:
+                    logging.warning('attempt to get map list for group account "'+groupAccountTitle+'", but the signed-in user is not a member of that group account; returning an empty map list.')
+                    return []
+                elif len(groupAccountIds)>1:
+                    logging.warning('the signed-in user is a member of more than one group account with the requested name "'+groupAccountTitle+'"; returning an empty list.')
+                    return []
+            else:
+                logging.warning('groupAccountIds was not a list; returning an empty list.')
                 return []
-            elif len(groupAccountIds)>1:
-                logging.warning('the signed-in user is a member of more than one group account with the requested name "'+groupAccountTitle+'"; returning an empty list.')
-                return []
-        else:
-            logging.warning('groupAccountIds was not a list; returning an empty list.')
-            return []
-        gid=groupAccountIds[0]
-        theList=[]
-        maps=[f for f in self.accountData['features']
-                if 'properties' in f.keys()
-                and f['properties'].get('class','')=='CollaborativeMap'
-                and f['properties'].get('accountId','')==gid]
-        for map in maps:
-            mp=map['properties']
-            md={
-                'id':map['id'],
-                'title':mp['title'],
-                'updated':mp['updated'],
-                'type':'map'
-            }
-            if md not in theList:
-                theList.append(md)
-        if includeBookmarks:
-            bookmarks=[rel for rel in self.accountData['rels']
-                    if 'properties' in rel.keys()
-                    and rel['properties'].get('class','')=='UserAccountMapRel'
-                    and rel['properties'].get('accountId','')==gid]
-            for bookmark in bookmarks:
-                bp=bookmark['properties']
-                bd={
-                    'id':bp['mapId'],
-                    'title':bp['title'],
-                    'updated':bp['mapUpdated'],
-                    'type':'bookmark'
+            gid=groupAccountIds[0]
+            maps=[f for f in self.accountData['features']
+                    if 'properties' in f.keys()
+                    and f['properties'].get('class','')=='CollaborativeMap'
+                    and f['properties'].get('accountId','')==gid]
+            mapLists.append({'id':gid,'title':groupAccountTitle,'maps':maps})
+        else: # personal maps; allow for the possibility of multiple personal accounts
+            if len(self.personalAccounts)>1:
+                logging.info('The currently-signed-in user has more than one personal account; the return value will be a netsted list.')
+            for personalAccount in self.personalAccounts:
+                pid=personalAccount['id']
+                maps=[f for f in self.accountData['features']
+                        if 'properties' in f.keys()
+                        and f['properties'].get('class','')=='CollaborativeMap'
+                        and f['properties'].get('accountId','')==pid]
+                mapLists.append({'id':pid,'title':[x['properties']['title'] for x in self.accountData['accounts'] if x['id']==pid][0]})
+        for mapList in mapLists:
+            theList=[]
+            for map in maps:
+                mp=map['properties']
+                md={
+                    'id':map['id'],
+                    'title':mp['title'],
+                    'updated':mp['updated'],
+                    'type':'map'
                 }
-                if bd not in theList:
-                    theList.append(bd)
-        # chronological sort by update timestamp
-        theList.sort(key=lambda x: x['updated'],reverse=True)
-        if titlesOnly:
-            return [x['title'] for x in theList]
+                if md not in theList:
+                    theList.append(md)
+            if includeBookmarks:
+                bookmarks=[rel for rel in self.accountData['rels']
+                        if 'properties' in rel.keys()
+                        and rel['properties'].get('class','')=='UserAccountMapRel'
+                        and rel['properties'].get('accountId','')==gid]
+                for bookmark in bookmarks:
+                    bp=bookmark['properties']
+                    bd={
+                        'id':bp['mapId'],
+                        'title':bp['title'],
+                        'updated':bp['mapUpdated'],
+                        'type':'bookmark'
+                    }
+                    if bd not in theList:
+                        theList.append(bd)
+            # chronological sort by update timestamp
+            theList.sort(key=lambda x: x['updated'],reverse=True)
+            if titlesOnly:
+                rval.append([x['title'] for x in theList])
+            else:
+                rval.append(theList)
+        # if there's only one map list, return it as one list; otherwise return a nested list
+        if len(rval)==1:
+            rval=rval[0]
+        return rval
+
+    def getAllMapLists(self,includePersonal=False,includeBookmarks=False,refresh=False,titlesOnly=False):
+        if refresh or not self.accountData:
+            self.getAccountData()
+        theList=[]
+        if includePersonal:
+            theList.append(self.getMapList(includeBookmarks=includeBookmarks,refresh=False,titlesOnly=titlesOnly))
+        for gat in [x['properties']['title'] for x in self.groupAccounts]:
+            mapList=self.getMapList(gat,includeBookmarks=includeBookmarks,refresh=False,titlesOnly=titlesOnly)
+            theList.append({'groupAccountTitle':gat,'mapList':mapList})
+        return theList
+
+    def getMapTitle(self,mapID,refresh=False):
+        if refresh or not self.accountData:
+            self.getAccountData()
+        titles=[x['properties']['title'] for x in self.accountData['features'] if x.get('id','').lower()==mapID.lower()]
+        if len(titles)>1:
+            logging.warning('More than one map have the specified map ID '+str(mapID)+':'+str(titles))
+            return []
+        elif len(titles)==0:
+            logging.warning('No maps have the specified map ID '+str(mapID))
+            return []
         else:
-            return theList
+            return titles[0]
+    
+    def getGroupAccountTitles(self,refresh=False):
+        if refresh or not self.accountData:
+            self.getAccountData()
+        return [x['properties']['title'] for x in self.groupAccounts]
 
     def doSync(self):
         # logging.info('sync marker: '+self.mapID+' begin')
