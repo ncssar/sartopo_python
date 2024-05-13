@@ -504,7 +504,7 @@ class SartopoSession():
     #       "updated": 1714522622568,
     #       "type": "bookmark"
     #   },...]
-    def getMapList(self,groupAccountTitle=None,includeBookmarks=False,refresh=False,titlesOnly=False):
+    def getMapList(self,groupAccountTitle=None,includeBookmarks=True,refresh=False,titlesOnly=False):
         if refresh or not self.accountData:
             self.getAccountData()
         mapLists=[]
@@ -536,10 +536,10 @@ class SartopoSession():
                         if 'properties' in f.keys()
                         and f['properties'].get('class','')=='CollaborativeMap'
                         and f['properties'].get('accountId','')==pid]
-                mapLists.append({'id':pid,'title':[x['properties']['title'] for x in self.accountData['accounts'] if x['id']==pid][0]})
+                mapLists.append({'id':pid,'title':[x['properties']['title'] for x in self.accountData['accounts'] if x['id']==pid][0],'maps':maps})
         for mapList in mapLists:
             theList=[]
-            for map in maps:
+            for map in mapList['maps']:
                 mp=map['properties']
                 md={
                     'id':map['id'],
@@ -553,7 +553,7 @@ class SartopoSession():
                 bookmarks=[rel for rel in self.accountData['rels']
                         if 'properties' in rel.keys()
                         and rel['properties'].get('class','')=='UserAccountMapRel'
-                        and rel['properties'].get('accountId','')==gid]
+                        and rel['properties'].get('accountId','')==mapList['id']]
                 for bookmark in bookmarks:
                     bp=bookmark['properties']
                     bd={
@@ -575,12 +575,20 @@ class SartopoSession():
             rval=rval[0]
         return rval
 
-    def getAllMapLists(self,includePersonal=False,includeBookmarks=False,refresh=False,titlesOnly=False):
+    def getAllMapLists(self,includePersonal=False,includeBookmarks=True,refresh=False,titlesOnly=False):
         if refresh or not self.accountData:
             self.getAccountData()
         theList=[]
         if includePersonal:
-            theList.append(self.getMapList(includeBookmarks=includeBookmarks,refresh=False,titlesOnly=titlesOnly))
+            personalRval=self.getMapList(includeBookmarks=includeBookmarks,refresh=False,titlesOnly=titlesOnly)
+            # logging.info('personalRval:'+json.dumps(personalRval,indent=3))
+            if type(personalRval[0])==dict: # not nested; a list of dicts
+                theList.append({'personalAccountTitle':self.personalAccounts[0]['properties']['title'],'mapList':personalRval})
+            else: # nested; multiple personal accounts; a list of lists dicts
+                n=0 # index to self.personalAccounts; this assumes the sequence will be the same
+                for personalAcct in personalRval:
+                    theList.append({'personalAccountTitle':self.personalAccounts[n]['properties']['title'],'mapList':personalAcct})
+                    n+=1
         for gat in [x['properties']['title'] for x in self.groupAccounts]:
             mapList=self.getMapList(gat,includeBookmarks=includeBookmarks,refresh=False,titlesOnly=titlesOnly)
             theList.append({'groupAccountTitle':gat,'mapList':mapList})
