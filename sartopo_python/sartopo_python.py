@@ -1866,6 +1866,11 @@ class SartopoSession():
 
         return self.sendRequest('post',className,j,id=feature['id'],returnJson='ID',timeout=timeout)
 
+    # moveMarker - convenience function - calls editFeature
+    #   specify either id or title
+    def moveMarker(self,newCoords,id=None,title=None):
+        self.editFeature(id=id,title=title,className='Marker',geometry={'coordinates':[newCoords[0],newCoords[1],0,0]})
+
     # removeDuplicatePoints - walk a list of points - if a given point is
     #   very close to the previous point, delete it (<0.00001 degrees)
 
