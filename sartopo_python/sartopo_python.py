@@ -184,9 +184,6 @@ class SartopoSession():
             caseSensitiveComparisons=False):  # case-insensitive comparisons by default, see caseMatch()
         self.s=requests.session()
         self.apiVersion=-1
-        if not mapID or not isinstance(mapID,str) or len(mapID)<3:
-            logging.warning('WARNING: you must specify a three-or-more-character sartopo map ID string (end of the URL) when opening a SartopoSession object.')
-            raise STSException
         self.mapID=mapID
         self.domainAndPort=domainAndPort
         # configpath, account, id, and key are used to build
@@ -216,9 +213,88 @@ class SartopoSession():
         self.useFiddlerProxy=useFiddlerProxy
         self.syncing=False
         self.caseSensitiveComparisons=caseSensitiveComparisons
+        self.accountData=None
+        # call setupSession even if this is a mapless session, to read the config file, setup fidddler proxy, get userdata/cookies, etc.
         if not self.setupSession():
             raise STSException
+        # if a map is specified, open it (or create it if '[NEW'])
+        if self.mapID:
+            if not self.openMap(self.mapID):
+                raise STSException
+        else:
+            logging.info('Opening a SartopoSession object with no associated map.  Use .openMap(<mapID>) later to associate a map with this session.')
+
+    def openMap(self,mapID=None):
+        if self.mapID and self.lastSuccessfulSyncTimestamp>0:
+            logging.warning('WARNING: this SartopoSession object is already connected to map '+self.mapID+'.  Call to openMap ignored.')
+            return
+        if not mapID or not isinstance(mapID,str) or len(mapID)<3 or len(mapID)>5:
+            logging.warning('WARNING: map ID must be a three-to-five-character sartopo map ID string (end of the URL).  No map will be opened for this SartopoSession object.')
+            raise STSException
+        self.mapID=mapID
+        # new map requested
+        # 1. send a POST request to /map - payload (tested on CTD 4225; won't work with <4221) =
+        if self.mapID=='[NEW]':
+            j={}
+            j['properties']={
+                'mapConfig':json.dumps({'activeLayers':[['mbt',1]]}),
+                'cfgLocked':True,
+                'title':'new',
+                'mode':'sar' # 'cal' for recreation, 'sar' for SAR
+            }
+            j['state']={
+                'type':'FeatureCollection',
+                'features':[
+                    # At least one feature must exist to set the 'updated' field of the map;
+                    #  otherwise it always shows up at the bottom of the map list when sorted
+                    #  chronologically.  Definitely best to have it show up adjacent to the
+                    #  incident map.
+                    {
+                        'geometry': {
+                            'coordinates': [-120,39,0,0],
+                            'type':'Point'
+                        },
+                        'id':'11111111-1111-1111-1111-111111111111',
+                        'type':'Feature',
+                        'properties':{
+                            'creator':accountId,
+                            'title':'NewMapDummyMarker',
+                            'class':'Marker'
+                        }
+                    }
+                ]
+            }
+            # logging.info('dap='+str(self.domainAndPort))
+            # logging.info('payload='+str(json.dumps(j,indent=3)))
+            r=self.sendRequest('post','[NEW]',j,domainAndPort=self.domainAndPort)
+            if r:
+                self.mapID=r.rstrip('/').split('/')[-1]
+                self.s=requests.session()
+                self.sendUserdata() # to get session cookies for new session
+                time.sleep(1) # to avoid a 401 on the subsequent get request
+                self.delMarker(id='11111111-1111-1111-1111-111111111111')
+            else:
+                logging.info('New map request failed.  See the log for details.')
+                return False
+
         
+        # logging.info("API version:"+str(self.apiVersion))
+        # sync needs to be done here instead of in the caller, so that
+        #  edit functions can have access to the full json
+        self.syncThreadStarted=False
+        self.syncPauseManual=False
+
+        # regardless of whether sync is specified, we need to do the initial cache population
+        #   here in the main thread, so that mapData is populated right away
+        logging.info('Initial cache population begins.')
+        self.doSync()
+        logging.info('Initial cache population complete.')
+
+        if self.sync:
+            self.start()
+
+        return True
+
     def setupSession(self):
         # set a flag: is this an internet session?
         #  if so, id and key are strictly required, and accountId is needed to print
@@ -298,56 +374,6 @@ class SartopoSession():
         # #    send a GET request to http://localhost:8080/rest/
         # #     response code 200 = old API
         
-        # self.apiUrlMid="/invalid/"
-        # url="http://"+self.domainAndPort+"/api/v1/map/"
-        # logging.info("searching for API v1: sending get to "+url)
-        # try:
-        #     r=self.s.get(url,timeout=10)
-        # except:
-        #     logging.error("no response from first get request; aborting; should get a response of 400 at this point for api v0")
-        #     return False
-        # else:
-        #     logging.info("response code = "+str(r.status_code))
-        #     if r.status_code==200:
-        #         # now validate the mapID, since the initial test doesn't care about mapID
-        #         mapUrl="http://"+self.domainAndPort+"/m/"+self.mapID
-        #         try:
-        #             r=self.s.get(mapUrl,timeout=10)
-        #         except:
-        #             logging.error("API version 1 detected, but the get request timed out so the mapID is not valid: "+mapUrl)
-        #             return False
-        #         else:
-        #             if r.status_code==200:
-        #                 # now we know the API is valid and the mapID is valid
-        #                 self.apiVersion=1
-        #                 self.apiUrlMid="/api/v1/map/[MAPID]/"
-        #             else:
-        #                 logging.error("API version 1 detected, but the map-specific URL '"+self.mapID+"' returned a code of "+str(r.status_code)+" so this session is not valid.")
-        #                 return False
-        #     else:
-        #         url="http://"+self.domainAndPort+"/rest/marker/"
-        #         logging.info("searching for API v0: sending get to "+url)
-        #         try:
-        #             r=self.s.get(url,timeout=10)
-        #         except:
-        #             logging.info("no response from second get request")
-        #         else:
-        #             logging.info("response code = "+str(r.status_code))
-        #             if r.status_code==200:
-        #                 self.apiVersion=0
-        #                 self.apiUrlMid="/rest/"
-        #                 # for v0, send a get to the map URL to authenticate the session
-        #                 url="http://"+self.domainAndPort+"/m/"+self.mapID
-        #                 logging.info("sending API v0 authentication request to url "+url)
-        #                 try:
-        #                     r=self.s.get(url,timeout=10)
-        #                 except:
-        #                     logging.info("no response during authentication for API v0")
-        #                 else:
-        #                     logging.info("response code = "+str(r.status_code))
-        #                     if r.status_code==200:
-        #                         logging.info("API v0 session is now authenticated")
-        
         # try these hardcodes, instead of the above dummy-request, to see if it avoids the NPE's
         self.apiVersion=1
         self.apiUrlMid="/api/v1/map/[MAPID]/"
@@ -372,68 +398,9 @@ class SartopoSession():
                     'ftp':'ftp://127.0.0.1:8888'
                 }
 
-        self.sendUserdata() # to get session cookies, in case this client has not connected in a long time
-
-        # new map requested
-        # 1. send a POST request to /map - payload (tested on CTD 4225; won't work with <4221) =
-        if self.mapID=='[NEW]':
-            j={}
-            j['properties']={
-                'mapConfig':json.dumps({'activeLayers':[['mbt',1]]}),
-                'cfgLocked':True,
-                'title':'new',
-                'mode':'sar' # 'cal' for recreation, 'sar' for SAR
-            }
-            j['state']={
-                'type':'FeatureCollection',
-                'features':[
-                    # At least one feature must exist to set the 'updated' field of the map;
-                    #  otherwise it always shows up at the bottom of the map list when sorted
-                    #  chronologically.  Definitely best to have it show up adjacent to the
-                    #  incident map.
-                    {
-                        'geometry': {
-                            'coordinates': [-120,39,0,0],
-                            'type':'Point'
-                        },
-                        'id':'11111111-1111-1111-1111-111111111111',
-                        'type':'Feature',
-                        'properties':{
-                            'creator':accountId,
-                            'title':'NewMapDummyMarker',
-                            'class':'Marker'
-                        }
-                    }
-                ]
-            }
-            # logging.info('dap='+str(self.domainAndPort))
-            # logging.info('payload='+str(json.dumps(j,indent=3)))
-            r=self.sendRequest('post','[NEW]',j,domainAndPort=self.domainAndPort)
-            if r:
-                self.mapID=r.rstrip('/').split('/')[-1]
-                self.s=requests.session()
-                self.sendUserdata() # to get session cookies for new session
-                time.sleep(1) # to avoid a 401 on the subsequent get request
-                self.delMarker(id='11111111-1111-1111-1111-111111111111')
-            else:
-                logging.info('New map request failed.  See the log for details.')
-                return False
-
-        
-        # logging.info("API version:"+str(self.apiVersion))
-        # sync needs to be done here instead of in the caller, so that
-        #  edit functions can have access to the full json
-        self.syncThreadStarted=False
-        self.syncPauseManual=False
-
-        # regardless of whether sync is specified, we need to do the initial cache population
-        #   here in the main thread, so that mapData is populated right away
-        logging.info('Initial cache population begins.')
-        self.doSync()
-        logging.info('Initial cache population complete.')
-
-        if self.sync:
-            self.start()
+        # self.sendUserdata() # to get session cookies, in case this client has not connected in a long time
+        #  but this requires a mapID to form the signature in the post request, so won't work for a mapless session
+        #  maybe the getMapData request is sufficient to get the cookies?
 
         return True
 
@@ -457,8 +424,215 @@ class SartopoSession():
         # logging.info('payload='+str(json.dumps(j,indent=3)))
         self.sendRequest('post','api/v0/userdata',j,domainAndPort=self.domainAndPort)
 
+# terminology:
+    # 'account' means a few different things in CalTopo:
+    #
+    # - the 'account' that is currently signed in
+    #     --> this is refered to just by the word 'account' throughout this code
+    #
+    # - if the account's properties.subscriptionType value includes the word 'team',
+    #    it's a 'groupAccount' (this includes MAI accounts);
+    #    otherwise, it's a 'personalAccount' - normally there should just be one of these
+    # 
+    # response structure 2-23-24, confirmed 5-5-24:
+    #  result: dict
+    #    features: list of dicts
+    #    groups: list of dicts
+    #    ids: dict of lists
+    #    accounts: list of dicts
+    #    timestamp: int # of msec
+    #    rels: list of dicts
+    #  status: str
+    #  timestamp: int # of msec
+    #
+    #  - maps (not bookmarks) are in the 'features' list, with type:Feature and properties.class:CollaborativeMap
+    #  - bookmarks (not maps) are in the 'rels' list, with properties.class:UserAccountMapRel
+
+    def getAccountData(self,fromFileName=None):
+        logging.info('Getting account data:')
+        if fromFileName:
+            self.accoundData={}
+            with open(fromFileName) as j:
+                print('reading account data from file "'+fromFileName+'"')
+                self.accountData=json.load(j)
+                if 'result' in self.accountData.keys():
+                    self.accountData=self.accountData['result']
+        else:
+            url='/api/v1/acct/'+self.accountId+'/since/0'
+            # logging.info('  sending GET request 2 to '+url)
+            rj=self.sendRequest('get',url,j=None,returnJson='ALL')
+            self.accountData=rj['result']
+            # with open('acct_since_0.json','w') as outfile:
+            #     outfile.write(json.dumps(rj,indent=3))
+        # self.groupAccounts=[x for x in self.accountData.get('accounts',{})
+        #         if 'properties' in x.keys() and 'team' in x['properties'].get('subscriptionType')]
+        self.groupAccounts=[]
+        self.personalAccounts=[]
+        for account in self.accountData.get('accounts',[]):
+            if 'properties' in account.keys():
+                if 'team' in account['properties'].get('subscriptionType',''):
+                    self.groupAccounts.append(account)
+                else:
+                    self.personalAccounts.append(account)
+        # logging.info('The signed-in user is a member of these group accounts: '+str([x['properties']['title'] for x in self.groupAccounts]))
+        return self.accountData
+
+    # after getAccountData, all of the required data is available in self.accountData;
+    #  getMapList is just a convenience function that returns a chronologically sorted
+    #  list of map name strings, and corresponding mapIDs, for maps (and optionally
+    #  bookmarks) in a specified group account title; contents of all subfolders of the
+    #  specified group account are returned in the same flat list
+    # return value is a chronologically-sorted list of dicts (most recently updated first):
+    # getMapList('SAR Training Data') -->
+    # [
+    #   {
+    #       "id": ".....",
+    #       "title": "Academy White Cloud 2024 Day 5",
+    #       "updated": 1714957566248,
+    #       "type": "map"
+    #   },
+    #   {
+    #       "id": ".....",
+    #       "title": "Nevada City Enduro 2024",
+    #       "updated": 1714922628438,
+    #       "type": "map"
+    #   },
+    #   ...,
+    #   {
+    #       "id": ".....",
+    #       "title": "Omega Adademy 2024",
+    #       "updated": 1714522622568,
+    #       "type": "bookmark"
+    #   },...]
+    def getMapList(self,groupAccountTitle=None,includeBookmarks=True,refresh=False,titlesOnly=False):
+        if refresh or not self.accountData:
+            self.getAccountData()
+        mapLists=[]
+        rval=[]
+        if groupAccountTitle:
+            groupAccountIds=[x['id'] for x in self.groupAccounts if x['properties']['title']==groupAccountTitle]
+            if type(groupAccountIds)==list:
+                if len(groupAccountIds)==0:
+                    logging.warning('attempt to get map list for group account "'+groupAccountTitle+'", but the signed-in user is not a member of that group account; returning an empty map list.')
+                    return []
+                elif len(groupAccountIds)>1:
+                    logging.warning('the signed-in user is a member of more than one group account with the requested name "'+groupAccountTitle+'"; returning an empty list.')
+                    return []
+            else:
+                logging.warning('groupAccountIds was not a list; returning an empty list.')
+                return []
+            gid=groupAccountIds[0]
+            maps=[f for f in self.accountData['features']
+                    if 'properties' in f.keys()
+                    and f['properties'].get('class','')=='CollaborativeMap'
+                    and f['properties'].get('accountId','')==gid]
+            mapLists.append({'id':gid,'title':groupAccountTitle,'maps':maps})
+        else: # personal maps; allow for the possibility of multiple personal accounts
+            if len(self.personalAccounts)>1:
+                logging.info('The currently-signed-in user has more than one personal account; the return value will be a netsted list.')
+            for personalAccount in self.personalAccounts:
+                pid=personalAccount['id']
+                maps=[f for f in self.accountData['features']
+                        if 'properties' in f.keys()
+                        and f['properties'].get('class','')=='CollaborativeMap'
+                        and f['properties'].get('accountId','')==pid]
+                mapLists.append({'id':pid,'title':[x['properties']['title'] for x in self.accountData['accounts'] if x['id']==pid][0],'maps':maps})
+        for mapList in mapLists:
+            theList=[]
+            for map in mapList['maps']:
+                mp=map['properties']
+                md={
+                    'id':map['id'],
+                    'title':mp['title'],
+                    'updated':mp['updated'],
+                    'type':'map'
+                }
+                if md not in theList:
+                    theList.append(md)
+            if includeBookmarks:
+                bookmarks=[rel for rel in self.accountData['rels']
+                        if 'properties' in rel.keys()
+                        and rel['properties'].get('class','')=='UserAccountMapRel'
+                        and rel['properties'].get('accountId','')==mapList['id']]
+                for bookmark in bookmarks:
+                    bp=bookmark['properties']
+                    # testing on bookmarks from various QR codes shows that 'type'
+                    #  corresponds to permission: 10=read, 16=update, 20=write
+                    t=bp.get('type',0)
+                    if t==10:
+                        permission='read'
+                    elif t==16:
+                        permission='update'
+                    elif t==20:
+                        permission='write'
+                    else:
+                        permission='unknown'
+                    bd={
+                        'id':bp['mapId'],
+                        'title':bp['title'],
+                        'updated':bp['mapUpdated'],
+                        'type':'bookmark',
+                        'permission':permission
+                    }
+                    if bd not in theList:
+                        theList.append(bd)
+            # chronological sort by update timestamp
+            theList.sort(key=lambda x: x['updated'],reverse=True)
+            if titlesOnly:
+                rval.append([x['title'] for x in theList])
+            else:
+                rval.append(theList)
+        # if there's only one map list, return it as one list; otherwise return a nested list
+        if len(rval)==1:
+            rval=rval[0]
+        return rval
+
+    def getAllMapLists(self,includePersonal=False,includeBookmarks=True,refresh=False,titlesOnly=False):
+        if refresh or not self.accountData:
+            self.getAccountData()
+        theList=[]
+        if includePersonal:
+            personalRval=self.getMapList(includeBookmarks=includeBookmarks,refresh=False,titlesOnly=titlesOnly)
+            # logging.info('personalRval:'+json.dumps(personalRval,indent=3))
+            if type(personalRval[0])==dict: # not nested; a list of dicts
+                theList.append({'personalAccountTitle':self.personalAccounts[0]['properties']['title'],'mapList':personalRval})
+            else: # nested; multiple personal accounts; a list of lists dicts
+                n=0 # index to self.personalAccounts; this assumes the sequence will be the same
+                for personalAcct in personalRval:
+                    theList.append({'personalAccountTitle':self.personalAccounts[n]['properties']['title'],'mapList':personalAcct})
+                    n+=1
+        for gat in [x['properties']['title'] for x in self.groupAccounts]:
+            mapList=self.getMapList(gat,includeBookmarks=includeBookmarks,refresh=False,titlesOnly=titlesOnly)
+            theList.append({'groupAccountTitle':gat,'mapList':mapList})
+        return theList
+
+    def getMapTitle(self,mapID=None,refresh=False):
+        if refresh or not self.accountData:
+            self.getAccountData()
+        mapID=mapID or self.mapID
+        if not mapID:
+            logging.warning('getMapTitle was called with no mapID specified, but, the current session has no open map.')
+            return 'NONE'
+        titles=[x['properties']['title'] for x in self.accountData['features'] if x.get('id','').lower()==mapID.lower()]
+        if len(titles)>1:
+            logging.warning('More than one map have the specified map ID '+str(mapID)+':'+str(titles))
+            return []
+        elif len(titles)==0:
+            logging.warning('No maps have the specified map ID '+str(mapID))
+            return []
+        else:
+            return titles[0]
+    
+    def getGroupAccountTitles(self,refresh=False):
+        if refresh or not self.accountData:
+            self.getAccountData()
+        return [x['properties']['title'] for x in self.groupAccounts]
+
     def doSync(self):
         # logging.info('sync marker: '+self.mapID+' begin')
+        if not self.mapID or self.apiVersion<0:
+            logging.error('sync request invalid: this sartopo session is not associated with a map.')
+            return False
         if self.syncing:
             logging.warning('sync-within-sync requested; returning to calling code.')
             return False
@@ -659,6 +833,9 @@ class SartopoSession():
     #   then don't do a refresh unless forceImmediate is True
     #  since doSync() would be called from this thread, it is always blocking
     def refresh(self,blocking=False,forceImmediate=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('refresh request invalid: this sartopo session is not associated with a map.')
+            return False
         msg='refresh requested for map '+self.mapID+': '
         if self.syncing:
             msg+='sync already in progress'
@@ -681,11 +858,17 @@ class SartopoSession():
                     # logging.info(msg)
     
     def __del__(self):
-        logging.info('SartopoSession instance deleted for map '+self.mapID+'.')
-        if self.sync:
+        suffix=''
+        if self.mapID:
+            suffix=' for map '+self.mapID
+        logging.info('SartopoSession instance deleted'+suffix+'.')
+        if self.sync and self.lastSuccessfulSyncTimestamp>0:
             self.stop()
 
     def start(self):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('start request invalid: this sartopo session is not associated with a map.')
+            return False
         self.sync=True
         if self.syncThreadStarted:
             logging.info('Sartopo sync is already running for map '+self.mapID+'.')
@@ -695,14 +878,23 @@ class SartopoSession():
             self.syncThreadStarted=True
 
     def stop(self):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('stop request invalid: this sartopo session is not associated with a map.')
+            return False
         logging.info('Sartopo sync terminating for map '+self.mapID+'.')
         self.sync=False
 
     def pause(self):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('pause request invalid: this sartopo session is not associated with a map.')
+            return False
         logging.info('Pausing sync for map '+self.mapID+'...')
         self.syncPauseManual=True
 
     def resume(self):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('resume request invalid: this sartopo session is not associated with a map.')
+            return False
         logging.info('Resuming sync for map '+self.mapID+'.')
         self.syncPauseManual=False
     
@@ -765,11 +957,14 @@ class SartopoSession():
         timeout=timeout or self.syncTimeout
         newMap='[NEW]' in apiUrlEnd  # specific mapID that indicates a new map should be created
         if self.apiVersion<0:
-            logging.error("sendRequest: sartopo session is invalid; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
+            logging.error("sendRequest: sartopo session is invalid or is not associated with a map; request aborted: type="+str(type)+" apiUrlEnd="+str(apiUrlEnd))
             return False
         mid=self.apiUrlMid
         if 'api/' in apiUrlEnd.lower():
-            mid='/'
+            if apiUrlEnd[0]=='/':
+                mid=''
+            else:
+                mid='/'
         else:
             apiUrlEnd=apiUrlEnd.lower()
             if self.apiVersion>0:
@@ -780,8 +975,9 @@ class SartopoSession():
         #  destination and also a part of the pre-hashed data for signed requests
         if id and id!="": # sending online request with slash at the end causes failure
             apiUrlEnd=apiUrlEnd+"/"+id
-        mid=mid.replace("[MAPID]",self.mapID)
-        apiUrlEnd=apiUrlEnd.replace("[MAPID]",self.mapID)
+        if self.mapID:
+            mid=mid.replace("[MAPID]",self.mapID)
+            apiUrlEnd=apiUrlEnd.replace("[MAPID]",self.mapID)
         domainAndPort=domainAndPort or self.domainAndPort # use arg value if specified
         if not domainAndPort:
             logging.error("sendRequest was attempted but no valid domainAndPort was specified.")
@@ -793,8 +989,8 @@ class SartopoSession():
         if internet:
             if self.accountIdInternet:
                 accountId=self.accountIdInternet
-            else:
-                logging.warning('A request is about to be sent to the internet, but accountIdInternet was not specified.  The request will use accountId, but will fail if that ID does not have valid permissions at the internet host.')
+            # else:
+            #     logging.warning('A request is about to be sent to the internet, but accountIdInternet was not specified.  The request will use accountId, but will fail if that ID does not have valid permissions at the internet host.')
             prefix='https://'
             if not self.key or not self.id:
                 logging.error("There was an attempt to send an internet request, but 'id' and/or 'key' was not specified for this session.  The request will not be sent.")
@@ -988,6 +1184,9 @@ class SartopoSession():
             label="New Folder",
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addFolder request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         j['properties']={}
         j['properties']['title']=label
@@ -1022,6 +1221,9 @@ class SartopoSession():
             size=1,
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addMarker request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1073,6 +1275,9 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addLine request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1122,6 +1327,9 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addPolygon request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1182,6 +1390,9 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addLineAssignment request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1266,6 +1477,9 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addAreaAssignment request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1322,6 +1536,9 @@ class SartopoSession():
             folderId=None,
             existingId="",
             timeout=None):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addAppTrack request invalid: this sartopo session is not associated with a map.')
+            return False
         j={}
         jp={}
         jg={}
@@ -1360,6 +1577,9 @@ class SartopoSession():
         self.delFeature(id=id,fClass="marker",timeout=timeout)
 
     def delFeature(self,id="",fClass=None,timeout=None):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
+            return False
         if not fClass:
             f=self.getFeature(id=id)
             if f:
@@ -1384,9 +1604,12 @@ class SartopoSession():
             since=0,
             timeout=None,
             forceRefresh=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('getFeatures request invalid: this sartopo session is not associated with a map.')
+            return []
         timeout=timeout or self.syncTimeout
         # rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
-        # call refresh now; refresh will decide whether it needs to do a new call, based
+        # call refresh now; refresh will decide whether it needs to do a new doSync call, based
         #  on time since last doSync response - or, if specified with forceImmediate, will call
         #  doSync regardless of time since last doSync response
         self.refresh(forceImmediate=forceRefresh)
@@ -1474,6 +1697,9 @@ class SartopoSession():
             since=0,
             timeout=None,
             forceRefresh=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('getFeature request invalid: this sartopo session is not associated with a map.')
+            return False
         r=self.getFeatures(
             featureClass=featureClass,
             title=title,
@@ -1541,7 +1767,10 @@ class SartopoSession():
             geometry=None,
             timeout=None):
 
-        logging.info('editFeature called:'+str(properties))
+        # logging.info('editFeature called:'+str(properties))
+        if not self.mapID or self.apiVersion<0:
+            logging.error('editFeature request invalid: this sartopo session is not associated with a map.')
+            return False
         # PART 1: determine the exact id of the feature to be edited
         if id is None:
             # first, validate the arguments and adjust as needed
@@ -1663,6 +1892,9 @@ class SartopoSession():
         # build list of all titles (or letters as appropriate) from the cache
         #  try 'letter' first; if not found, use 'title'; default to 'NO-TITLE'
         # logging.info('getUsedSuffixList called: base='+str(base))
+        if not self.mapID or self.apiVersion<0:
+            logging.error('getUsedSuffixList request invalid: this sartopo session is not associated with a map.')
+            return False
         allTitles=[]
         for f in self.mapData['state']['features']:
             title='NO-TITLE'
@@ -1725,6 +1957,9 @@ class SartopoSession():
     #  the arguments (target, cutter) can be name (string), id (string), or feature (json)
 
     def cut(self,target,cutter,deleteCutter=True,useResultNameSuffix=True):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('cut request invalid: this sartopo session is not associated with a map.')
+            return False
         if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
@@ -1952,6 +2187,9 @@ class SartopoSession():
     # expand - expand target polygon to include the area of p2 polygon
 
     def expand(self,target,p2,deleteP2=True):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('expand request invalid: this sartopo session is not associated with a map.')
+            return False
         if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
@@ -2107,6 +2345,9 @@ class SartopoSession():
     #               that bounds the listed objects
 
     def getBounds(self,objectList,padDeg=0.0001,padPct=None):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('getBounds request invalid: this sartopo session is not associated with a map.')
+            return False
         rval=[9e12,9e12,-9e12,-9e12]
         for obj in objectList:
             if isinstance(obj,str): # if string, find feature by name; if id, find feature by id
@@ -2199,6 +2440,9 @@ class SartopoSession():
     #          grow the specified boundary polygon by the specified distance before cropping
 
     def crop(self,target,boundary,beyond=0.0001,deleteBoundary=False,useResultNameSuffix=False,drawSizedBoundary=False,noDraw=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('crop request invalid: this sartopo session is not associated with a map.')
+            return False
         if isinstance(target,str): # if string, find feature by name; if id, find feature by id
             targetStr=target
             if len(target)==36: # id
