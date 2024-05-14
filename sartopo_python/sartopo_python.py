@@ -222,7 +222,7 @@ class SartopoSession():
             if not self.openMap(self.mapID):
                 raise STSException
         else:
-            logging.info('Opening a SartopoSession object with no associated map.  Use .openMap(<mapID>) later to associate a map with this object.')
+            logging.info('Opening a SartopoSession object with no associated map.  Use .openMap(<mapID>) later to associate a map with this session.')
 
     def openMap(self,mapID=None):
         if self.mapID and self.lastSuccessfulSyncTimestamp>0:
@@ -459,7 +459,7 @@ class SartopoSession():
                     self.accountData=self.accountData['result']
         else:
             url='/api/v1/acct/'+self.accountId+'/since/0'
-            logging.info('  sending GET request 2 to '+url)
+            # logging.info('  sending GET request 2 to '+url)
             rj=self.sendRequest('get',url,j=None,returnJson='ALL')
             self.accountData=rj['result']
             # with open('acct_since_0.json','w') as outfile:
@@ -556,11 +556,23 @@ class SartopoSession():
                         and rel['properties'].get('accountId','')==mapList['id']]
                 for bookmark in bookmarks:
                     bp=bookmark['properties']
+                    # testing on bookmarks from various QR codes shows that 'type'
+                    #  corresponds to permission: 10=read, 16=update, 20=write
+                    t=bp.get('type',0)
+                    if t==10:
+                        permission='read'
+                    elif t==16:
+                        permission='update'
+                    elif t==20:
+                        permission='write'
+                    else:
+                        permission='unknown'
                     bd={
                         'id':bp['mapId'],
                         'title':bp['title'],
                         'updated':bp['mapUpdated'],
-                        'type':'bookmark'
+                        'type':'bookmark',
+                        'permission':permission
                     }
                     if bd not in theList:
                         theList.append(bd)
@@ -973,8 +985,8 @@ class SartopoSession():
         if internet:
             if self.accountIdInternet:
                 accountId=self.accountIdInternet
-            else:
-                logging.warning('A request is about to be sent to the internet, but accountIdInternet was not specified.  The request will use accountId, but will fail if that ID does not have valid permissions at the internet host.')
+            # else:
+            #     logging.warning('A request is about to be sent to the internet, but accountIdInternet was not specified.  The request will use accountId, but will fail if that ID does not have valid permissions at the internet host.')
             prefix='https://'
             if not self.key or not self.id:
                 logging.error("There was an attempt to send an internet request, but 'id' and/or 'key' was not specified for this session.  The request will not be sent.")
