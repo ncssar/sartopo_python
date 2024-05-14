@@ -606,9 +606,13 @@ class SartopoSession():
             theList.append({'groupAccountTitle':gat,'mapList':mapList})
         return theList
 
-    def getMapTitle(self,mapID,refresh=False):
+    def getMapTitle(self,mapID=None,refresh=False):
         if refresh or not self.accountData:
             self.getAccountData()
+        mapID=mapID or self.mapID
+        if not mapID:
+            logging.warning('getMapTitle was called with no mapID specified, but, the current session has no open map.')
+            return 'NONE'
         titles=[x['properties']['title'] for x in self.accountData['features'] if x.get('id','').lower()==mapID.lower()]
         if len(titles)>1:
             logging.warning('More than one map have the specified map ID '+str(mapID)+':'+str(titles))
