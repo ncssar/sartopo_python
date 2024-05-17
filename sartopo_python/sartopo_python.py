@@ -1580,42 +1580,82 @@ class SartopoSession():
         #     logging.info("At request adding points to track:"+str(existingId)+":"+str(since)+":"+str(j))
         #     return self.sendRequest("post","since/"+str(since),j,id=str(existingId),returnJson="ID")
 
-    def delMarker(self,id="",timeout=None):
-        self.delFeature(id=id,fClass="marker",timeout=timeout)
+    def delMarker(self,markerOrId="",timeout=None):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
+            return False
+        self.delFeature(featureOrId=markerOrId,fClass="marker",timeout=timeout)
 
     # delMarkers - calls asynchronous non-blocking delFeatures
-    def delMarkers(self,ids=[],timeout=None):
+    def delMarkers(self,markersOrIds=[],timeout=None):
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
             return False
-        self.delFeatures(idAndClassList=[{'id':id,'class':'Marker'} for id in ids],timeout=timeout)
+        if type(markersOrIds[0])==str:
+            ids=markersOrIds
+        elif type(markersOrIds[0])==dict:
+            ids=[i.get('id','') for i in markersOrIds]
+        else:
+            logging.error('invalid argument in call to delMarkers: '+str(markersOrIds))
+            return False
+        self.delFeatures(featuresOrIdAndClassList=[{'id':id,'class':'Marker'} for id in ids],timeout=timeout)
 
-    def delFeature(self,id="",fClass=None,timeout=None):
+    def delFeature(self,featureOrId="",fClass=None,timeout=None):
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
             return False
-        if not fClass:
-            f=self.getFeature(id=id)
-            if f:
-                fClass=f['properties']['class']
-            else:
-                logging.error('delFeature: requested id "'+id+'" does not exist in the cache')
-                return False
+        if type(featureOrId)==str and featureOrId!='':
+            id=featureOrId
+            if not fClass:
+                try:
+                    fClass=self.getFeature(id=id)['properties']['class']
+                except:
+                    logging.error('unable to determine feature class during delFeature with ID specified')
+                    return False
+        elif type(featureOrId)==dict and 'id' in featureOrId.keys():
+            id=featureOrId['id']
+            if not fClass:
+                try:
+                    fClass=featureOrId['properties']['class']
+                except:
+                    logging.error('unable to determine feature class during delFeature with feature object specified')
+                    return False
+        else:
+            logging.error('invalid argument in call to delFeature: '+str(markersOrIds))
+            return False
+        # if not fClass:
+        #     f=self.getFeature(id=id)
+        #     if f:
+        #         fClass=f['properties']['class']
+        #     else:
+        #         logging.error('delFeature: requested id "'+id+'" does not exist in the cache')
+        #         return False
         return self.sendRequest("delete",fClass,None,id=str(id),returnJson="ALL",timeout=timeout)
 
-    # delFeatures - asynchronously send a batch of non-blocking delFeature calls
-    #  idAndClassList - a list of dicts, with two items per dict: 'id' and 'class'
+    # delFeatures - asynchronously send a batch of non-blocking delFeature requests
+    #  featuresOrIdAndClassList - a list of dicts - entire features, or, two items per dict: 'id' and 'class'
     #  see discussion at https://github.com/ncssar/sartopo_python/issues/34
-    def delFeatures(self,idAndClassList=[],timeout=None):
+    def delFeatures(self,featuresOrIdAndClassList=[],timeout=None):
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
+            return False
+        if type(featuresOrIdAndClassList[0]) is not dict:
+            logging.error('invalid argument in call to delFeatures: '+str(featuresOrIdAndClassList))
+            return False
+        if 'properties' in featuresOrIdAndClassList[0].keys():
+            idAndClassList=[{'id':i['id'],'class':i['properties']['class']} for i in featuresOrIdAndClassList]
+        elif 'class' in featuresOrIdAndClassList[0].keys():
+            idAndClassList=featuresOrIdAndClassList
+        else:
+            logging.error('invalid argument in call to delFeatures: '+str(featuresOrIdAndClassList))
             return False
         logging.info('Deleting '+str(len(idAndClassList))+' features in one asynchronous non-blocking batch of requests:')
         loop=asyncio.get_event_loop()
-        future=asyncio.ensure_future(self.delAsync(idAndClassList,timeout=timeout))
+        future=asyncio.ensure_future(self._delAsync(idAndClassList,timeout=timeout))
         loop.run_until_complete(future)
 
-    async def delAsync(self,idAndClassList=[],timeout=None):
+    # _delAsync - not meant to be called by the user - only called from delFeatures
+    async def _delAsync(self,idAndClassList=[],timeout=None):
         with ThreadPoolExecutor(max_workers=10) as executor:
             loop=asyncio.get_event_loop()
             tasks=[
