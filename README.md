@@ -9,6 +9,10 @@ This module is intended to provide a simple, API-version-agnostic sartopo
 This python code is in no way supported or maintained by caltopo LLC
  or the authors of caltopo.com or sartopo.com.
 
+## New for v2.0.0 5-17-2024:
+Major release.  41 issues closed since v1.1.2 (June 2, 2020), inclung many major bug fixes, and many API enhancements.  Check the GitHub repository for documentation updates.
+[Click Here](https://github.com/ncssar/sartopo_python/issues?page=1&q=is%3Aissue+closed%3A%3E2020-06-02) to see the full list of issues closed since v1.1.2.
+
 ## New for v1.1.0. 5-30-2020:
 Signed requests for online maps are now supported.  The same requests that work here for offline maps are now also working for online maps.  See the signed request explanation at the bottom of this README file.
 
