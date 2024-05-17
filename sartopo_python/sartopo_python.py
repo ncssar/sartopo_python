@@ -133,6 +133,7 @@
 
 import hmac
 import base64
+import grequests # need to import this before requests, due to monkeypatching
 import requests
 import json
 import configparser
@@ -950,7 +951,7 @@ class SartopoSession():
         # logging.info("hashed data:"+str(token))
         return token
 
-    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None):
+    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None,buildOnly=False):
         # objgraph.show_growth()
         # logging.info('RAM:'+str(process.memory_info().rss/1024**2)+'MB')
         self.syncPause=True
@@ -1065,7 +1066,10 @@ class SartopoSession():
             logging.info("SENDING DELETE to '"+url+"':")
             logging.info(json.dumps(paramsPrint,indent=3))
             # logging.info("Key:"+str(self.key))
-            r=self.s.delete(url,params=params,timeout=timeout,proxies=self.proxyDict)   ## use params for query vs data for body data
+            if buildOnly:
+                return {'url':url,'params':params}
+            else:
+                r=self.s.delete(url,params=params,timeout=timeout,proxies=self.proxyDict)   ## use params for query vs data for body data
             # logging.info("URL:"+str(url))
             # logging.info("Ris:"+str(r))
         else:
@@ -1588,6 +1592,28 @@ class SartopoSession():
                 logging.error('delFeature: requested id "'+id+'" does not exist in the cache')
                 return False
         return self.sendRequest("delete",fClass,None,id=str(id),returnJson="ALL",timeout=timeout)
+
+    # delFeatures - asynchronously send a batch of non-blocking delFeature calls
+    #  idAndClassList - a list of dicts, with two items per dict: 'id' and 'class'
+    def delFeatures(self,idAndClassList=[],timeout=None):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
+            return False
+        theList=[]
+        logging.info('Building the list of asynchronous requests to send:')
+        for i in idAndClassList:
+            r=self.sendRequest("delete",i['class'],None,id=str(i['id']),returnJson="ALL",timeout=timeout,buildOnly=True)
+            logging.info(json.dumps(r,indent=3))
+            # theList.append(grequests.delete(r['url'],params=r.get('params',{}),data=r.get('data',{})))
+            theList.append(grequests.delete(r['url'],params=r.get('params',{})))
+
+            # .map is blocking; try individual .send calls instead, per https://stackoverflow.com/a/16016635/3577105
+            # grequests.send(grequests.delete(r['url'],params=r.get('params',{})),grequests.Pool(1))
+            
+        # logging.info(json.dumps(theList,indent=3))
+        responses=grequests.map(theList) # .map() still blocks until all responses are received
+        # logging.info('responses:')
+        logging.info(str(responses))
 
     # getFeatures - attempts to get data from the local cache (self.madData); refreshes and tries again if necessary
     #   determining if a refresh is necessary:
