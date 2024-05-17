@@ -1583,6 +1583,13 @@ class SartopoSession():
     def delMarker(self,id="",timeout=None):
         self.delFeature(id=id,fClass="marker",timeout=timeout)
 
+    # delMarkers - calls asynchronous non-blocking delFeatures
+    def delMarkers(self,ids=[],timeout=None):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
+            return False
+        self.delFeatures(idAndClassList=[{'id':id,'class':'Marker'} for id in ids],timeout=timeout)
+
     def delFeature(self,id="",fClass=None,timeout=None):
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
