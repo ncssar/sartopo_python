@@ -133,7 +133,7 @@
 
 import hmac
 import base64
-import grequests # need to import this before requests, due to monkeypatching
+# import grequests # need to import this before requests, due to monkeypatching
 import requests
 import json
 import configparser
@@ -143,6 +143,9 @@ import logging
 import sys
 import threading
 import copy
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+import functools
 
 # import objgraph
 # import psutil
@@ -1599,21 +1602,62 @@ class SartopoSession():
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
             return False
-        theList=[]
-        logging.info('Building the list of asynchronous requests to send:')
-        for i in idAndClassList:
-            r=self.sendRequest("delete",i['class'],None,id=str(i['id']),returnJson="ALL",timeout=timeout,buildOnly=True)
-            logging.info(json.dumps(r,indent=3))
-            # theList.append(grequests.delete(r['url'],params=r.get('params',{}),data=r.get('data',{})))
-            theList.append(grequests.delete(r['url'],params=r.get('params',{})))
+        
+        loop=asyncio.get_event_loop()
+        future=asyncio.ensure_future(self.delAsync(idAndClassList,timeout=timeout))
+        loop.run_until_complete(future)
 
+        # logging.info('Building the list of asynchronous requests to send:')
+        # for i in idAndClassList:
+        #     r=self.sendRequest("delete",i['class'],None,id=str(i['id']),returnJson="ALL",timeout=timeout,buildOnly=True)
+        #     logging.info(json.dumps(r,indent=3))
+
+            # theList.append(grequests.delete(r['url'],params=r.get('params',{}),data=r.get('data',{})))
+            # theList.append(grequests.delete(r['url'],params=r.get('params',{})))
+
+            # this method has thread errors
+            # threading.Thread(target=self.sendRequest,
+            #         args=['delete',i['class'],None],
+            #         kwargs={
+            #             'id':str(i['id']),
+            #             'returnJson':'ALL',
+            #             'timeout':timeout}).start()
+
+            
             # .map is blocking; try individual .send calls instead, per https://stackoverflow.com/a/16016635/3577105
             # grequests.send(grequests.delete(r['url'],params=r.get('params',{})),grequests.Pool(1))
             
         # logging.info(json.dumps(theList,indent=3))
-        responses=grequests.map(theList) # .map() still blocks until all responses are received
+        # responses=grequests.map(theList) # .map() still blocks until all responses are received
         # logging.info('responses:')
-        logging.info(str(responses))
+        # logging.info(str(responses))
+
+    async def delAsync(self,idAndClassList=[],timeout=None):
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            loop=asyncio.get_event_loop()
+            tasks=[
+                loop.run_in_executor(
+                    executor,
+                    functools.partial(
+                        self.sendRequest,
+                        'delete',
+                        i['class'],
+                        None,
+                        id=str(i['id']),
+                        returnJson='ALL',
+                        timeout=timeout))
+                    # self.sendRequest,
+                    # *(
+                    #     'delete',
+                    #     i['class'],
+                    #     None),
+                    # {
+                    #     'id':str(i['id']),
+                    #     'returnJson':'ALL',
+                    #     'timeout':timeout})
+                    for i in idAndClassList]
+            for response in await asyncio.gather(*tasks):
+                pass
 
     # getFeatures - attempts to get data from the local cache (self.madData); refreshes and tries again if necessary
     #   determining if a refresh is necessary:
