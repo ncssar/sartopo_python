@@ -7,17 +7,18 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="sartopo_python",
-    version="1.1.2",
+    version="2.0.0",
     author="Tom Grundy",
     author_email="nccaves@yahoo.com",
-    description="Python interface to unofficial SARTopo API",
+    description="Python interface to unofficial CalTopo/SARTopo API",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ncssar/sartopo_python",
     packages=setuptools.find_packages(),
-    download_url="https://github.com/ncssar/sartopo_python/archive/1.1.2.tar.gz",
+    download_url="https://github.com/ncssar/sartopo_python/archive/2.0.0.tar.gz",
     install_requires=[
-        'requests',
+        'Shapely>=2.0.2',
+        'requests'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
