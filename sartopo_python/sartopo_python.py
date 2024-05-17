@@ -133,7 +133,6 @@
 
 import hmac
 import base64
-# import grequests # need to import this before requests, due to monkeypatching
 import requests
 import json
 import configparser
@@ -954,7 +953,7 @@ class SartopoSession():
         # logging.info("hashed data:"+str(token))
         return token
 
-    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None,buildOnly=False):
+    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None):
         # objgraph.show_growth()
         # logging.info('RAM:'+str(process.memory_info().rss/1024**2)+'MB')
         self.syncPause=True
@@ -1069,10 +1068,7 @@ class SartopoSession():
             logging.info("SENDING DELETE to '"+url+"'")
             # logging.info(json.dumps(paramsPrint,indent=3))
             # logging.info("Key:"+str(self.key))
-            if buildOnly:
-                return {'url':url,'params':params}
-            else:
-                r=self.s.delete(url,params=params,timeout=timeout,proxies=self.proxyDict)   ## use params for query vs data for body data
+            r=self.s.delete(url,params=params,timeout=timeout,proxies=self.proxyDict)   ## use params for query vs data for body data
             # logging.info("URL:"+str(url))
             # logging.info("Ris:"+str(r))
         else:
@@ -1623,13 +1619,6 @@ class SartopoSession():
         else:
             logging.error('invalid argument in call to delFeature: '+str(markersOrIds))
             return False
-        # if not fClass:
-        #     f=self.getFeature(id=id)
-        #     if f:
-        #         fClass=f['properties']['class']
-        #     else:
-        #         logging.error('delFeature: requested id "'+id+'" does not exist in the cache')
-        #         return False
         return self.sendRequest("delete",fClass,None,id=str(id),returnJson="ALL",timeout=timeout)
 
     # delFeatures - asynchronously send a batch of non-blocking delFeature requests
