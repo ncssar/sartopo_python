@@ -1003,8 +1003,8 @@ class SartopoSession():
         wrapInJsonKey=True
         if newMap:
             url=prefix+domainAndPort+'/api/v1/acct/'+accountId+'/CollaborativeMap' # works for CTD 4221 and up
-        if '/since/' not in url:
-            logging.info("sending "+str(type)+" to "+url)
+        # if '/since/' not in url:
+        #     logging.info("sending "+str(type)+" to "+url)
         params={}
         paramsPrint={}
         if type=="post":
@@ -1049,8 +1049,8 @@ class SartopoSession():
                 r=self.s.get(url,params=params,timeout=timeout,proxies=self.proxyDict,allow_redirects=False)
             else:
                 r=self.s.get(url,timeout=timeout,proxies=self.proxyDict)
-            logging.info("SENDING GET to '"+url+"':")
-            logging.info(json.dumps(paramsPrint,indent=3))
+            logging.info("SENDING GET to '"+url+"'")
+            # logging.info(json.dumps(paramsPrint,indent=3))
             # logging.info('Prepared request URL:')
             # logging.info(r.request.url)
         elif type=="delete":
@@ -1066,8 +1066,8 @@ class SartopoSession():
                 paramsPrint['signature']='.....'
             else:
                 paramsPrint=params
-            logging.info("SENDING DELETE to '"+url+"':")
-            logging.info(json.dumps(paramsPrint,indent=3))
+            logging.info("SENDING DELETE to '"+url+"'")
+            # logging.info(json.dumps(paramsPrint,indent=3))
             # logging.info("Key:"+str(self.key))
             if buildOnly:
                 return {'url':url,'params':params}
@@ -1598,39 +1598,15 @@ class SartopoSession():
 
     # delFeatures - asynchronously send a batch of non-blocking delFeature calls
     #  idAndClassList - a list of dicts, with two items per dict: 'id' and 'class'
+    #  see discussion at https://github.com/ncssar/sartopo_python/issues/34
     def delFeatures(self,idAndClassList=[],timeout=None):
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
             return False
-        
+        logging.info('Deleting '+str(len(idAndClassList))+' features in one asynchronous non-blocking batch of requests:')
         loop=asyncio.get_event_loop()
         future=asyncio.ensure_future(self.delAsync(idAndClassList,timeout=timeout))
         loop.run_until_complete(future)
-
-        # logging.info('Building the list of asynchronous requests to send:')
-        # for i in idAndClassList:
-        #     r=self.sendRequest("delete",i['class'],None,id=str(i['id']),returnJson="ALL",timeout=timeout,buildOnly=True)
-        #     logging.info(json.dumps(r,indent=3))
-
-            # theList.append(grequests.delete(r['url'],params=r.get('params',{}),data=r.get('data',{})))
-            # theList.append(grequests.delete(r['url'],params=r.get('params',{})))
-
-            # this method has thread errors
-            # threading.Thread(target=self.sendRequest,
-            #         args=['delete',i['class'],None],
-            #         kwargs={
-            #             'id':str(i['id']),
-            #             'returnJson':'ALL',
-            #             'timeout':timeout}).start()
-
-            
-            # .map is blocking; try individual .send calls instead, per https://stackoverflow.com/a/16016635/3577105
-            # grequests.send(grequests.delete(r['url'],params=r.get('params',{})),grequests.Pool(1))
-            
-        # logging.info(json.dumps(theList,indent=3))
-        # responses=grequests.map(theList) # .map() still blocks until all responses are received
-        # logging.info('responses:')
-        # logging.info(str(responses))
 
     async def delAsync(self,idAndClassList=[],timeout=None):
         with ThreadPoolExecutor(max_workers=10) as executor:
@@ -1646,15 +1622,6 @@ class SartopoSession():
                         id=str(i['id']),
                         returnJson='ALL',
                         timeout=timeout))
-                    # self.sendRequest,
-                    # *(
-                    #     'delete',
-                    #     i['class'],
-                    #     None),
-                    # {
-                    #     'id':str(i['id']),
-                    #     'returnJson':'ALL',
-                    #     'timeout':timeout})
                     for i in idAndClassList]
             for response in await asyncio.gather(*tasks):
                 pass
