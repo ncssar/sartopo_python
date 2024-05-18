@@ -185,6 +185,43 @@ class SartopoSession():
             syncCallback=None,
             useFiddlerProxy=False,
             caseSensitiveComparisons=False):  # case-insensitive comparisons by default, see caseMatch()
+        """_summary_
+
+        :param domainAndPort: _description_, defaults to 'localhost:8080'
+        :type domainAndPort: str, optional
+        :param mapID: _description_, defaults to None
+        :type mapID: _type_, optional
+        :param configpath: _description_, defaults to None
+        :type configpath: _type_, optional
+        :param account: _description_, defaults to None
+        :type account: _type_, optional
+        :param id: _description_, defaults to None
+        :type id: _type_, optional
+        :param syncInterval: _description_, defaults to 5
+        :type syncInterval: int, optional
+        :param syncTimeout: _description_, defaults to 10
+        :type syncTimeout: int, optional
+        :param syncDumpFile: _description_, defaults to None
+        :type syncDumpFile: _type_, optional
+        :param cacheDumpFile: _description_, defaults to None
+        :type cacheDumpFile: _type_, optional
+        :param propertyUpdateCallback: _description_, defaults to None
+        :type propertyUpdateCallback: _type_, optional
+        :param geometryUpdateCallback: _description_, defaults to None
+        :type geometryUpdateCallback: _type_, optional
+        :param newFeatureCallback: _description_, defaults to None
+        :type newFeatureCallback: _type_, optional
+        :param deletedFeatureCallback: _description_, defaults to None
+        :type deletedFeatureCallback: _type_, optional
+        :param syncCallback: _description_, defaults to None
+        :type syncCallback: _type_, optional
+        :param useFiddlerProxy: _description_, defaults to False
+        :type useFiddlerProxy: bool, optional
+        :param caseSensitiveComparisons: _description_, defaults to False
+        :type caseSensitiveComparisons: bool, optional
+        :raises STSException: _description_
+        :raises STSException: _description_
+        """            
         self.s=requests.session()
         self.apiVersion=-1
         self.mapID=mapID
@@ -228,6 +265,14 @@ class SartopoSession():
             logging.info('Opening a SartopoSession object with no associated map.  Use .openMap(<mapID>) later to associate a map with this session.')
 
     def openMap(self,mapID=None):
+        """_summary_
+
+        :param mapID: _description_, defaults to None
+        :type mapID: _type_, optional
+        :raises STSException: _description_
+        :return: _description_
+        :rtype: _type_
+        """        
         if self.mapID and self.lastSuccessfulSyncTimestamp>0:
             logging.warning('WARNING: this SartopoSession object is already connected to map '+self.mapID+'.  Call to openMap ignored.')
             return
@@ -299,6 +344,11 @@ class SartopoSession():
         return True
 
     def setupSession(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """        
         # set a flag: is this an internet session?
         #  if so, id and key are strictly required, and accountId is needed to print
         #  if not, all three are only needed in order to print
@@ -408,12 +458,30 @@ class SartopoSession():
         return True
 
     def caseMatch(self,a,b):
+        """_summary_
+
+        :param a: _description_
+        :type a: _type_
+        :param b: _description_
+        :type b: _type_
+        :return: _description_
+        :rtype: _type_
+        """        
         if isinstance(a,str) and isinstance(b,str) and not self.caseSensitiveComparisons:
             a=a.upper()
             b=b.upper()
         return a==b
 
     def sendUserdata(self,activeLayers=[['mbt',1]],center=[-120,39],zoom=13):
+        """_summary_
+
+        :param activeLayers: _description_, defaults to [['mbt',1]]
+        :type activeLayers: list, optional
+        :param center: _description_, defaults to [-120,39]
+        :type center: list, optional
+        :param zoom: _description_, defaults to 13
+        :type zoom: int, optional
+        """        
         j={
             'map':{
                 # 'config':{
@@ -452,6 +520,13 @@ class SartopoSession():
     #  - bookmarks (not maps) are in the 'rels' list, with properties.class:UserAccountMapRel
 
     def getAccountData(self,fromFileName=None):
+        """_summary_
+
+        :param fromFileName: _description_, defaults to None
+        :type fromFileName: _type_, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         logging.info('Getting account data:')
         if fromFileName:
             self.accoundData={}
@@ -508,6 +583,19 @@ class SartopoSession():
     #       "type": "bookmark"
     #   },...]
     def getMapList(self,groupAccountTitle=None,includeBookmarks=True,refresh=False,titlesOnly=False):
+        """_summary_
+
+        :param groupAccountTitle: _description_, defaults to None
+        :type groupAccountTitle: _type_, optional
+        :param includeBookmarks: _description_, defaults to True
+        :type includeBookmarks: bool, optional
+        :param refresh: _description_, defaults to False
+        :type refresh: bool, optional
+        :param titlesOnly: _description_, defaults to False
+        :type titlesOnly: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if refresh or not self.accountData:
             self.getAccountData()
         mapLists=[]
@@ -591,6 +679,19 @@ class SartopoSession():
         return rval
 
     def getAllMapLists(self,includePersonal=False,includeBookmarks=True,refresh=False,titlesOnly=False):
+        """_summary_
+
+        :param includePersonal: _description_, defaults to False
+        :type includePersonal: bool, optional
+        :param includeBookmarks: _description_, defaults to True
+        :type includeBookmarks: bool, optional
+        :param refresh: _description_, defaults to False
+        :type refresh: bool, optional
+        :param titlesOnly: _description_, defaults to False
+        :type titlesOnly: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if refresh or not self.accountData:
             self.getAccountData()
         theList=[]
@@ -610,6 +711,15 @@ class SartopoSession():
         return theList
 
     def getMapTitle(self,mapID=None,refresh=False):
+        """_summary_
+
+        :param mapID: _description_, defaults to None
+        :type mapID: _type_, optional
+        :param refresh: _description_, defaults to False
+        :type refresh: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if refresh or not self.accountData:
             self.getAccountData()
         mapID=mapID or self.mapID
@@ -627,11 +737,23 @@ class SartopoSession():
             return titles[0]
     
     def getGroupAccountTitles(self,refresh=False):
+        """_summary_
+
+        :param refresh: _description_, defaults to False
+        :type refresh: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if refresh or not self.accountData:
             self.getAccountData()
         return [x['properties']['title'] for x in self.groupAccounts]
 
     def doSync(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """        
         # logging.info('sync marker: '+self.mapID+' begin')
         if not self.mapID or self.apiVersion<0:
             logging.error('sync request invalid: this sartopo session is not associated with a map.')
@@ -836,6 +958,15 @@ class SartopoSession():
     #   then don't do a refresh unless forceImmediate is True
     #  since doSync() would be called from this thread, it is always blocking
     def refresh(self,blocking=False,forceImmediate=False):
+        """_summary_
+
+        :param blocking: _description_, defaults to False
+        :type blocking: bool, optional
+        :param forceImmediate: _description_, defaults to False
+        :type forceImmediate: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('refresh request invalid: this sartopo session is not associated with a map.')
             return False
@@ -861,6 +992,8 @@ class SartopoSession():
                     # logging.info(msg)
     
     def __del__(self):
+        """_summary_
+        """        
         suffix=''
         if self.mapID:
             suffix=' for map '+self.mapID
@@ -869,6 +1002,11 @@ class SartopoSession():
             self.stop()
 
     def start(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('start request invalid: this sartopo session is not associated with a map.')
             return False
@@ -881,6 +1019,11 @@ class SartopoSession():
             self.syncThreadStarted=True
 
     def stop(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('stop request invalid: this sartopo session is not associated with a map.')
             return False
@@ -888,6 +1031,11 @@ class SartopoSession():
         self.sync=False
 
     def pause(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('pause request invalid: this sartopo session is not associated with a map.')
             return False
@@ -895,6 +1043,11 @@ class SartopoSession():
         self.syncPauseManual=True
 
     def resume(self):
+        """_summary_
+
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('resume request invalid: this sartopo session is not associated with a map.')
             return False
@@ -908,6 +1061,8 @@ class SartopoSession():
     #  iterative rather than recursive (which would eventually hit recursion limit issues),
     #  and it allows the blocking sleep call to happen here instead of inside doSync.
     def _syncLoop(self):
+        """_summary_
+        """        
         if self.syncCompletedCount==0:
             logging.info('This is the first sync attempt; pausing for the normal sync interval before starting sync.')
             time.sleep(self.syncInterval)
@@ -947,6 +1102,13 @@ class SartopoSession():
     # return the token needed for signed request
     #  (to be used as they value for the 'signature' key of request params dict)
     def getToken(self,data):
+        """_summary_
+
+        :param data: _description_
+        :type data: _type_
+        :return: _description_
+        :rtype: _type_
+        """        
         # logging.info("pre-hashed data:"+data)                
         token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
         token=base64.b64encode(token).decode()
@@ -954,6 +1116,25 @@ class SartopoSession():
         return token
 
     def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None):
+        """_summary_
+
+        :param type: _description_
+        :type type: _type_
+        :param apiUrlEnd: _description_
+        :type apiUrlEnd: _type_
+        :param j: _description_
+        :type j: _type_
+        :param id: _description_, defaults to ""
+        :type id: str, optional
+        :param returnJson: _description_, defaults to None
+        :type returnJson: _type_, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :param domainAndPort: _description_, defaults to None
+        :type domainAndPort: _type_, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         # objgraph.show_growth()
         # logging.info('RAM:'+str(process.memory_info().rss/1024**2)+'MB')
         self.syncPause=True
@@ -1187,6 +1368,17 @@ class SartopoSession():
             label="New Folder",
             timeout=None,
             queue=False):
+        """_summary_
+
+        :param label: _description_, defaults to "New Folder"
+        :type label: str, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :param queue: _description_, defaults to False
+        :type queue: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addFolder request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1224,6 +1416,37 @@ class SartopoSession():
             size=1,
             timeout=None,
             queue=False):
+        """_summary_
+
+        :param lat: _description_
+        :type lat: _type_
+        :param lon: _description_
+        :type lon: _type_
+        :param title: _description_, defaults to 'New Marker'
+        :type title: str, optional
+        :param description: _description_, defaults to ''
+        :type description: str, optional
+        :param color: _description_, defaults to '#FF0000'
+        :type color: str, optional
+        :param symbol: _description_, defaults to 'point'
+        :type symbol: str, optional
+        :param rotation: _description_, defaults to None
+        :type rotation: _type_, optional
+        :param folderId: _description_, defaults to None
+        :type folderId: _type_, optional
+        :param existingId: _description_, defaults to None
+        :type existingId: _type_, optional
+        :param update: _description_, defaults to 0
+        :type update: int, optional
+        :param size: _description_, defaults to 1
+        :type size: int, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :param queue: _description_, defaults to False
+        :type queue: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addMarker request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1278,6 +1501,35 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        """_summary_
+
+        :param points: _description_
+        :type points: _type_
+        :param title: _description_, defaults to 'New Line'
+        :type title: str, optional
+        :param description: _description_, defaults to ''
+        :type description: str, optional
+        :param width: _description_, defaults to 2
+        :type width: int, optional
+        :param opacity: _description_, defaults to 1
+        :type opacity: int, optional
+        :param color: _description_, defaults to '#FF0000'
+        :type color: str, optional
+        :param pattern: _description_, defaults to 'solid'
+        :type pattern: str, optional
+        :param gpstype: _description_, defaults to 'TRACK'
+        :type gpstype: str, optional
+        :param folderId: _description_, defaults to None
+        :type folderId: _type_, optional
+        :param existingId: _description_, defaults to None
+        :type existingId: _type_, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :param queue: _description_, defaults to False
+        :type queue: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addLine request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1330,6 +1582,37 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        """_summary_
+
+        :param points: _description_
+        :type points: _type_
+        :param title: _description_, defaults to 'New Shape'
+        :type title: str, optional
+        :param folderId: _description_, defaults to None
+        :type folderId: _type_, optional
+        :param description: _description_, defaults to ''
+        :type description: str, optional
+        :param strokeOpacity: _description_, defaults to 1
+        :type strokeOpacity: int, optional
+        :param strokeWidth: _description_, defaults to 2
+        :type strokeWidth: int, optional
+        :param fillOpacity: _description_, defaults to 0.1
+        :type fillOpacity: float, optional
+        :param stroke: _description_, defaults to '#FF0000'
+        :type stroke: str, optional
+        :param fill: _description_, defaults to '#FF0000'
+        :type fill: str, optional
+        :param gpstype: _description_, defaults to 'TRACK'
+        :type gpstype: str, optional
+        :param existingId: _description_, defaults to None
+        :type existingId: _type_, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :param queue: _description_, defaults to False
+        :type queue: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addPolygon request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1393,6 +1676,57 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        """_summary_
+
+        :param points: _description_
+        :type points: _type_
+        :param number: _description_, defaults to None
+        :type number: _type_, optional
+        :param letter: _description_, defaults to None
+        :type letter: _type_, optional
+        :param opId: _description_, defaults to None
+        :type opId: _type_, optional
+        :param folderId: _description_, defaults to None
+        :type folderId: _type_, optional
+        :param resourceType: _description_, defaults to 'GROUND'
+        :type resourceType: str, optional
+        :param teamSize: _description_, defaults to 0
+        :type teamSize: int, optional
+        :param priority: _description_, defaults to 'LOW'
+        :type priority: str, optional
+        :param responsivePOD: _description_, defaults to 'LOW'
+        :type responsivePOD: str, optional
+        :param unresponsivePOD: _description_, defaults to 'LOW'
+        :type unresponsivePOD: str, optional
+        :param cluePOD: _description_, defaults to 'LOW'
+        :type cluePOD: str, optional
+        :param description: _description_, defaults to ''
+        :type description: str, optional
+        :param previousEfforts: _description_, defaults to ''
+        :type previousEfforts: str, optional
+        :param transportation: _description_, defaults to ''
+        :type transportation: str, optional
+        :param timeAllocated: _description_, defaults to 0
+        :type timeAllocated: int, optional
+        :param primaryFrequency: _description_, defaults to ''
+        :type primaryFrequency: str, optional
+        :param secondaryFrequency: _description_, defaults to ''
+        :type secondaryFrequency: str, optional
+        :param preparedBy: _description_, defaults to ''
+        :type preparedBy: str, optional
+        :param gpstype: _description_, defaults to 'TRACK'
+        :type gpstype: str, optional
+        :param status: _description_, defaults to 'DRAFT'
+        :type status: str, optional
+        :param existingId: _description_, defaults to None
+        :type existingId: _type_, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :param queue: _description_, defaults to False
+        :type queue: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addLineAssignment request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1480,6 +1814,57 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        """_summary_
+
+        :param points: _description_
+        :type points: _type_
+        :param number: _description_, defaults to None
+        :type number: _type_, optional
+        :param letter: _description_, defaults to None
+        :type letter: _type_, optional
+        :param opId: _description_, defaults to None
+        :type opId: _type_, optional
+        :param folderId: _description_, defaults to None
+        :type folderId: _type_, optional
+        :param resourceType: _description_, defaults to 'GROUND'
+        :type resourceType: str, optional
+        :param teamSize: _description_, defaults to 0
+        :type teamSize: int, optional
+        :param priority: _description_, defaults to 'LOW'
+        :type priority: str, optional
+        :param responsivePOD: _description_, defaults to 'LOW'
+        :type responsivePOD: str, optional
+        :param unresponsivePOD: _description_, defaults to 'LOW'
+        :type unresponsivePOD: str, optional
+        :param cluePOD: _description_, defaults to 'LOW'
+        :type cluePOD: str, optional
+        :param description: _description_, defaults to ''
+        :type description: str, optional
+        :param previousEfforts: _description_, defaults to ''
+        :type previousEfforts: str, optional
+        :param transportation: _description_, defaults to ''
+        :type transportation: str, optional
+        :param timeAllocated: _description_, defaults to 0
+        :type timeAllocated: int, optional
+        :param primaryFrequency: _description_, defaults to ''
+        :type primaryFrequency: str, optional
+        :param secondaryFrequency: _description_, defaults to ''
+        :type secondaryFrequency: str, optional
+        :param preparedBy: _description_, defaults to ''
+        :type preparedBy: str, optional
+        :param gpstype: _description_, defaults to 'TRACK'
+        :type gpstype: str, optional
+        :param status: _description_, defaults to 'DRAFT'
+        :type status: str, optional
+        :param existingId: _description_, defaults to None
+        :type existingId: _type_, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :param queue: _description_, defaults to False
+        :type queue: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addAreaAssignment request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1523,6 +1908,11 @@ class SartopoSession():
             return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID',timeout=timeout)
 
     def flush(self,timeout=20):
+        """_summary_
+
+        :param timeout: _description_, defaults to 20
+        :type timeout: int, optional
+        """        
         self.sendRequest('post','api/v0/map/[MAPID]/save',self.queue,timeout=timeout)
         self.queue={}
 
@@ -1539,6 +1929,29 @@ class SartopoSession():
             folderId=None,
             existingId="",
             timeout=None):
+        """_summary_
+
+        :param points: _description_
+        :type points: _type_
+        :param title: _description_, defaults to "New AppTrack"
+        :type title: str, optional
+        :param description: _description_, defaults to ""
+        :type description: str, optional
+        :param cnt: _description_, defaults to None
+        :type cnt: _type_, optional
+        :param startTrack: _description_, defaults to True
+        :type startTrack: bool, optional
+        :param since: _description_, defaults to 0
+        :type since: int, optional
+        :param folderId: _description_, defaults to None
+        :type folderId: _type_, optional
+        :param existingId: _description_, defaults to ""
+        :type existingId: str, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :return: _description_
+        :rtype: _type_
+        """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addAppTrack request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1577,6 +1990,15 @@ class SartopoSession():
         #     return self.sendRequest("post","since/"+str(since),j,id=str(existingId),returnJson="ID")
 
     def delMarker(self,markerOrId="",timeout=None):
+        """_summary_
+
+        :param markerOrId: _description_, defaults to ""
+        :type markerOrId: str, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1584,6 +2006,15 @@ class SartopoSession():
 
     # delMarkers - calls asynchronous non-blocking delFeatures
     def delMarkers(self,markersOrIds=[],timeout=None):
+        """_summary_
+
+        :param markersOrIds: _description_, defaults to []
+        :type markersOrIds: list, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1597,6 +2028,17 @@ class SartopoSession():
         self.delFeatures(featuresOrIdAndClassList=[{'id':id,'class':'Marker'} for id in ids],timeout=timeout)
 
     def delFeature(self,featureOrId="",fClass=None,timeout=None):
+        """_summary_
+
+        :param featureOrId: _description_, defaults to ""
+        :type featureOrId: str, optional
+        :param fClass: _description_, defaults to None
+        :type fClass: _type_, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1625,6 +2067,15 @@ class SartopoSession():
     #  featuresOrIdAndClassList - a list of dicts - entire features, or, two items per dict: 'id' and 'class'
     #  see discussion at https://github.com/ncssar/sartopo_python/issues/34
     def delFeatures(self,featuresOrIdAndClassList=[],timeout=None):
+        """_summary_
+
+        :param featuresOrIdAndClassList: _description_, defaults to []
+        :type featuresOrIdAndClassList: list, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1645,6 +2096,13 @@ class SartopoSession():
 
     # _delAsync - not meant to be called by the user - only called from delFeatures
     async def _delAsync(self,idAndClassList=[],timeout=None):
+        """_summary_
+
+        :param idAndClassList: _description_, defaults to []
+        :type idAndClassList: list, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        """        
         with ThreadPoolExecutor(max_workers=10) as executor:
             loop=asyncio.get_event_loop()
             tasks=[
@@ -1677,6 +2135,29 @@ class SartopoSession():
             since=0,
             timeout=None,
             forceRefresh=False):
+        """_summary_
+
+        :param featureClass: _description_, defaults to None
+        :type featureClass: _type_, optional
+        :param title: _description_, defaults to None
+        :type title: _type_, optional
+        :param id: _description_, defaults to None
+        :type id: _type_, optional
+        :param featureClassExcludeList: _description_, defaults to []
+        :type featureClassExcludeList: list, optional
+        :param letterOnly: _description_, defaults to False
+        :type letterOnly: bool, optional
+        :param allowMultiTitleMatch: _description_, defaults to False
+        :type allowMultiTitleMatch: bool, optional
+        :param since: _description_, defaults to 0
+        :type since: int, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :param forceRefresh: _description_, defaults to False
+        :type forceRefresh: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """            
         if not self.mapID or self.apiVersion<0:
             logging.error('getFeatures request invalid: this sartopo session is not associated with a map.')
             return []
@@ -1770,6 +2251,29 @@ class SartopoSession():
             since=0,
             timeout=None,
             forceRefresh=False):
+        """_summary_
+
+        :param featureClass: _description_, defaults to None
+        :type featureClass: _type_, optional
+        :param title: _description_, defaults to None
+        :type title: _type_, optional
+        :param id: _description_, defaults to None
+        :type id: _type_, optional
+        :param featureClassExcludeList: _description_, defaults to []
+        :type featureClassExcludeList: list, optional
+        :param letterOnly: _description_, defaults to False
+        :type letterOnly: bool, optional
+        :param allowMultiTitleMatch: _description_, defaults to False
+        :type allowMultiTitleMatch: bool, optional
+        :param since: _description_, defaults to 0
+        :type since: int, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :param forceRefresh: _description_, defaults to False
+        :type forceRefresh: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """            
         if not self.mapID or self.apiVersion<0:
             logging.error('getFeature request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1839,6 +2343,25 @@ class SartopoSession():
             properties=None,
             geometry=None,
             timeout=None):
+        """_summary_
+
+        :param id: _description_, defaults to None
+        :type id: _type_, optional
+        :param className: _description_, defaults to None
+        :type className: _type_, optional
+        :param title: _description_, defaults to None
+        :type title: _type_, optional
+        :param letter: _description_, defaults to None
+        :type letter: _type_, optional
+        :param properties: _description_, defaults to None
+        :type properties: _type_, optional
+        :param geometry: _description_, defaults to None
+        :type geometry: _type_, optional
+        :param timeout: _description_, defaults to None
+        :type timeout: _type_, optional
+        :return: _description_
+        :rtype: _type_
+        """            
 
         # logging.info('editFeature called:'+str(properties))
         if not self.mapID or self.apiVersion<0:
@@ -1942,17 +2465,42 @@ class SartopoSession():
     # moveMarker - convenience function - calls editFeature
     #   specify either id or title
     def moveMarker(self,newCoords,id=None,title=None):
+        """_summary_
+
+        :param newCoords: _description_
+        :type newCoords: _type_
+        :param id: _description_, defaults to None
+        :type id: _type_, optional
+        :param title: _description_, defaults to None
+        :type title: _type_, optional
+        """        
         self.editFeature(id=id,title=title,className='Marker',geometry={'coordinates':[newCoords[0],newCoords[1],0,0]})
 
     # editMarkerDescription - convenienec functon - calls editFeature
     #   specify either id or title
     def editMarkerDescription(self,newDescription,id=None,title=None):
+        """_summary_
+
+        :param newDescription: _description_
+        :type newDescription: _type_
+        :param id: _description_, defaults to None
+        :type id: _type_, optional
+        :param title: _description_, defaults to None
+        :type title: _type_, optional
+        """        
         self.editFeature(id=id,title=title,className='Marker',properties={'description':newDescription})
 
     # removeDuplicatePoints - walk a list of points - if a given point is
     #   very close to the previous point, delete it (<0.00001 degrees)
 
     def removeDuplicatePoints(self,points):
+        """_summary_
+
+        :param points: _description_
+        :type points: _type_
+        :return: _description_
+        :rtype: _type_
+        """        
         logging.info('removeDuplicatePoints called')
         ls=LineString(points)
         logging.info('is_valid:'+str(ls.is_valid))
@@ -1972,6 +2520,13 @@ class SartopoSession():
     #   ex: if features exist in the cache with titles 'a','a:1','a:3','a:stuff','other'
     #   then getUsedSuffixList('a') should return [1,3]
     def getUsedSuffixList(self,base):
+        """_summary_
+
+        :param base: _description_
+        :type base: _type_
+        :return: _description_
+        :rtype: _type_
+        """        
         # build list of all titles (or letters as appropriate) from the cache
         #  try 'letter' first; if not found, use 'title'; default to 'NO-TITLE'
         # logging.info('getUsedSuffixList called: base='+str(base))
@@ -1997,6 +2552,13 @@ class SartopoSession():
 
     # getNextAvailableSuffix - get the next available suffix given a list of used titles; limit at 100
     def getNextAvailableSuffix(self,usedSuffixList):
+        """_summary_
+
+        :param usedSuffixList: _description_
+        :type usedSuffixList: _type_
+        :return: _description_
+        :rtype: _type_
+        """        
         keepLooking=True
         suffix=1
         while keepLooking and suffix<100:
@@ -2009,7 +2571,9 @@ class SartopoSession():
     # removeSpurs - self-intersecting polygons can be caused by single-point
     #   'spurs': a,b,c,d,c,e,f  where c,d,c is the spur.  Change a sequence
     #   like this to a,b,c,e,f.
-    def removeSpurs(self,points):
+        """_summary_
+        """    def removeSpurs(self,points):
+
         # logging.info('removeSpurs called')
         # ls=LineString(points)
         # logging.info('is_valid:'+str(ls.is_valid))
@@ -2040,6 +2604,19 @@ class SartopoSession():
     #  the arguments (target, cutter) can be name (string), id (string), or feature (json)
 
     def cut(self,target,cutter,deleteCutter=True,useResultNameSuffix=True):
+        """_summary_
+
+        :param target: _description_
+        :type target: _type_
+        :param cutter: _description_
+        :type cutter: _type_
+        :param deleteCutter: _description_, defaults to True
+        :type deleteCutter: bool, optional
+        :param useResultNameSuffix: _description_, defaults to True
+        :type useResultNameSuffix: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('cut request invalid: this sartopo session is not associated with a map.')
             return False
@@ -2270,6 +2847,17 @@ class SartopoSession():
     # expand - expand target polygon to include the area of p2 polygon
 
     def expand(self,target,p2,deleteP2=True):
+        """_summary_
+
+        :param target: _description_
+        :type target: _type_
+        :param p2: _description_
+        :type p2: _type_
+        :param deleteP2: _description_, defaults to True
+        :type deleteP2: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('expand request invalid: this sartopo session is not associated with a map.')
             return False
@@ -2344,6 +2932,15 @@ class SartopoSession():
         return True # success
 
     def buffer2(self,boundaryGeom,beyond):
+        """_summary_
+
+        :param boundaryGeom: _description_
+        :type boundaryGeom: _type_
+        :param beyond: _description_
+        :type beyond: _type_
+        :return: _description_
+        :rtype: _type_
+        """        
         a=boundaryGeom.buffer(0) # split bowties into separate polygons
         merged=unary_union(a)
         return merged.buffer(beyond)
@@ -2361,6 +2958,15 @@ class SartopoSession():
     #  A outside, B outside --> don't append either point; instead, append the intersection as a new line segment
 
     def intersection2(self,targetGeom,boundaryGeom):
+        """_summary_
+
+        :param targetGeom: _description_
+        :type targetGeom: _type_
+        :param boundaryGeom: _description_
+        :type boundaryGeom: _type_
+        :return: _description_
+        :rtype: _type_
+        """        
         outLines=[]
         targetCoords=targetGeom.coords
         nextInsidePointStartsNewLine=True
@@ -2428,6 +3034,17 @@ class SartopoSession():
     #               that bounds the listed objects
 
     def getBounds(self,objectList,padDeg=0.0001,padPct=None):
+        """_summary_
+
+        :param objectList: _description_
+        :type objectList: _type_
+        :param padDeg: _description_, defaults to 0.0001
+        :type padDeg: float, optional
+        :param padPct: _description_, defaults to None
+        :type padPct: _type_, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('getBounds request invalid: this sartopo session is not associated with a map.')
             return False
@@ -2478,6 +3095,13 @@ class SartopoSession():
     # twoify - turn four-element-vertex-data into two-element-vertex-data so that
     #  the shapely functions can operate on it
     def twoify(self,points):
+        """_summary_
+
+        :param points: _description_
+        :type points: _type_
+        :return: _description_
+        :rtype: _type_
+        """        
         if not isinstance(points,list):
             return points
         if isinstance(points[0],list): # the arg is a list of points
@@ -2488,6 +3112,15 @@ class SartopoSession():
     # fourify - try to use four-element-vertex data from original data; called by
     #  geometry operations during resulting shape creation / editing
     def fourify(self,points,origPoints):
+        """_summary_
+
+        :param points: _description_
+        :type points: _type_
+        :param origPoints: _description_
+        :type origPoints: _type_
+        :return: _description_
+        :rtype: _type_
+        """        
         # no use trying to fourify if the orig points list is not all four-element points
         if len(origPoints[0])!=4 or len(origPoints[-1])!=4:
             return points
@@ -2523,6 +3156,25 @@ class SartopoSession():
     #          grow the specified boundary polygon by the specified distance before cropping
 
     def crop(self,target,boundary,beyond=0.0001,deleteBoundary=False,useResultNameSuffix=False,drawSizedBoundary=False,noDraw=False):
+        """_summary_
+
+        :param target: _description_
+        :type target: _type_
+        :param boundary: _description_
+        :type boundary: _type_
+        :param beyond: _description_, defaults to 0.0001
+        :type beyond: float, optional
+        :param deleteBoundary: _description_, defaults to False
+        :type deleteBoundary: bool, optional
+        :param useResultNameSuffix: _description_, defaults to False
+        :type useResultNameSuffix: bool, optional
+        :param drawSizedBoundary: _description_, defaults to False
+        :type drawSizedBoundary: bool, optional
+        :param noDraw: _description_, defaults to False
+        :type noDraw: bool, optional
+        :return: _description_
+        :rtype: _type_
+        """        
         if not self.mapID or self.apiVersion<0:
             logging.error('crop request invalid: this sartopo session is not associated with a map.')
             return False
@@ -2773,6 +3425,15 @@ class SartopoSession():
 
         
 def insertBeforeExt(fn,ins):
+    """_summary_
+
+    :param fn: _description_
+    :type fn: function
+    :param ins: _description_
+    :type ins: _type_
+    :return: _description_
+    :rtype: _type_
+    """    
     if '.' in fn:
         lastSlashIndex=-1
         lastBackSlashIndex=-1
@@ -2806,6 +3467,8 @@ logging.basicConfig(
 #   sys.excepthook wants a 3-tuple; threading.excepthook wants an instance of
 #   _thread._ExceptHookArgs, which provides a 4-namedtuple
 def handle_exception(*args):
+    """_summary_
+    """    
     if len(args)==1:
         a=args[0]
         [exc_type,exc_value,exc_traceback,thread]=[a.exc_type,a.exc_value,a.exc_traceback,a.thread]
@@ -2826,6 +3489,13 @@ threading.excepthook = handle_exception
 
 # pare down json for logging messages to reduce log size and clutter
 def jsonForLog(orig):
+    """_summary_
+
+    :param orig: _description_
+    :type orig: _type_
+    :return: _description_
+    :rtype: _type_
+    """    
     rval=copy.deepcopy(orig)
     try:
         ok=orig.keys()
