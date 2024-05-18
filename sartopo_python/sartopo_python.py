@@ -2571,8 +2571,14 @@ class SartopoSession():
     # removeSpurs - self-intersecting polygons can be caused by single-point
     #   'spurs': a,b,c,d,c,e,f  where c,d,c is the spur.  Change a sequence
     #   like this to a,b,c,e,f.
+    def removeSpurs(self,points):
         """_summary_
-        """    def removeSpurs(self,points):
+
+        :param points: _description_
+        :type points: _type_
+        :return: _description_
+        :rtype: _type_
+        """        
 
         # logging.info('removeSpurs called')
         # ls=LineString(points)
