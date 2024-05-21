@@ -165,7 +165,7 @@ class STSException(BaseException):
 
 class SartopoSession():
     def __init__(self,
-            domainAndPort='localhost:8080',
+            domainAndPort: str='localhost:8080',
             mapID=None,
             configpath=None,
             account=None,
@@ -184,7 +184,7 @@ class SartopoSession():
             deletedFeatureCallback=None,
             syncCallback=None,
             useFiddlerProxy=False,
-            caseSensitiveComparisons=False):  # case-insensitive comparisons by default, see caseMatch()
+            caseSensitiveComparisons=False):  # case-insensitive comparisons by default, see _caseMatch()
         """_summary_
 
         :param domainAndPort: _description_, defaults to 'localhost:8080'
@@ -254,8 +254,8 @@ class SartopoSession():
         self.syncing=False
         self.caseSensitiveComparisons=caseSensitiveComparisons
         self.accountData=None
-        # call setupSession even if this is a mapless session, to read the config file, setup fidddler proxy, get userdata/cookies, etc.
-        if not self.setupSession():
+        # call _setupSession even if this is a mapless session, to read the config file, setup fidddler proxy, get userdata/cookies, etc.
+        if not self._setupSession():
             raise STSException
         # if a map is specified, open it (or create it if '[NEW'])
         if self.mapID:
@@ -264,15 +264,16 @@ class SartopoSession():
         else:
             logging.info('Opening a SartopoSession object with no associated map.  Use .openMap(<mapID>) later to associate a map with this session.')
 
-    def openMap(self,mapID=None):
-        """_summary_
+    def openMap(self,mapID: str='') -> bool:
+        """Open a map for usage in the current session.
+        This is called internally by _setupSession if a mapID was specified when the session was initialized, but can be called later from your code if the session was initially 'mapless'.
 
-        :param mapID: _description_, defaults to None
-        :type mapID: _type_, optional
+        :param mapID: 5-character Map ID, defaults to ''
+        :type mapID: str, optional
         :raises STSException: _description_
-        :return: _description_
-        :rtype: _type_
-        """        
+        :return: True if map was opened successfully; False otherwise.
+        :rtype: bool
+        """
         if self.mapID and self.lastSuccessfulSyncTimestamp>0:
             logging.warning('WARNING: this SartopoSession object is already connected to map '+self.mapID+'.  Call to openMap ignored.')
             return
@@ -318,7 +319,7 @@ class SartopoSession():
             if r:
                 self.mapID=r.rstrip('/').split('/')[-1]
                 self.s=requests.session()
-                self.sendUserdata() # to get session cookies for new session
+                self._sendUserdata() # to get session cookies for new session
                 time.sleep(1) # to avoid a 401 on the subsequent get request
                 self.delMarker(id='11111111-1111-1111-1111-111111111111')
             else:
@@ -343,11 +344,11 @@ class SartopoSession():
 
         return True
 
-    def setupSession(self):
-        """_summary_
+    def _setupSession(self) -> bool:
+        """Called internally from __init__, regardless of whether this is a mapless session.  Reads account information from the config file and takes care of various other setup tasks.
 
-        :return: _description_
-        :rtype: _type_
+        :return: True if setup was successful; False otherwise (which will raise STSException from __init__).
+        :rtype: bool
         """        
         # set a flag: is this an internet session?
         #  if so, id and key are strictly required, and accountId is needed to print
@@ -451,35 +452,38 @@ class SartopoSession():
                     'ftp':'ftp://127.0.0.1:8888'
                 }
 
-        # self.sendUserdata() # to get session cookies, in case this client has not connected in a long time
+        # self._sendUserdata() # to get session cookies, in case this client has not connected in a long time
         #  but this requires a mapID to form the signature in the post request, so won't work for a mapless session
         #  maybe the getMapData request is sufficient to get the cookies?
 
         return True
 
-    def caseMatch(self,a,b):
-        """_summary_
-
-        :param a: _description_
-        :type a: _type_
-        :param b: _description_
-        :type b: _type_
-        :return: _description_
-        :rtype: _type_
+    def _caseMatch(self,a:str,b:str) -> bool:
+        """Compare two input strings to see if they are equal, based on the value of .caseSensitiveComparisons.
+    
+        :param a: First string to compare.
+        :type a: str
+        :param b: Second string to compare.
+        :type b: str
+        :return: 
+        If .caseSensitiveComparisons is True, 'ABC' will not match 'Abc', and the return value will be False.
+        If .caseSensitiveComparisons is False, 'ABC' will match 'Abc', and the return value will be True.
+        Regardless of the value of .caseSensitiveComparisons, 'ABC' will match 'ABC', and the return value will be True.
+        :rtype: bool
         """        
         if isinstance(a,str) and isinstance(b,str) and not self.caseSensitiveComparisons:
             a=a.upper()
             b=b.upper()
         return a==b
 
-    def sendUserdata(self,activeLayers=[['mbt',1]],center=[-120,39],zoom=13):
-        """_summary_
+    def _sendUserdata(self,activeLayers=[['mbt',1]],center=[-120,39],zoom=13):
+        """Send a POST request to /api/v0/userdata with initial map center and zoom; this might actually no longer be needed; only called during creation of a new map.
 
-        :param activeLayers: _description_, defaults to [['mbt',1]]
+        :param activeLayers: initial map layer setup, defaults to [['mbt',1]]
         :type activeLayers: list, optional
-        :param center: _description_, defaults to [-120,39]
+        :param center: initial map center location, defaults to [-120,39]
         :type center: list, optional
-        :param zoom: _description_, defaults to 13
+        :param zoom: initial map zoom, defaults to 13
         :type zoom: int, optional
         """        
         j={
@@ -2212,11 +2216,11 @@ class SartopoSession():
                             s=prop['title'].split()
                             # avoid exception when title exists but is blank
                             if len(s)>0:
-                                if self.caseMatch(s[0],title): # since assignments title may include number (not desired for edits) 
+                                if self._caseMatch(s[0],title): # since assignments title may include number (not desired for edits) 
                                     titleMatchCount+=1
                                     rval.append(feature)
                         else:        
-                            if self.caseMatch(prop['title'].rstrip(),title): # since assignments without number could still have a space after letter
+                            if self._caseMatch(prop['title'].rstrip(),title): # since assignments without number could still have a space after letter
                                 titleMatchCount+=1
                                 rval.append(feature)
                             elif 'letter' in pk: # if the title wasn't a match, try the letter if it exists
@@ -2395,7 +2399,7 @@ class SartopoSession():
             # it's probably quicker to filter by letter/title first, since that should only return a very small number of hits,
             #   as opposed to filtering by className first, which could return a large number of hits
 
-            features=[f for f in self.mapData['state']['features'] if self.caseMatch(f['properties'].get(ltKey,None),ltVal) and f['properties']['class'].lower()==className.lower()]
+            features=[f for f in self.mapData['state']['features'] if self._caseMatch(f['properties'].get(ltKey,None),ltVal) and f['properties']['class'].lower()==className.lower()]
                 
             if len(features)==0:
                 logging.warning(' no feature matched class='+str(className)+' title='+str(title)+' letter='+str(letter))
