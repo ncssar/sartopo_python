@@ -54,9 +54,9 @@
 #
 #  Threading
 #
-#  When self.sync is True, we want to call doSync, then wait n seconds after
-#  the response, then call doSync again, etc.  This is not strictly the same
-#  as calling doSync every n seconds, since it may take several seconds for
+#  When self.sync is True, we want to call _doSync, then wait n seconds after
+#  the response, then call _doSync again, etc.  This is not strictly the same
+#  as calling _doSync every n seconds, since it may take several seconds for
 #  the response to be completed, for large data or slow connection or both.
 # 
 #  We could use the timer object (a subclass of Threading), but that
@@ -67,21 +67,21 @@
 #  from the main thread, so that its blocking sleeps (or slow responses) do
 #  not block the rest of the program.
 # 
-#  The sync thread is created by calling self.start().  A call to self.stop()
+#  The sync thread is created by calling self._start().  A call to self._stop()
 #  simply sets self.sync to False, which causes the sync thread to end itself
 #  after the next request/response.
 #
-#  Since self.doSync is called repeatedly if self.sync is True, the sync
+#  Since self._doSync is called repeatedly if self.sync is True, the sync
 #  thread would stay alive forever, even after the calling program ends; so,
-#  at the end of each sync iteration, self.doSync checks to see if the main
+#  at the end of each sync iteration, self._doSync checks to see if the main
 #  thread is still alive, and terminates the sync thread if the main thread
 #  is no longer alive.
 #
-#  To avoid the recursion limit, doSync is called iteratively rather than
+#  To avoid the recursion limit, _doSync is called iteratively rather than
 #  recursivley, in _syncLoop which is only meant to be called from start().
 #
 #  To prevent main-thread requests from being sent while a sync request is
-#  in process, doSync sets self.syncing just before sending the 'since'
+#  in process, _doSync sets self.syncing just before sending the 'since'
 #  request, and leaves it set until the sync response is processed.
 #   TO DO: If a main-thread request wants to be sent while self.syncing is
 #   set, the request is queued, and is sent after the next sync response is
@@ -315,7 +315,7 @@ class SartopoSession():
             }
             # logging.info('dap='+str(self.domainAndPort))
             # logging.info('payload='+str(json.dumps(j,indent=3)))
-            r=self.sendRequest('post','[NEW]',j,domainAndPort=self.domainAndPort)
+            r=self._sendRequest('post','[NEW]',j,domainAndPort=self.domainAndPort)
             if r:
                 self.mapID=r.rstrip('/').split('/')[-1]
                 self.s=requests.session()
@@ -336,11 +336,11 @@ class SartopoSession():
         # regardless of whether sync is specified, we need to do the initial cache population
         #   here in the main thread, so that mapData is populated right away
         logging.info('Initial cache population begins.')
-        self.doSync()
+        self._doSync()
         logging.info('Initial cache population complete.')
 
         if self.sync:
-            self.start()
+            self._start()
 
         return True
 
@@ -497,7 +497,7 @@ class SartopoSession():
         }
         # logging.info('dap='+str(self.domainAndPort))
         # logging.info('payload='+str(json.dumps(j,indent=3)))
-        self.sendRequest('post','api/v0/userdata',j,domainAndPort=self.domainAndPort)
+        self._sendRequest('post','api/v0/userdata',j,domainAndPort=self.domainAndPort)
 
 # terminology:
     # 'account' means a few different things in CalTopo:
@@ -542,7 +542,7 @@ class SartopoSession():
         else:
             url='/api/v1/acct/'+self.accountId+'/since/0'
             # logging.info('  sending GET request 2 to '+url)
-            rj=self.sendRequest('get',url,j=None,returnJson='ALL')
+            rj=self._sendRequest('get',url,j=None,returnJson='ALL')
             self.accountData=rj['result']
             # with open('acct_since_0.json','w') as outfile:
             #     outfile.write(json.dumps(rj,indent=3))
@@ -752,7 +752,7 @@ class SartopoSession():
             self.getAccountData()
         return [x['properties']['title'] for x in self.groupAccounts]
 
-    def doSync(self):
+    def _doSync(self):
         """_summary_
 
         :return: _description_
@@ -777,7 +777,7 @@ class SartopoSession():
         #     the same id
 
         # logging.info('Sending sartopo "since" request...')
-        rj=self.sendRequest('get','since/'+str(max(0,self.lastSuccessfulSyncTimestamp-500)),None,returnJson='ALL',timeout=self.syncTimeout)
+        rj=self._sendRequest('get','since/'+str(max(0,self.lastSuccessfulSyncTimestamp-500)),None,returnJson='ALL',timeout=self.syncTimeout)
         if rj and rj['status']=='ok':
             if self.syncDumpFile:
                 with open(insertBeforeExt(self.syncDumpFile,'.since'+str(max(0,self.lastSuccessfulSyncTimestamp-500))),"w") as f:
@@ -946,7 +946,7 @@ class SartopoSession():
                 #     while self.syncPause: # wait until at least one second after sendRequest finishes
                 #         logging.info('  sync is paused - sleeping for one second')
                 #         time.sleep(1)
-                #     self.doSync() # will this trigger the recursion limit eventually?  Rethink looping method!
+                #     self._doSync() # will this trigger the recursion limit eventually?  Rethink looping method!
                 # else:
                 #     logging.info('Main thread has ended; sync is stopping...')
 
@@ -957,11 +957,11 @@ class SartopoSession():
         self.syncing=False
         # logging.info('sync marker: '+self.mapID+' end')
 
-    # refresh - update the cache (self.mapData) by calling doSync once;
+    # _refresh - update the cache (self.mapData) by calling _doSync once;
     #   only relevant if sync is off; if the latest refresh is within the sync interval value (even when sync is off),
     #   then don't do a refresh unless forceImmediate is True
-    #  since doSync() would be called from this thread, it is always blocking
-    def refresh(self,blocking=False,forceImmediate=False):
+    #  since _doSync() would be called from this thread, it is always blocking
+    def _refresh(self,blocking=False,forceImmediate=False):
         """_summary_
 
         :param blocking: _description_, defaults to False
@@ -984,13 +984,13 @@ class SartopoSession():
             if d>(self.syncInterval*1000):
                 msg+='longer than syncInterval: syncing now'
                 logging.info(msg)
-                self.doSync()
+                self._doSync()
             else:
                 msg+='shorter than syncInterval; '
                 if forceImmediate:
                     msg+='forceImmediate specified: syncing now'
                     logging.info(msg)
-                    self.doSync()
+                    self._doSync()
                 else:
                     msg+='forceImmediate not specified: not syncing now'
                     # logging.info(msg)
@@ -1003,9 +1003,9 @@ class SartopoSession():
             suffix=' for map '+self.mapID
         logging.info('SartopoSession instance deleted'+suffix+'.')
         if self.sync and self.lastSuccessfulSyncTimestamp>0:
-            self.stop()
+            self._stop()
 
-    def start(self):
+    def _start(self):
         """_summary_
 
         :return: _description_
@@ -1022,7 +1022,7 @@ class SartopoSession():
             logging.info('Sartopo syncing initiated for map '+self.mapID+'.')
             self.syncThreadStarted=True
 
-    def stop(self):
+    def _stop(self):
         """_summary_
 
         :return: _description_
@@ -1034,7 +1034,7 @@ class SartopoSession():
         logging.info('Sartopo sync terminating for map '+self.mapID+'.')
         self.sync=False
 
-    def pause(self):
+    def _pause(self):
         """_summary_
 
         :return: _description_
@@ -1046,7 +1046,7 @@ class SartopoSession():
         logging.info('Pausing sync for map '+self.mapID+'...')
         self.syncPauseManual=True
 
-    def resume(self):
+    def _resume(self):
         """_summary_
 
         :return: _description_
@@ -1058,12 +1058,12 @@ class SartopoSession():
         logging.info('Resuming sync for map '+self.mapID+'.')
         self.syncPauseManual=False
     
-    # _syncLoop - should only be called from self.start(), which calls _syncLoop in a new thread.
-    #  This is just a loop that calls doSync.  To prevent an endless loop, doSync must be
+    # _syncLoop - should only be called from self._start(), which calls _syncLoop in a new thread.
+    #  This is just a loop that calls _doSync.  To prevent an endless loop, _doSync must be
     #  able to terminate the thread if the main thread has ended; also note that any other
-    #  code can end sync by setting self.sync to False.  This allows doSync to be
+    #  code can end sync by setting self.sync to False.  This allows _doSync to be
     #  iterative rather than recursive (which would eventually hit recursion limit issues),
-    #  and it allows the blocking sleep call to happen here instead of inside doSync.
+    #  and it allows the blocking sleep call to happen here instead of inside _doSync.
     def _syncLoop(self):
         """_summary_
         """        
@@ -1086,12 +1086,12 @@ class SartopoSession():
                     logging.info(self.mapID+': sync pause ends; resuming sync')
                     self.syncPauseMessageGiven=False
                 syncWaited=0
-                while self.syncing and syncWaited<20: # wait for any current callbacks within doSync() to complete, with timeout of 20 sec
+                while self.syncing and syncWaited<20: # wait for any current callbacks within _doSync() to complete, with timeout of 20 sec
                     logging.info(' [sync from _syncLoop is waiting for current sync processing to finish, up to '+str(20-syncWaited)+' more seconds...]')
                     time.sleep(1)
                     syncWaited+=1
                 try:
-                    self.doSync()
+                    self._doSync()
                     self.syncCompletedCount+=1
                 except Exception as e:
                     logging.exception('Exception during sync of map '+self.mapID+'; stopping sync:') # logging.exception logs details and traceback
@@ -1105,7 +1105,7 @@ class SartopoSession():
 
     # return the token needed for signed request
     #  (to be used as they value for the 'signature' key of request params dict)
-    def getToken(self,data):
+    def _getToken(self,data):
         """_summary_
 
         :param data: _description_
@@ -1119,7 +1119,7 @@ class SartopoSession():
         # logging.info("hashed data:"+str(token))
         return token
 
-    def sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None):
+    def _sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None):
         """_summary_
 
         :param type: _description_
@@ -1201,7 +1201,7 @@ class SartopoSession():
                 data="POST "+mid+apiUrlEnd+"\n"+str(expires)+"\n"+json.dumps(j)
                 params["id"]=self.id
                 params["expires"]=expires
-                params["signature"]=self.getToken(data)
+                params["signature"]=self._getToken(data)
                 paramsPrint=copy.deepcopy(params)
                 paramsPrint['id']='.....'
                 paramsPrint['signature']='.....'
@@ -1222,7 +1222,7 @@ class SartopoSession():
                 params["json"]=''   # no body, but is required
                 params["id"]=self.id
                 params["expires"]=expires
-                params["signature"]=self.getToken(data)
+                params["signature"]=self._getToken(data)
                 paramsPrint=copy.deepcopy(params)
                 paramsPrint['id']='.....'
                 paramsPrint['signature']='.....'
@@ -1244,7 +1244,7 @@ class SartopoSession():
                 params["json"]=''   # no body, but is required
                 params["id"]=self.id
                 params["expires"]=expires
-                params["signature"]=self.getToken(data)
+                params["signature"]=self._getToken(data)
                 paramsPrint=copy.deepcopy(params)
                 paramsPrint['id']='.....'
                 paramsPrint['signature']='.....'
@@ -1394,9 +1394,9 @@ class SartopoSession():
             self.queue.setdefault('folder',[]).append(j)
             return 0
         else:
-            # return self.sendRequest("post","folder",j,returnJson="ID")
+            # return self._sendRequest("post","folder",j,returnJson="ID")
             # add to .mapData immediately
-            rj=self.sendRequest('post','folder',j,returnJson='ALL',timeout=timeout)
+            rj=self._sendRequest('post','folder',j,returnJson='ALL',timeout=timeout)
             if rj:
                 rjr=rj['result']
                 id=rjr['id']
@@ -1480,9 +1480,9 @@ class SartopoSession():
             self.queue.setdefault('Marker',[]).append(j)
             return 0
         else:
-            # return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
+            # return self._sendRequest('post','marker',j,id=existingId,returnJson='ID')
             # add to .mapData immediately
-            rj=self.sendRequest('post','marker',j,id=existingId,returnJson='ALL',timeout=timeout)
+            rj=self._sendRequest('post','marker',j,id=existingId,returnJson='ALL',timeout=timeout)
             if rj:
                 rjr=rj['result']
                 id=rjr['id']
@@ -1560,9 +1560,9 @@ class SartopoSession():
             self.queue.setdefault('Shape',[]).append(j)
             return 0
         else:
-            # return self.sendRequest("post","Shape",j,id=existingId,returnJson="ID",timeout=timeout)
+            # return self._sendRequest("post","Shape",j,id=existingId,returnJson="ID",timeout=timeout)
             # add to .mapData immediately
-            rj=self.sendRequest('post','Shape',j,id=existingId,returnJson='ALL',timeout=timeout)
+            rj=self._sendRequest('post','Shape',j,id=existingId,returnJson='ALL',timeout=timeout)
             if rj:
                 rjr=rj['result']
                 id=rjr['id']
@@ -1644,9 +1644,9 @@ class SartopoSession():
             self.queue.setdefault('Shape',[]).append(j)
             return 0
         else:
-            # return self.sendRequest('post','Shape',j,id=existingId,returnJson='ID')
+            # return self._sendRequest('post','Shape',j,id=existingId,returnJson='ID')
             # add to .mapData immediately
-            rj=self.sendRequest('post','Shape',j,id=existingId,returnJson='ALL',timeout=timeout)
+            rj=self._sendRequest('post','Shape',j,id=existingId,returnJson='ALL',timeout=timeout)
             if rj:
                 rjr=rj['result']
                 id=rjr['id']
@@ -1771,7 +1771,7 @@ class SartopoSession():
             self.queue.setdefault('Assignment',[]).append(j)
             return 0
         else:
-            return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID',timeout=timeout)
+            return self._sendRequest('post','Assignment',j,id=existingId,returnJson='ID',timeout=timeout)
 
     # buffers: in the web interface, adding a buffer results in two requests:
     #   1. api/v0/geodata/buffer - payload = drawn centerline, response = polygon points
@@ -1790,7 +1790,7 @@ class SartopoSession():
     #     jg['coordinates']=centerLinePoints
     #     j['geometry']=jg
     #     j['size']=size
-    #     rj=self.sendRequest('post','api/v0/geodata/buffer',j,None,returnJson='ALL')
+    #     rj=self._sendRequest('post','api/v0/geodata/buffer',j,None,returnJson='ALL')
     #     logging.info('generated buffer response:'+json.dumps(rj,indent=3))
     #     return rj
 
@@ -1909,15 +1909,15 @@ class SartopoSession():
             self.queue.setdefault('Assignment',[]).append(j)
             return 0
         else:
-            return self.sendRequest('post','Assignment',j,id=existingId,returnJson='ID',timeout=timeout)
+            return self._sendRequest('post','Assignment',j,id=existingId,returnJson='ID',timeout=timeout)
 
-    def flush(self,timeout=20):
+    def _flush(self,timeout=20):
         """_summary_
 
         :param timeout: _description_, defaults to 20
         :type timeout: int, optional
         """        
-        self.sendRequest('post','api/v0/map/[MAPID]/save',self.queue,timeout=timeout)
+        self._sendRequest('post','api/v0/map/[MAPID]/save',self.queue,timeout=timeout)
         self.queue={}
 
     # def center(self,lat,lon,z):
@@ -1988,10 +1988,10 @@ class SartopoSession():
         # if 1 == 1:
         ##if startTrack == 1:
         logging.info("At request first time track"+str(existingId)+":"+str(j))
-        return self.sendRequest("post","Shape",j,id=str(existingId),returnJson="ID",timeout=timeout)
+        return self._sendRequest("post","Shape",j,id=str(existingId),returnJson="ID",timeout=timeout)
         # else:
         #     logging.info("At request adding points to track:"+str(existingId)+":"+str(since)+":"+str(j))
-        #     return self.sendRequest("post","since/"+str(since),j,id=str(existingId),returnJson="ID")
+        #     return self._sendRequest("post","since/"+str(since),j,id=str(existingId),returnJson="ID")
 
     def delMarker(self,markerOrId="",timeout=None):
         """_summary_
@@ -2065,7 +2065,7 @@ class SartopoSession():
         else:
             logging.error('invalid argument in call to delFeature: '+str(markersOrIds))
             return False
-        return self.sendRequest("delete",fClass,None,id=str(id),returnJson="ALL",timeout=timeout)
+        return self._sendRequest("delete",fClass,None,id=str(id),returnJson="ALL",timeout=timeout)
 
     # delFeatures - asynchronously send a batch of non-blocking delFeature requests
     #  featuresOrIdAndClassList - a list of dicts - entire features, or, two items per dict: 'id' and 'class'
@@ -2113,7 +2113,7 @@ class SartopoSession():
                 loop.run_in_executor(
                     executor,
                     functools.partial(
-                        self.sendRequest,
+                        self._sendRequest,
                         'delete',
                         i['class'],
                         None,
@@ -2166,16 +2166,16 @@ class SartopoSession():
             logging.error('getFeatures request invalid: this sartopo session is not associated with a map.')
             return []
         timeout=timeout or self.syncTimeout
-        # rj=self.sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
-        # call refresh now; refresh will decide whether it needs to do a new doSync call, based
-        #  on time since last doSync response - or, if specified with forceImmediate, will call
-        #  doSync regardless of time since last doSync response
-        self.refresh(forceImmediate=forceRefresh)
+        # rj=self._sendRequest('get','since/'+str(since),None,returnJson='ALL',timeout=timeout)
+        # call _refresh now; _refresh will decide whether it needs to do a new _doSync call, based
+        #  on time since last _doSync response - or, if specified with forceImmediate, will call
+        #  _doSync regardless of time since last _doSync response
+        self._refresh(forceImmediate=forceRefresh)
         # if forceRefresh:
-        #     self.refresh(forceImmediate=True) # this is a blocking call
+        #     self._refresh(forceImmediate=True) # this is a blocking call
         # else:
     
-        # if syncing loop is not on, call refresh now; refresh will call doSync if the previous sync response
+        # if syncing loop is not on, call _refresh now; _refresh will call _doSync if the previous sync response
         #  was longer than syncInterval ago, but will return without syncing otherwise
         
         # if not self.sync: 
@@ -2464,7 +2464,7 @@ class SartopoSession():
         if geomToWrite is not None:
             j['geometry']=geomToWrite
 
-        return self.sendRequest('post',className,j,id=feature['id'],returnJson='ID',timeout=timeout)
+        return self._sendRequest('post',className,j,id=feature['id'],returnJson='ID',timeout=timeout)
 
     # moveMarker - convenience function - calls editFeature
     #   specify either id or title
@@ -2519,11 +2519,11 @@ class SartopoSession():
         logging.info('\n     '+str(len(points))+' points: '+str(points)+'\n --> '+str(len(out))+' points: '+str(out))
         return out
 
-    # getUsedSuffixList - get a list of integers of all used suffixes for the
+    # _getUsedSuffixList - get a list of integers of all used suffixes for the
     #   specified base title
     #   ex: if features exist in the cache with titles 'a','a:1','a:3','a:stuff','other'
-    #   then getUsedSuffixList('a') should return [1,3]
-    def getUsedSuffixList(self,base):
+    #   then _getUsedSuffixList('a') should return [1,3]
+    def _getUsedSuffixList(self,base):
         """_summary_
 
         :param base: _description_
@@ -2554,8 +2554,8 @@ class SartopoSession():
         logging.info('getUsedSuffixList: base='+str(base)+'  rval='+str(rval))
         return rval
 
-    # getNextAvailableSuffix - get the next available suffix given a list of used titles; limit at 100
-    def getNextAvailableSuffix(self,usedSuffixList):
+    # _getNextAvailableSuffix - get the next available suffix given a list of used titles; limit at 100
+    def _getNextAvailableSuffix(self,usedSuffixList):
         """_summary_
 
         :param usedSuffixList: _description_
@@ -2722,7 +2722,7 @@ class SartopoSession():
         baseParse=base.split(':')
         if len(baseParse)>1 and baseParse[-1].isnumeric():
             base=':'.join(baseParse[:-1])
-        usedSuffixList=self.getUsedSuffixList(base)
+        usedSuffixList=self._getUsedSuffixList(base)
 
         # logging.info('cut result class:'+str(result.__class__.__name__))
 
@@ -2751,7 +2751,7 @@ class SartopoSession():
                 if tc=='Shape':
                     title=tp['title']
                     if useResultNameSuffix:
-                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        suffix=self._getNextAvailableSuffix(usedSuffixList)
                         title=base+':'+str(suffix)
                         usedSuffixList.append(suffix)
                     rids.append(self.addPolygon(list(r.exterior.coords),
@@ -2767,7 +2767,7 @@ class SartopoSession():
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
-                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        suffix=self._getNextAvailableSuffix(usedSuffixList)
                         letter=base+':'+str(suffix)
                         usedSuffixList.append(suffix)
                     rids.append(self.addAreaAssignment(list(r.exterior.coords),
@@ -2808,7 +2808,7 @@ class SartopoSession():
                 if tc=='Shape':
                     title=tp['title']
                     if useResultNameSuffix:
-                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        suffix=self._getNextAvailableSuffix(usedSuffixList)
                         title+=':'+str(suffix)
                         usedSuffixList.append(suffix)
                     rids.append(self.addLine(list(r.coords),
@@ -2823,7 +2823,7 @@ class SartopoSession():
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
-                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        suffix=self._getNextAvailableSuffix(usedSuffixList)
                         letter+=':'+str(suffix)
                         usedSuffixList.append(suffix)
                     rids.append(self.addLineAssignment(list(r.coords),
@@ -3080,14 +3080,14 @@ class SartopoSession():
             if objType=='Polygon':
                 ogc=og['coordinates'][0]
                 ogc=self.removeSpurs(ogc)
-                objGeom=Polygon(self.twoify(ogc)) # Shapely object
+                objGeom=Polygon(self._twoify(ogc)) # Shapely object
             elif objType=='LineString':
                 ogc=og['coordinates']
                 ogc=self.removeSpurs(ogc)
-                objGeom=LineString(self.twoify(ogc)) # Shapely object
+                objGeom=LineString(self._twoify(ogc)) # Shapely object
             elif objType=='Point':
                 ogc=og['coordinates'][0:2]
-                objGeom=Point(self.twoify(ogc)) # Shapely object
+                objGeom=Point(self._twoify(ogc)) # Shapely object
             else:
                 logging.warning('crop: feature '+objStr+' is not a polygon or line or point: '+objType)
                 return False
@@ -3102,9 +3102,9 @@ class SartopoSession():
         rval=[rval[0]-pad,rval[1]-pad,rval[2]+pad,rval[3]+pad]
         return rval
 
-    # twoify - turn four-element-vertex-data into two-element-vertex-data so that
+    # _twoify - turn four-element-vertex-data into two-element-vertex-data so that
     #  the shapely functions can operate on it
-    def twoify(self,points):
+    def _twoify(self,points):
         """_summary_
 
         :param points: _description_
@@ -3119,9 +3119,9 @@ class SartopoSession():
         else: # the arg is just one point
             return points[0:2]
 
-    # fourify - try to use four-element-vertex data from original data; called by
+    # _fourify - try to use four-element-vertex data from original data; called by
     #  geometry operations during resulting shape creation / editing
-    def fourify(self,points,origPoints):
+    def _fourify(self,points,origPoints):
         """_summary_
 
         :param points: _description_
@@ -3212,7 +3212,7 @@ class SartopoSession():
             targetGeom=Polygon(tgc) # Shapely object
         elif targetType=='LineString':
             tgc_orig=tg['coordinates']
-            tgc=self.twoify(tgc_orig)
+            tgc=self._twoify(tgc_orig)
             # logging.info('tgc before ('+str(len(tgc))+' points):'+str(tgc))
             tgc=self.removeSpurs(tgc)
             # logging.info('tgc after ('+str(len(tgc))+' points):'+str(tgc))
@@ -3244,7 +3244,7 @@ class SartopoSession():
             cgc=cg['coordinates'][0]
             boundaryGeom=self.buffer2(Polygon(cgc),beyond)
         elif boundaryType=='LineString':
-            cgc=self.twoify(cg['coordinates'])
+            cgc=self._twoify(cg['coordinates'])
             boundaryGeom=LineString(cgc).buffer(beyond)
         else:
             logging.warning('crop: boundary feature '+boundaryStr+' is not a polygon or line: '+boundaryType)
@@ -3302,7 +3302,7 @@ class SartopoSession():
         baseParse=base.split(':')
         if len(baseParse)>1 and baseParse[-1].isnumeric():
             base=':'.join(baseParse[:-1])
-        usedSuffixList=self.getUsedSuffixList(base)
+        usedSuffixList=self._getUsedSuffixList(base)
 
         # collect resulting feature ids to return as the return value
         rids=[]
@@ -3331,7 +3331,7 @@ class SartopoSession():
                 if tc=='Shape':
                     title=tp['title']
                     if useResultNameSuffix:
-                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        suffix=self._getNextAvailableSuffix(usedSuffixList)
                         title=base+':'+str(suffix)
                         usedSuffixList.append(suffix)
                     rids.append(self.addPolygon(list(r.exterior.coords),
@@ -3347,7 +3347,7 @@ class SartopoSession():
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
-                        suffix=self.getNextAvailableSuffix(usedSuffixList)
+                        suffix=self._getNextAvailableSuffix(usedSuffixList)
                         letter=base+':'+str(suffix)
                         usedSuffixList.append(suffix)
                     rids.append(self.addAreaAssignment(list(r.exterior.coords),
@@ -3374,7 +3374,7 @@ class SartopoSession():
                     logging.warning('crop: target feature class was neither Shape nor Assigment')
         elif isinstance(result,LineString):
             # logging.info('adding shape to result list')
-            four=self.fourify(list(result.coords),tgc_orig)
+            four=self._fourify(list(result.coords),tgc_orig)
             # logging.info('four:'+str(four))
             rids.append(self.editFeature(id=targetShape['id'],geometry={'coordinates':four}))
             if rids==[]:
