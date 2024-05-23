@@ -465,10 +465,9 @@ class SartopoSession():
         :type a: str
         :param b: Second string to compare.
         :type b: str
-        :return: 
-        If .caseSensitiveComparisons is True, 'ABC' will not match 'Abc', and the return value will be False.
-        If .caseSensitiveComparisons is False, 'ABC' will match 'Abc', and the return value will be True.
-        Regardless of the value of .caseSensitiveComparisons, 'ABC' will match 'ABC', and the return value will be True.
+        :return: If .caseSensitiveComparisons is True, 'ABC' will not match 'Abc', and the return value will be False. \n
+                 If .caseSensitiveComparisons is False, 'ABC' will match 'Abc', and the return value will be True. \n
+                 Regardless of the value of .caseSensitiveComparisons, 'ABC' will match 'ABC', and the return value will be True.
         :rtype: bool
         """        
         if isinstance(a,str) and isinstance(b,str) and not self.caseSensitiveComparisons:
@@ -523,15 +522,14 @@ class SartopoSession():
     #  - maps (not bookmarks) are in the 'features' list, with type:Feature and properties.class:CollaborativeMap
     #  - bookmarks (not maps) are in the 'rels' list, with properties.class:UserAccountMapRel
 
-    def getAccountData(self,fromFileName=None):
-        """_summary_
+    def getAccountData(self) -> dict:
+        """Get all account data for the session account.  Populates .accountData, .groupAccounts, and .personalAccounts.
 
-        :param fromFileName: _description_, defaults to None
-        :type fromFileName: _type_, optional
-        :return: _description_
-        :rtype: _type_
+        :return: value of .accountData
+        :rtype: dict
         """        
         logging.info('Getting account data:')
+        fromFileName=False # hardcoded for production; set to a filename for debug
         if fromFileName:
             self.accoundData={}
             with open(fromFileName) as j:
@@ -586,19 +584,24 @@ class SartopoSession():
     #       "updated": 1714522622568,
     #       "type": "bookmark"
     #   },...]
-    def getMapList(self,groupAccountTitle=None,includeBookmarks=True,refresh=False,titlesOnly=False):
-        """_summary_
+    def getMapList(self,groupAccountTitle: str='',includeBookmarks=True,refresh=False,titlesOnly=False) -> list:
+        """Get a list of all maps in the user's personal account, or in the specified group account.
 
-        :param groupAccountTitle: _description_, defaults to None
-        :type groupAccountTitle: _type_, optional
-        :param includeBookmarks: _description_, defaults to True
+        :param groupAccountTitle: Title of the group account to get the map list from; defaults to ''
+        :type groupAccountTitle: str, optional
+        :param includeBookmarks: If True, bookmarks will be included in the returned list; defaults to True
         :type includeBookmarks: bool, optional
-        :param refresh: _description_, defaults to False
+        :param refresh: If True, a refresh will be performed before getting the map list; defaults to False
         :type refresh: bool, optional
-        :param titlesOnly: _description_, defaults to False
+        :param titlesOnly: If True, the return value will be a list of strings only; defaults to False
         :type titlesOnly: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: List of dicts, chronologically sorted (most recent first) by the value of 'updated': \n
+                 *id* -> 5-character map ID \n
+                 *title* -> map title \n
+                 *updated* -> timestamp of most recent update to the map \n
+                 *type* -> 'map' or 'bookmark' \n
+                   if type is 'bookmark', another key *permission* will exist, with corresponding value
+        :rtype: list
         """        
         if refresh or not self.accountData:
             self.getAccountData()
@@ -682,19 +685,23 @@ class SartopoSession():
             rval=rval[0]
         return rval
 
-    def getAllMapLists(self,includePersonal=False,includeBookmarks=True,refresh=False,titlesOnly=False):
-        """_summary_
+    def getAllMapLists(self,includePersonal=False,includeBookmarks=True,refresh=False,titlesOnly=False) -> list:
+        """Get a structured list of maps from all group accounts of which the current user is a member.  Optionally include the user's personal account(s).
 
-        :param includePersonal: _description_, defaults to False
+        :param includePersonal: If True, the user's personal account(s) will be included in the return value; defaults to False
         :type includePersonal: bool, optional
-        :param includeBookmarks: _description_, defaults to True
+        :param includeBookmarks: If True, bookmarks will be included in the returned lists; defaults to True
         :type includeBookmarks: bool, optional
-        :param refresh: _description_, defaults to False
+        :param refresh: If True, a refresh will be performed before getting the map lists; defaults to False
         :type refresh: bool, optional
-        :param titlesOnly: _description_, defaults to False
+        :param titlesOnly: If True, the return value will be a list of strings only; defaults to False
         :type titlesOnly: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: list of dicts: \n
+                 *groupAccountTitle* -> title of the group account \n
+                   -OR- \n
+                 *personalAccountTitle* -> title of the personal account \n
+                 *mapList* -> list of maps for this group account, in the same format as the return value from .getMapList
+        :rtype: list
         """        
         if refresh or not self.accountData:
             self.getAccountData()
@@ -714,15 +721,15 @@ class SartopoSession():
             theList.append({'groupAccountTitle':gat,'mapList':mapList})
         return theList
 
-    def getMapTitle(self,mapID=None,refresh=False):
-        """_summary_
+    def getMapTitle(self,mapID='',refresh=False) -> str:
+        """Get the title of a map specified by mapID.
 
-        :param mapID: _description_, defaults to None
-        :type mapID: _type_, optional
-        :param refresh: _description_, defaults to False
+        :param mapID: 5-character map ID; defaults to ''
+        :type mapID: str, optional
+        :param refresh: If True, a refresh will be performed before getting the map title; defaults to False
         :type refresh: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: Map title
+        :rtype: str
         """        
         if refresh or not self.accountData:
             self.getAccountData()
@@ -733,20 +740,20 @@ class SartopoSession():
         titles=[x['properties']['title'] for x in self.accountData['features'] if x.get('id','').lower()==mapID.lower()]
         if len(titles)>1:
             logging.warning('More than one map have the specified map ID '+str(mapID)+':'+str(titles))
-            return []
+            return ''
         elif len(titles)==0:
             logging.warning('No maps have the specified map ID '+str(mapID))
-            return []
+            return ''
         else:
             return titles[0]
     
-    def getGroupAccountTitles(self,refresh=False):
-        """_summary_
+    def getGroupAccountTitles(self,refresh=False) -> list:
+        """Get the titles of all of the user's group accounts.
 
-        :param refresh: _description_, defaults to False
+        :param refresh: If True, a refresh will be performed before getting the account titles; defaults to False
         :type refresh: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: List of account titles
+        :rtype: list
         """        
         if refresh or not self.accountData:
             self.getAccountData()
