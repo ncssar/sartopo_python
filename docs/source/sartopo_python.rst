@@ -37,7 +37,7 @@ sartopo\_python.sartopo\_python module
    .. automethod:: addLineAssignment
    .. automethod:: addAreaAssignment
    .. automethod:: addAppTrack
-
+   .. automethod:: flush
 
    **Feature deletion methods**
    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -83,12 +83,8 @@ sartopo\_python.sartopo\_python module
    .. automethod:: _pause
    .. automethod:: _resume
    .. automethod:: _syncLoop
-   .. automethod:: _getToken
    .. automethod:: _sendRequest
-   .. automethod:: _flush
    .. automethod:: _delAsync
-   .. automethod:: _getUsedSuffixList
-   .. automethod:: _getNextAvailableSuffix
 
    **Internal helper methods**
    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,6 +92,9 @@ sartopo\_python.sartopo\_python module
    .. automethod:: _caseMatch
    .. automethod:: _twoify
    .. automethod:: _fourify
+   .. automethod:: _getUsedSuffixList
+   .. automethod:: _getNextAvailableSuffix
+   .. automethod:: _getToken
 
    .. :members:
    .. :undoc-members:

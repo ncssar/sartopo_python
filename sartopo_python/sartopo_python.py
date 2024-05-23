@@ -760,10 +760,11 @@ class SartopoSession():
         return [x['properties']['title'] for x in self.groupAccounts]
 
     def _doSync(self):
-        """_summary_
+        """Internal method to keep the cache (.mapData) in sync with the associated hosted map. **Calling this method directly could cause sync problems.** \n
+           - called on a regular interval from ._syncLoop in the sync thread \n
+           - called once from .openMap, when the map is first opened \n
+           - called as needed from ._refresh
 
-        :return: _description_
-        :rtype: _type_
         """        
         # logging.info('sync marker: '+self.mapID+' begin')
         if not self.mapID or self.apiVersion<0:
@@ -968,15 +969,11 @@ class SartopoSession():
     #   only relevant if sync is off; if the latest refresh is within the sync interval value (even when sync is off),
     #   then don't do a refresh unless forceImmediate is True
     #  since _doSync() would be called from this thread, it is always blocking
-    def _refresh(self,blocking=False,forceImmediate=False):
-        """_summary_
+    def _refresh(self,forceImmediate=False):
+        """Refresh the cache (.mapData).  **This method should not need to be called when sync is on.**
 
-        :param blocking: _description_, defaults to False
-        :type blocking: bool, optional
-        :param forceImmediate: _description_, defaults to False
+        :param forceImmediate: If True, the refresh will happen immediately, even if a refresh was already done within the timeout period; defaults to False
         :type forceImmediate: bool, optional
-        :return: _description_
-        :rtype: _type_
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('refresh request invalid: this sartopo session is not associated with a map.')
@@ -1003,7 +1000,7 @@ class SartopoSession():
                     # logging.info(msg)
     
     def __del__(self):
-        """_summary_
+        """Object destructor.  Also stops the sync thread if needed.
         """        
         suffix=''
         if self.mapID:
@@ -1013,10 +1010,9 @@ class SartopoSession():
             self._stop()
 
     def _start(self):
-        """_summary_
+        """Internal method to start the sync thread. \n
+        Called from .openMap if sync is enabled.  Calls ._syncLoop in a new thread.  **Calling this method directly could cause sync problems.**
 
-        :return: _description_
-        :rtype: _type_
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('start request invalid: this sartopo session is not associated with a map.')
@@ -1030,11 +1026,10 @@ class SartopoSession():
             self.syncThreadStarted=True
 
     def _stop(self):
-        """_summary_
+        """Internal method to stop the sync thread. \n
+        Called from __del__ (when the object is destroyed) if sync was enabled.  **Calling this method directly could cause sync problems.**
 
-        :return: _description_
-        :rtype: _type_
-        """        
+        """    
         if not self.mapID or self.apiVersion<0:
             logging.error('stop request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1042,11 +1037,11 @@ class SartopoSession():
         self.sync=False
 
     def _pause(self):
-        """_summary_
+        """Internal method to manually pause the sync thread. \n
+        Sync is normally paused at the start of every call to _sendRequest; this method can be used to pause at any other time if needed. \n
+        After calling this method, sync will remain paused until a call to ._resume.
 
-        :return: _description_
-        :rtype: _type_
-        """        
+        """    
         if not self.mapID or self.apiVersion<0:
             logging.error('pause request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1054,11 +1049,9 @@ class SartopoSession():
         self.syncPauseManual=True
 
     def _resume(self):
-        """_summary_
+        """Internal method to resume the sync thread, following a call to ._pause.
 
-        :return: _description_
-        :rtype: _type_
-        """        
+        """       
         if not self.mapID or self.apiVersion<0:
             logging.error('resume request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1072,7 +1065,9 @@ class SartopoSession():
     #  iterative rather than recursive (which would eventually hit recursion limit issues),
     #  and it allows the blocking sleep call to happen here instead of inside _doSync.
     def _syncLoop(self):
-        """_summary_
+        """Internal method that calls _doSync at regular intervals, in a blocking loop. \n
+        This should only be called from ._start, which calls this method in a new thread, to
+        avoid blocking of the main thread.  **Calling this method directly could cause sync problems.**
         """        
         if self.syncCompletedCount==0:
             logging.info('This is the first sync attempt; pausing for the normal sync interval before starting sync.')
@@ -1112,39 +1107,47 @@ class SartopoSession():
 
     # return the token needed for signed request
     #  (to be used as they value for the 'signature' key of request params dict)
-    def _getToken(self,data):
-        """_summary_
+    def _getToken(self,data: str) -> str:
+        """Internal method to get the token needed for signed requests.\n
+        Normally only called from _sendRequest.
 
-        :param data: _description_
-        :type data: _type_
-        :return: _description_
-        :rtype: _type_
-        """        
+        :param data: Data to be signed
+        :type data: str
+        :return: Signed token
+        :rtype: str
+        """             
         # logging.info("pre-hashed data:"+data)                
         token=hmac.new(base64.b64decode(self.key),data.encode(),'sha256').digest()
         token=base64.b64encode(token).decode()
         # logging.info("hashed data:"+str(token))
         return token
 
-    def _sendRequest(self,type,apiUrlEnd,j,id="",returnJson=None,timeout=None,domainAndPort=None):
-        """_summary_
+    def _sendRequest(self,type: str,apiUrlEnd: str,j: dict,id: str='',returnJson: str='',timeout: int=0,domainAndPort: str=''):
+        """Send HTTP request to the server.
 
-        :param type: _description_
-        :type type: _type_
-        :param apiUrlEnd: _description_
-        :type apiUrlEnd: _type_
-        :param j: _description_
-        :type j: _type_
-        :param id: _description_, defaults to ""
+        :param type: HTTP request action verb; currently, the only acceptable values are 'GET', 'POST', or 'DELETE'
+        :type type: str
+        :param apiUrlEnd: Text of the 'final section' of the request URL \n
+          - typical values are 'Folder', 'Shape', 'Marker', etc.
+          - any occurrances of '[MAPID]' in apiUrlEnd will be replaced by the current map ID
+          - can be the keyword '[NEW]' which indicates that a new map should be created
+          - can be a longer URL with multiple tokens and slashes
+        :type apiUrlEnd: str
+        :param j: JSON structure to send with the request; only relevant for POST requests
+        :type j: dict
+        :param id: Feature ID, when relevant; defaults to ''
         :type id: str, optional
-        :param returnJson: _description_, defaults to None
-        :type returnJson: _type_, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :param domainAndPort: _description_, defaults to None
-        :type domainAndPort: _type_, optional
-        :return: _description_
-        :rtype: _type_
+        :param returnJson: see 'Returns' section below; defaults to ''
+        :type returnJson: str, optional
+        :param timeout: request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :param domainAndPort: Domain and port to send the request to; if not specified here, uses the value of .domainAndPort; defaults to ''
+        :type domainAndPort: str, optional
+        :return: various, depending on request details: \n
+          - False for any error or failure
+          - Entire response json structure (dict) if returnJson is 'ALL'
+          - ID only, if returnJson is 'ID'
+          - map ID of newly created map, if apiUrlEnd contains '[NEW]'
         """        
         # objgraph.show_growth()
         # logging.info('RAM:'+str(process.memory_info().rss/1024**2)+'MB')
@@ -1918,10 +1921,11 @@ class SartopoSession():
         else:
             return self._sendRequest('post','Assignment',j,id=existingId,returnJson='ID',timeout=timeout)
 
-    def _flush(self,timeout=20):
-        """_summary_
+    def flush(self,timeout=20):
+        """Saves any queued (deferred) request data to the hosted map.\n
+        Any of the feature creation methods can be called with queue=True to queue (defer) the creation until this method is called.
 
-        :param timeout: _description_, defaults to 20
+        :param timeout: Maximum allowable duration for the save request, in seconds; defaults to 20
         :type timeout: int, optional
         """        
         self._sendRequest('post','api/v0/map/[MAPID]/save',self.queue,timeout=timeout)
@@ -2106,13 +2110,16 @@ class SartopoSession():
         loop.run_until_complete(future)
 
     # _delAsync - not meant to be called by the user - only called from delFeatures
-    async def _delAsync(self,idAndClassList=[],timeout=None):
-        """_summary_
+    async def _delAsync(self,idAndClassList: list=[],timeout: int=0):
+        """Internal method to delete several features asynchronously, in a sepearate thread pool.
+        **This method should not be called directly.  It is called by .delFeatures.**
 
-        :param idAndClassList: _description_, defaults to []
+        :param idAndClassList: list of dicts of features to delete; defaults to [] \n
+            - *id* -> the feature's ID
+            - *class* -> the feature's class name
         :type idAndClassList: list, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
+        :param timeout: request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
         """        
         with ThreadPoolExecutor(max_workers=10) as executor:
             loop=asyncio.get_event_loop()
