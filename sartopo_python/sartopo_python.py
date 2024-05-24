@@ -1380,19 +1380,18 @@ class SartopoSession():
 
     def addFolder(self,
             label="New Folder",
-            timeout=None,
+            timeout=0,
             queue=False):
-        """_summary_
+        """Add a folder to the current map.
 
-        :param label: _description_, defaults to "New Folder"
+        :param label: Name of the folder; defaults to "New Folder"
         :type label: str, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :param queue: _description_, defaults to False
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :param queue: If True, the folder creation will be enqueued / deferred until a call to .flush; defaults to False
         :type queue: bool, optional
-        :return: _description_
-        :rtype: _type_
-        """            
+        :return: ID of the created folder, or 0 if queued; False if there was a failure
+        """                      
         if not self.mapID or self.apiVersion<0:
             logging.error('addFolder request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1417,8 +1416,8 @@ class SartopoSession():
                 return False
     
     def addMarker(self,
-            lat,
-            lon,
+            lat: float,
+            lon: float,
             title='New Marker',
             description='',
             color='#FF0000',
@@ -1428,38 +1427,36 @@ class SartopoSession():
             existingId=None,
             update=0,
             size=1,
-            timeout=None,
+            timeout=0,
             queue=False):
-        """_summary_
+        """Add a marker to the current map.
 
-        :param lat: _description_
-        :type lat: _type_
-        :param lon: _description_
-        :type lon: _type_
-        :param title: _description_, defaults to 'New Marker'
+        :param lat: Latitude of the marker, in decimal degrees; positive values indicate the northern hemisphere
+        :type lat: float
+        :param lon: Longitude of the marker, in decimal degrees; negative values indicate the western hemisphere
+        :type lon: float
+        :param title: Title of the marker; defaults to 'New Marker'
         :type title: str, optional
-        :param description: _description_, defaults to ''
+        :param description: Marker description; defaults to ''
         :type description: str, optional
-        :param color: _description_, defaults to '#FF0000'
+        :param color: Marker color, in RGB #FFFFFF hex notation; defaults to '#FF0000'
         :type color: str, optional
-        :param symbol: _description_, defaults to 'point'
+        :param symbol: Marker symbol name; must be one of the known symbol names; defaults to 'point'
         :type symbol: str, optional
-        :param rotation: _description_, defaults to None
-        :type rotation: _type_, optional
-        :param folderId: _description_, defaults to None
-        :type folderId: _type_, optional
-        :param existingId: _description_, defaults to None
-        :type existingId: _type_, optional
-        :param update: _description_, defaults to 0
+        :param rotation: Marker rotation; not valid for all marker styles; defaults to None
+        :param folderId: Folder ID of the folder this marker should be created in, if any; defaults to None
+        :type folderId: str, optional
+        :param existingId: ID of an existing marker to edit using this method; defaults to None
+        :type existingId: str, optional
+        :param update: Updated timestamp for this feature; defaults to 0
         :type update: int, optional
-        :param size: _description_, defaults to 1
+        :param size: Marker size; defaults to 1
         :type size: int, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :param queue: _description_, defaults to False
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :param queue: If True, the marker creation will be enqueued / deferred until a call to .flush; defaults to False
         :type queue: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: ID of the created marker, or 0 if queued; False if there was a failure
         """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addMarker request invalid: this sartopo session is not associated with a map.')
@@ -1503,7 +1500,7 @@ class SartopoSession():
                 return False
 
     def addLine(self,
-            points,
+            points: list,
             title='New Line',
             description='',
             width=2,
@@ -1513,36 +1510,35 @@ class SartopoSession():
             gpstype='TRACK',
             folderId=None,
             existingId=None,
-            timeout=None,
+            timeout=0,
             queue=False):
-        """_summary_
+        """Add a line to the current map.\n
+        (See .addLineAssignment to add an assignment feature instead.)
 
-        :param points: _description_
-        :type points: _type_
-        :param title: _description_, defaults to 'New Line'
+        :param points: List of points; each point is a list: [lat,lon]
+        :type points: list
+        :param title: Title of the line; defaults to 'New Line'
         :type title: str, optional
-        :param description: _description_, defaults to ''
+        :param description: Line description; defaults to ''
         :type description: str, optional
-        :param width: _description_, defaults to 2
+        :param width: Line width in pixels; defaults to 2
         :type width: int, optional
-        :param opacity: _description_, defaults to 1
-        :type opacity: int, optional
-        :param color: _description_, defaults to '#FF0000'
+        :param opacity: Line opacity, ranging from 0 to 1; defaults to 1
+        :type opacity: float, optional
+        :param color: Line color, in RGB #FFFFFF hex notation; defaults to '#FF0000'
         :type color: str, optional
-        :param pattern: _description_, defaults to 'solid'
+        :param pattern: Line dash pattern; must be from the known list of pattern names; defaults to 'solid'
         :type pattern: str, optional
-        :param gpstype: _description_, defaults to 'TRACK'
+        :param gpstype: Determines whether the line should appear in exported GPX files as a track or as a route (connection of waypoints); defaults to 'TRACK'
         :type gpstype: str, optional
-        :param folderId: _description_, defaults to None
-        :type folderId: _type_, optional
-        :param existingId: _description_, defaults to None
-        :type existingId: _type_, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :param queue: _description_, defaults to False
+        :param folderId: Folder ID of the folder this line should be created in, if any; defaults to None
+        :param existingId: ID of an existing line to edit using this method; defaults to None
+        :type existingId: str, optional
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :param queue: If True, the line creation will be enqueued / deferred until a call to .flush; defaults to False
         :type queue: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: ID of the created line, or 0 if queued; False if there was a failure
         """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addLine request invalid: this sartopo session is not associated with a map.')
@@ -1583,7 +1579,7 @@ class SartopoSession():
                 return False
 
     def addPolygon(self,
-            points,
+            points: list,
             title='New Shape',
             folderId=None,
             description='',
@@ -1594,38 +1590,37 @@ class SartopoSession():
             fill='#FF0000',
             gpstype='TRACK',
             existingId=None,
-            timeout=None,
+            timeout=0,
             queue=False):
-        """_summary_
+        """Add a polygon to the current map.\n
+        (See .addAreaAssignment to add an assignment feature instead.)
 
-        :param points: _description_
-        :type points: _type_
-        :param title: _description_, defaults to 'New Shape'
+        :param points: List of points; each point is a list: [lat,lon] \n
+            - The final point does not need to be the same as the first point; the polygon will be automatically closed
+        :type points: list
+        :param title: Title of the polygon; defaults to 'New Shape'
         :type title: str, optional
-        :param folderId: _description_, defaults to None
-        :type folderId: _type_, optional
-        :param description: _description_, defaults to ''
+        :param folderId: Folder ID of the folder this line should be created in, if any; defaults to None
+        :param description: Polygon description; defaults to ''
         :type description: str, optional
-        :param strokeOpacity: _description_, defaults to 1
-        :type strokeOpacity: int, optional
-        :param strokeWidth: _description_, defaults to 2
+        :param strokeOpacity: Opacity of the boundary line, ranging from 0 to 1; defaults to 1
+        :type strokeOpacity: float, optional
+        :param strokeWidth: Width of the boundary line in pixels; defaults to 2
         :type strokeWidth: int, optional
-        :param fillOpacity: _description_, defaults to 0.1
+        :param fillOpacity: Opacity of the polygon fill, ranging from 0 to 1; defaults to 0.1
         :type fillOpacity: float, optional
-        :param stroke: _description_, defaults to '#FF0000'
+        :param stroke: Color of the boundary line, in RGB #FFFFFF hex format; defaults to '#FF0000'
         :type stroke: str, optional
-        :param fill: _description_, defaults to '#FF0000'
+        :param fill: Color of the polygon fill, in RGB #FFFFFF hex format; defaults to '#FF0000'
         :type fill: str, optional
-        :param gpstype: _description_, defaults to 'TRACK'
+        :param gpstype: Determines whether the polygon boundary line should appear in exported GPX files as a track or as a route (connection of waypoints); defaults to 'TRACK'
         :type gpstype: str, optional
-        :param existingId: _description_, defaults to None
-        :type existingId: _type_, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :param queue: _description_, defaults to False
+        :param existingId: ID of an existing polygon to edit using this method; defaults to None
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :param queue: If True, the polygon creation will be enqueued / deferred until a call to .flush; defaults to False
         :type queue: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: ID of the created polygon, or 0 if queued; False if there was a failure
         """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addPolygon request invalid: this sartopo session is not associated with a map.')
@@ -1667,7 +1662,7 @@ class SartopoSession():
                 return False
 
     def addLineAssignment(self,
-            points,
+            points: list,
             number=None,
             letter=None,
             opId=None,
@@ -1688,58 +1683,58 @@ class SartopoSession():
             gpstype='TRACK',
             status='DRAFT',
             existingId=None,
-            timeout=None,
+            timeout=0,
             queue=False):
-        """_summary_
+        """Add a Line Assignment to the current map.\n
+        (This is a SAR-specific feature and has no meaning in 'Recreation' mode.)
 
-        :param points: _description_
-        :type points: _type_
-        :param number: _description_, defaults to None
-        :type number: _type_, optional
-        :param letter: _description_, defaults to None
-        :type letter: _type_, optional
-        :param opId: _description_, defaults to None
-        :type opId: _type_, optional
-        :param folderId: _description_, defaults to None
-        :type folderId: _type_, optional
-        :param resourceType: _description_, defaults to 'GROUND'
+        :param points: List of points; each point is a list: [lat,lon]
+        :type points: list
+        :param number: String value to put in the 'number' field, if any; defaults to None
+        :type number: str, optional
+        :param letter: String value to put in the 'letter' field, if any; defaults to None
+        :type letter: str, optional
+        :param opId: ID of the Operational Period feature that this assignment will belong to, if any; defaults to None
+        :type opId: str, optional
+        :param folderId: Folder ID of the folder this line assignment should be created in, if any; defaults to None
+        :type folderId: str, optional
+        :param resourceType: Resource type; must be from the allowable list of resource types; defaults to 'GROUND'
         :type resourceType: str, optional
-        :param teamSize: _description_, defaults to 0
+        :param teamSize: Team size (number of people), defaults to 0
         :type teamSize: int, optional
-        :param priority: _description_, defaults to 'LOW'
+        :param priority: Priority for the assignment; must be one of LOW, MED, or HIGH; defaults to 'LOW'
         :type priority: str, optional
-        :param responsivePOD: _description_, defaults to 'LOW'
+        :param responsivePOD: Expected POD for a responsive subject; must be one of LOW, MED, or HIGH; defaults to 'LOW'
         :type responsivePOD: str, optional
-        :param unresponsivePOD: _description_, defaults to 'LOW'
+        :param unresponsivePOD: Expected POD for an unresponsive subject; must be one of LOW, MED, or HIGH; defaults to 'LOW'
         :type unresponsivePOD: str, optional
-        :param cluePOD: _description_, defaults to 'LOW'
+        :param cluePOD: Expected POD for clues; must be one of LOW, MED, or HIGH; defaults to 'LOW'
         :type cluePOD: str, optional
-        :param description: _description_, defaults to ''
+        :param description: Assignment description; defaults to ''
         :type description: str, optional
-        :param previousEfforts: _description_, defaults to ''
+        :param previousEfforts: Description of previous efforts in the assignment; defaults to ''
         :type previousEfforts: str, optional
-        :param transportation: _description_, defaults to ''
+        :param transportation: Description of how the team should transport to and from the assignment; defaults to ''
         :type transportation: str, optional
-        :param timeAllocated: _description_, defaults to 0
-        :type timeAllocated: int, optional
-        :param primaryFrequency: _description_, defaults to ''
+        :param timeAllocated: Allotted time (typically a number of hours) to complete the assignment; can be a string or integer; defaults to 0
+        :type timeAllocated: str, optional
+        :param primaryFrequency: Primary radio frequency or channel name; defaults to ''
         :type primaryFrequency: str, optional
-        :param secondaryFrequency: _description_, defaults to ''
+        :param secondaryFrequency: Secondary radio frequency or channel name; defaults to ''
         :type secondaryFrequency: str, optional
-        :param preparedBy: _description_, defaults to ''
+        :param preparedBy: Name or ID of the person who prepared the assignment; defaults to ''
         :type preparedBy: str, optional
-        :param gpstype: _description_, defaults to 'TRACK'
+        :param gpstype: Determines whether the line assignment should appear in exported GPX files as a track or as a route (connection of waypoints); defaults to 'TRACK'
         :type gpstype: str, optional
-        :param status: _description_, defaults to 'DRAFT'
+        :param status: Overall status of the assignment; must be one of DRAFT, PREPARED, INPROGRESS, or COMPLETED; defaults to 'DRAFT'
         :type status: str, optional
-        :param existingId: _description_, defaults to None
-        :type existingId: _type_, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :param queue: _description_, defaults to False
+        :param existingId: ID of an existing line assignment to edit using this method; defaults to None
+        :type existingId: str, optional
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :param queue: If True, the line assignment creation will be enqueued / deferred until a call to .flush; defaults to False
         :type queue: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: ID of the created line assignment, or 0 if queued; False if there was a failure
         """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addLineAssignment request invalid: this sartopo session is not associated with a map.')
@@ -1805,7 +1800,7 @@ class SartopoSession():
     #     return rj
 
     def addAreaAssignment(self,
-            points,
+            points: list,
             number=None,
             letter=None,
             opId=None,
@@ -1826,58 +1821,59 @@ class SartopoSession():
             gpstype='TRACK',
             status='DRAFT',
             existingId=None,
-            timeout=None,
+            timeout=0,
             queue=False):
-        """_summary_
+        """Add an Area Assignment to the current map.\n
+        (This is a SAR-specific feature and has no meaning in 'Recreation' mode.)
 
-        :param points: _description_
-        :type points: _type_
-        :param number: _description_, defaults to None
-        :type number: _type_, optional
-        :param letter: _description_, defaults to None
-        :type letter: _type_, optional
-        :param opId: _description_, defaults to None
-        :type opId: _type_, optional
-        :param folderId: _description_, defaults to None
-        :type folderId: _type_, optional
-        :param resourceType: _description_, defaults to 'GROUND'
+        :param points: List of points; each point is a list: [lat,lon] \n
+            - The final point does not need to be the same as the first point; the polygon will be automatically closed
+        :type points: list
+        :param number: String value to put in the 'number' field, if any; defaults to None
+        :type number: str, optional
+        :param letter: String value to put in the 'letter' field, if any; defaults to None
+        :type letter: str, optional
+        :param opId: ID of the Operational Period feature that this assignment will belong to, if any; defaults to None
+        :type opId: str, optional
+        :param folderId: Folder ID of the folder this line assignment should be created in, if any; defaults to None
+        :type folderId: str, optional
+        :param resourceType: Resource type; must be from the allowable list of resource types; defaults to 'GROUND'
         :type resourceType: str, optional
-        :param teamSize: _description_, defaults to 0
+        :param teamSize: Team size (number of people), defaults to 0
         :type teamSize: int, optional
-        :param priority: _description_, defaults to 'LOW'
+        :param priority: Priority for the assignment; must be one of LOW, MED, or HIGH; defaults to 'LOW'
         :type priority: str, optional
-        :param responsivePOD: _description_, defaults to 'LOW'
+        :param responsivePOD: Expected POD for a responsive subject; must be one of LOW, MED, or HIGH; defaults to 'LOW'
         :type responsivePOD: str, optional
-        :param unresponsivePOD: _description_, defaults to 'LOW'
+        :param unresponsivePOD: Expected POD for an unresponsive subject; must be one of LOW, MED, or HIGH; defaults to 'LOW'
         :type unresponsivePOD: str, optional
-        :param cluePOD: _description_, defaults to 'LOW'
+        :param cluePOD: Expected POD for clues; must be one of LOW, MED, or HIGH; defaults to 'LOW'
         :type cluePOD: str, optional
-        :param description: _description_, defaults to ''
+        :param description: Assignment description; defaults to ''
         :type description: str, optional
-        :param previousEfforts: _description_, defaults to ''
+        :param previousEfforts: Description of previous efforts in the assignment; defaults to ''
         :type previousEfforts: str, optional
-        :param transportation: _description_, defaults to ''
+        :param transportation: Description of how the team should transport to and from the assignment; defaults to ''
         :type transportation: str, optional
-        :param timeAllocated: _description_, defaults to 0
-        :type timeAllocated: int, optional
-        :param primaryFrequency: _description_, defaults to ''
+        :param timeAllocated: Allotted time (typically a number of hours) to complete the assignment; can be a string or integer; defaults to 0
+        :type timeAllocated: str, optional
+        :param primaryFrequency: Primary radio frequency or channel name; defaults to ''
         :type primaryFrequency: str, optional
-        :param secondaryFrequency: _description_, defaults to ''
+        :param secondaryFrequency: Secondary radio frequency or channel name; defaults to ''
         :type secondaryFrequency: str, optional
-        :param preparedBy: _description_, defaults to ''
+        :param preparedBy: Name or ID of the person who prepared the assignment; defaults to ''
         :type preparedBy: str, optional
-        :param gpstype: _description_, defaults to 'TRACK'
+        :param gpstype: Determines whether the assignment boundary should appear in exported GPX files as a track or as a route (connection of waypoints); defaults to 'TRACK'
         :type gpstype: str, optional
-        :param status: _description_, defaults to 'DRAFT'
+        :param status: Overall status of the assignment; must be one of DRAFT, PREPARED, INPROGRESS, or COMPLETED; defaults to 'DRAFT'
         :type status: str, optional
-        :param existingId: _description_, defaults to None
-        :type existingId: _type_, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :param queue: _description_, defaults to False
+        :param existingId: ID of an existing area assignment to edit using this method; defaults to None
+        :type existingId: str, optional
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :param queue: If True, the area assignment creation will be enqueued / deferred until a call to .flush; defaults to False
         :type queue: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: ID of the created area assignment, or 0 if queued; False if there was a failure
         """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addAreaAssignment request invalid: this sartopo session is not associated with a map.')
@@ -1935,38 +1931,40 @@ class SartopoSession():
     #     .
 
     def addAppTrack(self,
-            points,
-            title="New AppTrack",
-            description="",
-            cnt=None,
-            startTrack=True,
-            since=0,
+            points: list,
+            title='New AppTrack',
+            description='',
+            # cnt=None,
+            # startTrack=True,
+            # since=0,
             folderId=None,
-            existingId="",
-            timeout=None):
-        """_summary_
+            existingId='',
+            timeout=0):
+        """Add an AppTrack to the current map.\n
+        Normally, AppTracks are only added from the CalTopo app.
 
-        :param points: _description_
-        :type points: _type_
-        :param title: _description_, defaults to "New AppTrack"
+        :param points: List of points; each point is a list: [lat,lon]
+        :type points: list
+        :param title: AppTrack title; defaults to 'New AppTrack'
         :type title: str, optional
-        :param description: _description_, defaults to ""
+        :param description: AppTrack description; defaults to ''
         :type description: str, optional
-        :param cnt: _description_, defaults to None
-        :type cnt: _type_, optional
-        :param startTrack: _description_, defaults to True
-        :type startTrack: bool, optional
-        :param since: _description_, defaults to 0
-        :type since: int, optional
-        :param folderId: _description_, defaults to None
-        :type folderId: _type_, optional
-        :param existingId: _description_, defaults to ""
+        :param folderId: Folder ID of the folder this AppTrack should be created in, if any; defaults to None
+        :type folderId: str, optional
+        :param existingId: ID of an existing AppTrack to edit using this method; defaults to ''
         :type existingId: str, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :return: _description_
-        :rtype: _type_
-        """            
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :return: Entire JSON response from the AppTrack creation request, or False if there was a failure prior to the request
+        """                        
+        
+        # :param cnt: _description_, defaults to None
+        # :type cnt: _type_, optional
+        # :param startTrack: _description_, defaults to True
+        # :type startTrack: bool, optional
+        # :param since: _description_, defaults to 0
+        # :type since: int, optional
+
         if not self.mapID or self.apiVersion<0:
             logging.error('addAppTrack request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1983,9 +1981,10 @@ class SartopoSession():
         jg['type']='LineString'
         jg['coordinates']=points
         jg['incremental']=True
-        if cnt is None:
-            cnt=len(points)
-        jg['size']=cnt       # cnt includes number of coord in this call
+        # if cnt is None:
+        #     cnt=len(points)
+        # jg['size']=cnt       # cnt includes number of coord in this call
+        jg['size']=len(points)
         j['properties']=jp
         j['geometry']=jg
         j['type']='Feature'
