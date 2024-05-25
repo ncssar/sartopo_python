@@ -2003,15 +2003,15 @@ class SartopoSession():
         #     logging.info("At request adding points to track:"+str(existingId)+":"+str(since)+":"+str(j))
         #     return self._sendRequest("post","since/"+str(since),j,id=str(existingId),returnJson="ID")
 
-    def delMarker(self,markerOrId="",timeout=None):
-        """_summary_
+    def delMarker(self,markerOrId='',timeout=0):
+        """Delete a marker on the current map.\n
+        The marker to delete can be specified by ID, or by passing the entire marker data object.\n
+        This convenience function calls .delFeature.
 
-        :param markerOrId: _description_, defaults to ""
-        :type markerOrId: str, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :return: _description_
-        :rtype: _type_
+        :param markerOrId: Marker ID, or entire marker data object; defaults to ''
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :return: Return value from the delete request, or False if there was an error prior to the request
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
@@ -2019,15 +2019,16 @@ class SartopoSession():
         self.delFeature(featureOrId=markerOrId,fClass="marker",timeout=timeout)
 
     # delMarkers - calls asynchronous non-blocking delFeatures
-    def delMarkers(self,markersOrIds=[],timeout=None):
-        """_summary_
+    def delMarkers(self,markersOrIds=[],timeout=0):
+        """Delete one or more markers on the current map, in a non-blocking asynchronous batch of delete requests.\n
+        The markers to delete can be specified by ID, or by passing the entire marker data objects; all markers to delete should be specified in the same manner.\n
+        This convenience function calls .delFeatures.
 
-        :param markersOrIds: _description_, defaults to []
+        :param markersOrIds: List of marker IDs, or of entire marker data objects; defaults to []
         :type markersOrIds: list, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :return: _description_
-        :rtype: _type_
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :return: Return value from the delete request, or False if there was an error prior to the request
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
@@ -2041,17 +2042,17 @@ class SartopoSession():
             return False
         self.delFeatures(featuresOrIdAndClassList=[{'id':id,'class':'Marker'} for id in ids],timeout=timeout)
 
-    def delFeature(self,featureOrId="",fClass=None,timeout=None):
-        """_summary_
+    def delFeature(self,featureOrId='',fClass='',timeout=0):
+        """Delete the specified feature from the current map.
+        The feature to delete can be specified by ID, or by passing the entire marker data object.
 
-        :param featureOrId: _description_, defaults to ""
+        :param featureOrId: Feature ID, or entire feature data object; defaults to ''
         :type featureOrId: str, optional
-        :param fClass: _description_, defaults to None
-        :type fClass: _type_, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :return: _description_
-        :rtype: _type_
+        :param fClass: Feature class; there should be no need to specify a value here, since the code will try to automatically determine the class from the feature data object; defaults to ''
+        :type fClass: str, optional
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :return: Return value from the delete request, or False if there was an error prior to the request
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
@@ -2080,15 +2081,16 @@ class SartopoSession():
     # delFeatures - asynchronously send a batch of non-blocking delFeature requests
     #  featuresOrIdAndClassList - a list of dicts - entire features, or, two items per dict: 'id' and 'class'
     #  see discussion at https://github.com/ncssar/sartopo_python/issues/34
-    def delFeatures(self,featuresOrIdAndClassList=[],timeout=None):
-        """_summary_
+    def delFeatures(self,featuresOrIdAndClassList=[],timeout=0):
+        """Delete one or more features on the current map, in a non-blocking asynchronous batch of delete requests.\n
 
-        :param featuresOrIdAndClassList: _description_, defaults to []
+        :param featuresOrIdAndClassList: List of dicts specifying the features to delete; each dict is either a complete feature data object, or this simplified dict; defaults to [] \n
+            - *id* -> the feature's ID
+            - *class* -> the feature's class name
         :type featuresOrIdAndClassList: list, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :return: _description_
-        :rtype: _type_
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :return: Return value of the asynchronous delete loop initialization routine, or False if there was an error prior to the loop
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
