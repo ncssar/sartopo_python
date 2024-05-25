@@ -2636,18 +2636,18 @@ class SartopoSession():
     #  the arguments (target, cutter) can be name (string), id (string), or feature (json)
 
     def cut(self,target,cutter,deleteCutter=True,useResultNameSuffix=True):
-        """_summary_
+        """Cut a 'target' geometry using a 'cutter' geometry:
+            - remove a notch from a polygon target, using a polygon cutter
+            - slice a polygon target, using a polygon cutter or a line cutter
+            - slice a line target, using a polygon cutter or a line cutter
 
-        :param target: _description_
-        :type target: _type_
-        :param cutter: _description_
-        :type cutter: _type_
-        :param deleteCutter: _description_, defaults to True
+        :param target: ID, title, or entire feature dict of the target feature
+        :param cutter: ID, title, or entire feature dict of the cutter feature
+        :param deleteCutter: If True, delete the cutter feature after the cut operation; defaults to True
         :type deleteCutter: bool, optional
-        :param useResultNameSuffix: _description_, defaults to True
+        :param useResultNameSuffix: If True, any new features resulting from the cut operation will have their titles suffixed; defaults to True
         :type useResultNameSuffix: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: List of resulting feature IDs, or False if a failure occured prior to the cut operation
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('cut request invalid: this sartopo session is not associated with a map.')
@@ -2879,16 +2879,14 @@ class SartopoSession():
     # expand - expand target polygon to include the area of p2 polygon
 
     def expand(self,target,p2,deleteP2=True):
-        """_summary_
+        """Expand a 'target' polygon to include the area of the 'p2' polygon.\n
+        This is basically a boolean 'OR' operation, using Shapely's '|' method.
 
-        :param target: _description_
-        :type target: _type_
-        :param p2: _description_
-        :type p2: _type_
-        :param deleteP2: _description_, defaults to True
+        :param target: ID, title, or entire feature dict of the target feature
+        :param p2: ID, title, or entire feature dict of the p2 feature
+        :param deleteP2: If True, delete the p2 feature after the expand operation; defaults to True
         :type deleteP2: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: True if successful; False otherwise
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('expand request invalid: this sartopo session is not associated with a map.')
@@ -2963,15 +2961,17 @@ class SartopoSession():
 
         return True # success
 
-    def buffer2(self,boundaryGeom,beyond):
-        """_summary_
+    def buffer2(self,boundaryGeom,beyond: float):
+        """Return a copy of the original polygon, increased in size by the specified value.\n
+        This method does not modify the original geometry.\n
+        This method is used to oversize a Polygon; Shapely's LineString.buffer method should be used to oversize a line.
 
-        :param boundaryGeom: _description_
-        :type boundaryGeom: _type_
-        :param beyond: _description_
-        :type beyond: _type_
-        :return: _description_
-        :rtype: _type_
+        :param boundaryGeom: Boundary geometry to be oversized
+        :type boundaryGeom: shapely.geometry.Polygon
+        :param beyond: Amount to oversize the boundary geometry (in degrees)
+        :type beyond: float
+        :return: Oversized geometry (the orignal geometry is not modified)
+        :rtype: shapely.geometry.Polygon or .MultiPolygon
         """        
         a=boundaryGeom.buffer(0) # split bowties into separate polygons
         merged=unary_union(a)
@@ -2990,14 +2990,19 @@ class SartopoSession():
     #  A outside, B outside --> don't append either point; instead, append the intersection as a new line segment
 
     def intersection2(self,targetGeom,boundaryGeom):
-        """_summary_
+        """Return the intersection of the targetGeom (a LineString) and the boundaryGeom (a Polygon).\n
+        For other geometry types, shapely.ops.intersection should be used.\n
+        This function will preseve complex (non-simple) lines, i.e. with internal crossovers, by walking through the input points (except for the last point) where 'A' signifies the current point and 'B' signifies the next point:
+            - if A and B are both inside the boundary: append A to the output points list
+            - if A is inside but B is outside: append A, then append the intestection of the current segment with the boundary
+            - if A is outside but B is inside: append B, then append the intersection of the current segment with the boundary
+            - if A and B are both ouside: don't append either point; instead, append the intersection as a new line segment
 
-        :param targetGeom: _description_
-        :type targetGeom: _type_
-        :param boundaryGeom: _description_
-        :type boundaryGeom: _type_
-        :return: _description_
-        :rtype: _type_
+        :param targetGeom: Target geometry
+        :type targetGeom: shapely.geometry.LineString
+        :param boundaryGeom: Boundary geometry
+        :type boundaryGeom: shapely.geometry.Polygon
+        :return: Result of the intersection operation; could be one of various shapely.geometry classes
         """        
         outLines=[]
         targetCoords=targetGeom.coords
@@ -3065,17 +3070,18 @@ class SartopoSession():
     # getBounds - return the bounding box (minx,miny,maxx,maxy), oversized by 'pad',
     #               that bounds the listed objects
 
-    def getBounds(self,objectList,padDeg=0.0001,padPct=None):
-        """_summary_
+    def getBounds(self,objectList: list,padDeg=0.0001,padPct=None):
+        """Get the bounding box of a list of features, optionally oversized by padDeg or padPct.\n
+        Shapely.bounds is used to compute the extent of each feature.
 
-        :param objectList: _description_
-        :type objectList: _type_
-        :param padDeg: _description_, defaults to 0.0001
+        :param objectList: List of IDs, titles or entire feature dicts of the features in question 
+        :type objectList: list
+        :param padDeg: Amount to expand the bounding box, in degrees; defaults to 0.0001; only relevant if padPct is not specified
         :type padDeg: float, optional
-        :param padPct: _description_, defaults to None
-        :type padPct: _type_, optional
-        :return: _description_
-        :rtype: _type_
+        :param padPct: Amount to expand the bounding box, in percent (integer), or as a fraction (from 0 to 1); defaults to None;\n
+            If padPct is specified, it will be applied; if padPct is not specified, the padDeg value will be applied
+        :type padPct: float, optional
+        :return: Bounding box of the features in question, optionally oversized as above; returned as a list, in the same format as shapely.bounds: [min X, min Y, max X, max Y]
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('getBounds request invalid: this sartopo session is not associated with a map.')
@@ -3126,13 +3132,12 @@ class SartopoSession():
 
     # _twoify - turn four-element-vertex-data into two-element-vertex-data so that
     #  the shapely functions can operate on it
-    def _twoify(self,points):
-        """_summary_
+    def _twoify(self,points: list) -> list:
+        """Internal method to turn four-element-vertex-data into two-element-vertex-data for use by the shapely methods.
 
-        :param points: _description_
-        :type points: _type_
-        :return: _description_
-        :rtype: _type_
+        :param points: List of points, or a single point
+        :type points: list
+        :return: List of two-coordinate versions of the input point/s
         """        
         if not isinstance(points,list):
             return points
@@ -3143,15 +3148,15 @@ class SartopoSession():
 
     # _fourify - try to use four-element-vertex data from original data; called by
     #  geometry operations during resulting shape creation / editing
-    def _fourify(self,points,origPoints):
-        """_summary_
+    def _fourify(self,points: list,origPoints: list) -> list:
+        """Internal method to make a list of four-element points from a list of possibly-two-element points, by comparison with an original list of four-element points.\n
+        Used internally to make sure geometry operation results are compliant with subsequent operations.
 
-        :param points: _description_
-        :type points: _type_
-        :param origPoints: _description_
-        :type origPoints: _type_
-        :return: _description_
-        :rtype: _type_
+        :param points: List of possibly-two-element points to be copied into a list of four-element points
+        :type points: list
+        :param origPoints: List of four-element points that can be used to inform the copy operation as needed
+        :type origPoints: list
+        :return: List of four-element points
         """        
         # no use trying to fourify if the orig points list is not all four-element points
         if len(origPoints[0])!=4 or len(origPoints[-1])!=4:
@@ -3188,24 +3193,22 @@ class SartopoSession():
     #          grow the specified boundary polygon by the specified distance before cropping
 
     def crop(self,target,boundary,beyond=0.0001,deleteBoundary=False,useResultNameSuffix=False,drawSizedBoundary=False,noDraw=False):
-        """_summary_
+        """Remove portions of a line or polygon that are outside a boundary polygon.
+        Optionally grow the boundary polygon by the specified distance before cropping.
 
-        :param target: _description_
-        :type target: _type_
-        :param boundary: _description_
-        :type boundary: _type_
-        :param beyond: _description_, defaults to 0.0001
+        :param target: ID, title, or entire feature dict of the target feature
+        :param boundary: ID, title, or entire feature dict of the boundary polygon
+        :param beyond: Distance to oversize the boundary polygon (in degrees) prior to the crop operation; defaults to 0.0001
         :type beyond: float, optional
-        :param deleteBoundary: _description_, defaults to False
+        :param deleteBoundary: If True, the boundary polygon will be deleted after the crop operation; defaults to False
         :type deleteBoundary: bool, optional
-        :param useResultNameSuffix: _description_, defaults to False
+        :param useResultNameSuffix: If True, any new features resulting from the cut operation will have their titles suffixed; defaults to False
         :type useResultNameSuffix: bool, optional
-        :param drawSizedBoundary: _description_, defaults to False
+        :param drawSizedBoundary: If True, the oversized boundary polygon will be drawn as a feature; defaults to False
         :type drawSizedBoundary: bool, optional
-        :param noDraw: _description_, defaults to False
+        :param noDraw: If True return the resulting coordinate list(s) instead of editing / adding map features; defaults to False
         :type noDraw: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: Resulting feature IDs, or resulting coordinate list(s) (see noDraw), or False if a failure occurred prior to the crop operation
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('crop request invalid: this sartopo session is not associated with a map.')
@@ -3456,16 +3459,7 @@ class SartopoSession():
         return rids # resulting feature IDs
 
         
-def insertBeforeExt(fn,ins):
-    """_summary_
-
-    :param fn: _description_
-    :type fn: function
-    :param ins: _description_
-    :type ins: _type_
-    :return: _description_
-    :rtype: _type_
-    """    
+def insertBeforeExt(fn,ins): 
     if '.' in fn:
         lastSlashIndex=-1
         lastBackSlashIndex=-1
@@ -3499,8 +3493,6 @@ logging.basicConfig(
 #   sys.excepthook wants a 3-tuple; threading.excepthook wants an instance of
 #   _thread._ExceptHookArgs, which provides a 4-namedtuple
 def handle_exception(*args):
-    """_summary_
-    """    
     if len(args)==1:
         a=args[0]
         [exc_type,exc_value,exc_traceback,thread]=[a.exc_type,a.exc_value,a.exc_traceback,a.thread]
@@ -3521,13 +3513,6 @@ threading.excepthook = handle_exception
 
 # pare down json for logging messages to reduce log size and clutter
 def jsonForLog(orig):
-    """_summary_
-
-    :param orig: _description_
-    :type orig: _type_
-    :return: _description_
-    :rtype: _type_
-    """    
     rval=copy.deepcopy(orig)
     try:
         ok=orig.keys()
