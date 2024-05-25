@@ -2521,18 +2521,17 @@ class SartopoSession():
     # removeDuplicatePoints - walk a list of points - if a given point is
     #   very close to the previous point, delete it (<0.00001 degrees)
 
-    def removeDuplicatePoints(self,points):
-        """_summary_
+    def removeDuplicatePoints(self,points: list) -> list:
+        """Walk a list of points; if a given point is very close to the previous point (within 0.00001 degrees), delete it.
 
-        :param points: _description_
-        :type points: _type_
-        :return: _description_
-        :rtype: _type_
+        :param points: List of [lat,lon] points
+        :type points: list
+        :return: The possibly-modified list of points; will be the same length as the input list, or shorter
         """        
-        logging.info('removeDuplicatePoints called')
-        ls=LineString(points)
-        logging.info('is_valid:'+str(ls.is_valid))
-        logging.info('is_simple:'+str(ls.is_simple))
+        # logging.info('removeDuplicatePoints called')
+        # ls=LineString(points)
+        # logging.info('is_valid:'+str(ls.is_valid))
+        # logging.info('is_simple:'+str(ls.is_simple))
         out=[points[0]]
         for i in range(1,len(points)):
             dx=points[i][0]-points[i-1][0]
@@ -2599,13 +2598,12 @@ class SartopoSession():
     # removeSpurs - self-intersecting polygons can be caused by single-point
     #   'spurs': a,b,c,d,c,e,f  where c,d,c is the spur.  Change a sequence
     #   like this to a,b,c,e,f.
-    def removeSpurs(self,points):
-        """_summary_
+    def removeSpurs(self,points: list) -> list:
+        """Walk a list of points; if the points before and after a given point are identical, delete the given point.
 
-        :param points: _description_
-        :type points: _type_
-        :return: _description_
-        :rtype: _type_
+        :param points: List of [lat,lon] points
+        :type points: list
+        :return: The possibly-modified list of points; will be the same length as the input list, or shorter
         """        
 
         # logging.info('removeSpurs called')
