@@ -2358,25 +2358,31 @@ class SartopoSession():
             letter=None,
             properties=None,
             geometry=None,
-            timeout=None):
-        """_summary_
+            timeout=0):
+        """Edit properties and/or geometry of a specified feature.\n
+        The feature to edit can be specified in various methods:\n
+            - exact ID
+            - class name, with either the title or the letter\n
+        Only the specific properties or geometries to be edited need to be included in the
+        properties and geometry arguments; they will be merged with existing properties and geometries.
+        However, when editing geometry, it probably makes more sense to overwrite the entire geometry dictionary.
 
-        :param id: _description_, defaults to None
-        :type id: _type_, optional
-        :param className: _description_, defaults to None
-        :type className: _type_, optional
-        :param title: _description_, defaults to None
-        :type title: _type_, optional
-        :param letter: _description_, defaults to None
-        :type letter: _type_, optional
-        :param properties: _description_, defaults to None
-        :type properties: _type_, optional
-        :param geometry: _description_, defaults to None
-        :type geometry: _type_, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :return: _description_
-        :rtype: _type_
+        :param id: ID of the feature to edit; defaults to None
+        :type id: str, optional
+        :param className: Feature class name used for selection; defaults to None
+        :type className: str, optional
+        :param title: Feature title used for selection; defaults to None
+        :type title: str, optional
+        :param letter: Assignment letter used for selection; defaults to None\n
+            (only relevant for assignment features)
+        :type letter: str, optional
+        :param properties: Dict of properties to edit; defaults to None
+        :type properties: dict, optional
+        :param geometry: Dict of geometry to edit; defaults to None
+        :type geometry: dict, optional
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :return: ID of the edited feature (should be the same as the 'id' argument), or False if there was a failure prior to the edit request
         """            
 
         # logging.info('editFeature called:'+str(properties))
@@ -2481,29 +2487,35 @@ class SartopoSession():
     # moveMarker - convenience function - calls editFeature
     #   specify either id or title
     def moveMarker(self,newCoords,id=None,title=None):
-        """_summary_
+        """Move an existing marker.\n
+        The marker to move can be specified either with ID or by title.\n
+        This convenience function calls .editFeature.
 
-        :param newCoords: _description_
-        :type newCoords: _type_
-        :param id: _description_, defaults to None
-        :type id: _type_, optional
-        :param title: _description_, defaults to None
-        :type title: _type_, optional
+        :param newCoords: List of [lat,lon] that the marker should be moved to
+        :type newCoords: list
+        :param id: ID of the marker to move; defaults to None
+        :type id: str, optional
+        :param title: Title of the marker to move; defaults to None
+        :type title: str, optional
+        :return: ID of the edited feature (should be the same as the 'id' argument, if specified), or False if there was a failure prior to the edit request
         """        
         self.editFeature(id=id,title=title,className='Marker',geometry={'coordinates':[newCoords[0],newCoords[1],0,0]})
 
     # editMarkerDescription - convenienec functon - calls editFeature
     #   specify either id or title
     def editMarkerDescription(self,newDescription,id=None,title=None):
-        """_summary_
+        """Edit the description of an existing marker.\n
+        The marker to edit can be specified either with ID or by title.\n
+        This convenience function calls .editFeature.
 
-        :param newDescription: _description_
-        :type newDescription: _type_
-        :param id: _description_, defaults to None
-        :type id: _type_, optional
-        :param title: _description_, defaults to None
-        :type title: _type_, optional
-        """        
+        :param newDescription: The new description
+        :type newCoords: str
+        :param id: ID of the marker to move; defaults to None
+        :type id: str, optional
+        :param title: Title of the marker to move; defaults to None
+        :type title: str, optional
+        :return: ID of the edited feature (should be the same as the 'id' argument, if specified), or False if there was a failure prior to the edit request
+        """          
         self.editFeature(id=id,title=title,className='Marker',properties={'description':newDescription})
 
     # removeDuplicatePoints - walk a list of points - if a given point is
