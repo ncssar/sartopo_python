@@ -2546,13 +2546,12 @@ class SartopoSession():
     #   specified base title
     #   ex: if features exist in the cache with titles 'a','a:1','a:3','a:stuff','other'
     #   then _getUsedSuffixList('a') should return [1,3]
-    def _getUsedSuffixList(self,base):
-        """_summary_
+    def _getUsedSuffixList(self,base: str):
+        """Get a list of integers of all used suffixes for the specified base title.
 
-        :param base: _description_
-        :type base: _type_
-        :return: _description_
-        :rtype: _type_
+        :param base: Base title to check
+        :type base: str
+        :return: List of integers of all used suffxies, or False if there was a failure prior to checking the cache
         """        
         # build list of all titles (or letters as appropriate) from the cache
         #  try 'letter' first; if not found, use 'title'; default to 'NO-TITLE'
@@ -2578,13 +2577,14 @@ class SartopoSession():
         return rval
 
     # _getNextAvailableSuffix - get the next available suffix given a list of used titles; limit at 100
-    def _getNextAvailableSuffix(self,usedSuffixList):
-        """_summary_
+    def _getNextAvailableSuffix(self,usedSuffixList: list) -> int:
+        """Get the next available suffix, give a list of used suffixes.\n
+        In case the used suffix list is not contiguous, e.g. if an intermediate suffixed feature has been deleted, the lowest available suffix number will be returned.
 
-        :param usedSuffixList: _description_
-        :type usedSuffixList: _type_
-        :return: _description_
-        :rtype: _type_
+        :param usedSuffixList: List of integer suffixes that are already used; does not need to be contiguous
+        :type usedSuffixList: list
+        :return: Lowest available suffix number
+        :rtype: int
         """        
         keepLooking=True
         suffix=1
