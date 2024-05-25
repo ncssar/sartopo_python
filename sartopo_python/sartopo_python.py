@@ -2151,32 +2151,46 @@ class SartopoSession():
             featureClassExcludeList=[],
             letterOnly=False,
             allowMultiTitleMatch=False,
-            since=0,
-            timeout=None,
+            # since=0,
+            timeout=0,
             forceRefresh=False):
-        """_summary_
+        """Get the complete feature data structure/s for one or more features from the local cache, after a refresh if needed. \n
+        The features to get data for can be specified / filtered in various methods:\n
+            - all features of a given class
+            - all features of any one of several classes (see featureClassExcludeList)
+            - one feature with an exact ID
+            - feature/s with specified title (can return mutliple features; see allowMultiTitleMatch)
+            - assignment features specified by 'letter', regardless of 'number' (see letterOnly)
+            - all features / the entire cache, if none of featureClass, ID, or title are specified
 
-        :param featureClass: _description_, defaults to None
-        :type featureClass: _type_, optional
-        :param title: _description_, defaults to None
-        :type title: _type_, optional
-        :param id: _description_, defaults to None
-        :type id: _type_, optional
-        :param featureClassExcludeList: _description_, defaults to []
+        :param featureClass: Feature class name used for selection filtering; defaults to None \n
+            - if neither ID nor title are specified, then all features of this class will be returned
+            - if ID is not specified but title is specified, then feature/s of this class matching the title (possibly only the letter; see letterOnly) will be returned
+        :type featureClass: str, optional
+        :param title: Feature title used for selection filtering; defaults to None \n
+            - title is only relevant if ID is not specified
+            - only features whose class name matches featureClass (if specified) or whose class name is not in featureClassExcludeList are candidates for title matching; so, if neither featureClass nor featureClassExcludeList are specified, all features will be checked for title match
+            - see allowMultiTitleMatch for handling of multiple features that have the specified title
+        :type title: str, optional
+        :param id: Feature ID; if specified, only one feature will be returned, if there is a match; defaults to None
+        :type id: str, optional
+        :param featureClassExcludeList: List of feature classes to exclude from possible matches; not relevant if featureClass or ID are specified; defaults to []
         :type featureClassExcludeList: list, optional
-        :param letterOnly: _description_, defaults to False
+        :param letterOnly: If True, all assignments with matching 'letter' will be returned, regardless of 'number'; defaults to False
         :type letterOnly: bool, optional
-        :param allowMultiTitleMatch: _description_, defaults to False
+        :param allowMultiTitleMatch: If True, and there are multiple features that have the specified title, they will all be returned; defaults to False\n
+            If False, and there are multiple features that have the specified title, a warning will be displayed and the return will be an empty list
         :type allowMultiTitleMatch: bool, optional
-        :param since: _description_, defaults to 0
-        :type since: int, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :param forceRefresh: _description_, defaults to False
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :param forceRefresh: If True, a refresh will be performed before getting the map list, even if the cache has been refreshed within the standard sync interval; defaults to False
         :type forceRefresh: bool, optional
-        :return: _description_
-        :rtype: _type_
-        """            
+        :return: List of data structures (dicts) of feature/s matching the requested filtering; the list will be empty if there are no matches or if there was a failure prior to the cache request
+        """                       
+        
+        # :param since: _description_, defaults to 0
+        # :type since: int, optional
+
         if not self.mapID or self.apiVersion<0:
             logging.error('getFeatures request invalid: this sartopo session is not associated with a map.')
             return []
@@ -2267,31 +2281,14 @@ class SartopoSession():
             featureClassExcludeList=[],
             letterOnly=False,
             allowMultiTitleMatch=False,
-            since=0,
-            timeout=None,
+            # since=0,
+            timeout=0,
             forceRefresh=False):
-        """_summary_
+        """Get the complete feature data structure for one feature from the local cache, after a refresh if needed.\n
+        This convenience function calls .getFeatures, but will only have a valid return if exactly one feature is a match.\n
+        All arguments are the same as for .getFeatures; see that method's documentation.
 
-        :param featureClass: _description_, defaults to None
-        :type featureClass: _type_, optional
-        :param title: _description_, defaults to None
-        :type title: _type_, optional
-        :param id: _description_, defaults to None
-        :type id: _type_, optional
-        :param featureClassExcludeList: _description_, defaults to []
-        :type featureClassExcludeList: list, optional
-        :param letterOnly: _description_, defaults to False
-        :type letterOnly: bool, optional
-        :param allowMultiTitleMatch: _description_, defaults to False
-        :type allowMultiTitleMatch: bool, optional
-        :param since: _description_, defaults to 0
-        :type since: int, optional
-        :param timeout: _description_, defaults to None
-        :type timeout: _type_, optional
-        :param forceRefresh: _description_, defaults to False
-        :type forceRefresh: bool, optional
-        :return: _description_
-        :rtype: _type_
+        :return: Data structure (dict) of the feature matching the requested filtering (if any), or False if zero or multiple features matched the fitler, or if there was an error prior to the cache search
         """            
         if not self.mapID or self.apiVersion<0:
             logging.error('getFeature request invalid: this sartopo session is not associated with a map.')
@@ -2303,7 +2300,7 @@ class SartopoSession():
             featureClassExcludeList=featureClassExcludeList,
             letterOnly=letterOnly,
             allowMultiTitleMatch=allowMultiTitleMatch,
-            since=since,
+            # since=since,
             timeout=timeout,
             forceRefresh=forceRefresh)
         if isinstance(r,list):

@@ -11,6 +11,17 @@ This module provides several wrapper functions and convenience functions that ma
 
 The python code in this module is not written or maintained by CalTopo LLC or the authors of caltopo.com or sartopo.com.
 
+- local cache
+- sync 
+- mapless
+- enum lists / fixed string lists
+- - POD
+- - assignment status
+- - resource type
+- - track/route
+- - feature class
+
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
