@@ -185,42 +185,48 @@ class SartopoSession():
             syncCallback=None,
             useFiddlerProxy=False,
             caseSensitiveComparisons=False):  # case-insensitive comparisons by default, see _caseMatch()
-        """_summary_
+        """The core session object.
 
-        :param domainAndPort: _description_, defaults to 'localhost:8080'
+        :param domainAndPort: Domain and port for CalTopo Desktop sessions; defaults to 'localhost:8080'
         :type domainAndPort: str, optional
-        :param mapID: _description_, defaults to None
-        :type mapID: _type_, optional
-        :param configpath: _description_, defaults to None
-        :type configpath: _type_, optional
-        :param account: _description_, defaults to None
-        :type account: _type_, optional
-        :param id: _description_, defaults to None
+        :param mapID: 5-character map ID; omit this argument during initialization to create a 'mapless' session; defaults to None
+        :type mapID: str, optional
+        :param configpath: Configuration file path (full file name); defaults to None
+        :type configpath: str, optional
+        :param account: Account name; used to reference a section of the config file; defaults to None
+        :type account: str, optional
+        :param id: 12-character credential ID; specify here to override value from config file; defaults to None
         :type id: _type_, optional
-        :param syncInterval: _description_, defaults to 5
+        :param key: Credential key; specify here to override value from config file; defaults to None
+        :type key: str, optional
+        :param accountId: 6-character account ID; specify here to override value from config file; defaults to None
+        :type accountId: str, optional
+        :param accountIdInternet: 6-character internet-specific account ID; specify here to override value from config file; defaults to None
+        :type accountIdInternet: str, optional
+        :param sync: If True, the session will use multi-threaded background sync to keep the local cache in sync with the specified hosted map; defaults to True
+        :type sync: bool, optional
+        :param syncInterval: Sync interval in seconds; defaults to 5
         :type syncInterval: int, optional
-        :param syncTimeout: _description_, defaults to 10
+        :param syncTimeout: Sync timeout in seconds; defaults to 10
         :type syncTimeout: int, optional
-        :param syncDumpFile: _description_, defaults to None
-        :type syncDumpFile: _type_, optional
-        :param cacheDumpFile: _description_, defaults to None
-        :type cacheDumpFile: _type_, optional
-        :param propertyUpdateCallback: _description_, defaults to None
-        :type propertyUpdateCallback: _type_, optional
-        :param geometryUpdateCallback: _description_, defaults to None
-        :type geometryUpdateCallback: _type_, optional
-        :param newFeatureCallback: _description_, defaults to None
-        :type newFeatureCallback: _type_, optional
-        :param deletedFeatureCallback: _description_, defaults to None
-        :type deletedFeatureCallback: _type_, optional
-        :param syncCallback: _description_, defaults to None
-        :type syncCallback: _type_, optional
-        :param useFiddlerProxy: _description_, defaults to False
+        :param syncDumpFile: Base filename (will be appended by timestamp) to dump the results of each sync call; defaults to None
+        :type syncDumpFile: str, optional
+        :param cacheDumpFile: Base filename (will be appended by timestamp) to dump the local cache contents on each sync call; defaults to None
+        :type cacheDumpFile: str, optional
+        :param propertyUpdateCallback: Function to call when any feature's property has changed during sync; the function will be called with the new feature object as the only argument; defaults to None
+        :type propertyUpdateCallback: function, optional
+        :param geometryUpdateCallback: Function to call when any feature's geometry has changed during sync; the function will be called with the new feature object as the only argument; defaults to None
+        :type geometryUpdateCallback: function, optional
+        :param newFeatureCallback: Function to call when a new feature was added to the local cache during sync; the function will be called with the new feature object as the only argument; defaults to None
+        :type newFeatureCallback: function, optional
+        :param deletedFeatureCallback: Function to call when a feature was deleted from the local cache during sync; the function will be called with the new feature object as the only argument; defaults to None
+        :type deletedFeatureCallback: function, optional
+        :param syncCallback: Function to call on each successful sync; the function will be called with no arguments; defaults to None
+        :type syncCallback: function, optional
+        :param useFiddlerProxy: If True, all requests for this session will be sent through the Fiddler proxy, which allows Fiddler to watch outgoing network traffic for debug purposes; defaults to False
         :type useFiddlerProxy: bool, optional
-        :param caseSensitiveComparisons: _description_, defaults to False
+        :param caseSensitiveComparisons: If True, various string comparisons will be done in a case-sensitive manner; see .caseMatch; defaults to False
         :type caseSensitiveComparisons: bool, optional
-        :raises STSException: _description_
-        :raises STSException: _description_
         """            
         self.s=requests.session()
         self.apiVersion=-1
