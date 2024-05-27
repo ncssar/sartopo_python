@@ -187,7 +187,7 @@ class SartopoSession():
             caseSensitiveComparisons=False):  # case-insensitive comparisons by default, see _caseMatch()
         """The core session object.
 
-        :param domainAndPort: Domain and port for CalTopo Desktop sessions; defaults to 'localhost:8080'
+        :param domainAndPort: Domain-and-port portion of the URL for CalTopo Desktop sessions; defaults to 'localhost:8080'
         :type domainAndPort: str, optional
         :param mapID: 5-character map ID; omit this argument during initialization to create a 'mapless' session; defaults to None
         :type mapID: str, optional
@@ -1513,7 +1513,6 @@ class SartopoSession():
             opacity=1,
             color='#FF0000',
             pattern='solid',
-            gpstype='TRACK',
             folderId=None,
             existingId=None,
             timeout=0,
@@ -1535,8 +1534,6 @@ class SartopoSession():
         :type color: str, optional
         :param pattern: Line dash pattern; must be from the known list of pattern names; defaults to 'solid'
         :type pattern: str, optional
-        :param gpstype: Determines whether the line should appear in exported GPX files as a track or as a route (connection of waypoints); defaults to 'TRACK'
-        :type gpstype: str, optional
         :param folderId: Folder ID of the folder this line should be created in, if any; defaults to None
         :param existingId: ID of an existing line to edit using this method; defaults to None
         :type existingId: str, optional
@@ -1545,7 +1542,7 @@ class SartopoSession():
         :param queue: If True, the line creation will be enqueued / deferred until a call to .flush; defaults to False
         :type queue: bool, optional
         :return: ID of the created line, or 0 if queued; False if there was a failure
-        """            
+        """           
         if not self.mapID or self.apiVersion<0:
             logging.error('addLine request invalid: this sartopo session is not associated with a map.')
             return False
@@ -1560,7 +1557,6 @@ class SartopoSession():
         jp['stroke-opacity']=opacity
         jp['stroke']=color
         jp['pattern']=pattern
-        jp['gpstype']=gpstype
         jg['type']='LineString'
         jg['coordinates']=points
         j['properties']=jp
@@ -1594,7 +1590,6 @@ class SartopoSession():
             fillOpacity=0.1,
             stroke='#FF0000',
             fill='#FF0000',
-            gpstype='TRACK',
             existingId=None,
             timeout=0,
             queue=False):
@@ -1619,8 +1614,6 @@ class SartopoSession():
         :type stroke: str, optional
         :param fill: Color of the polygon fill, in RGB #FFFFFF hex format; defaults to '#FF0000'
         :type fill: str, optional
-        :param gpstype: Determines whether the polygon boundary line should appear in exported GPX files as a track or as a route (connection of waypoints); defaults to 'TRACK'
-        :type gpstype: str, optional
         :param existingId: ID of an existing polygon to edit using this method; defaults to None
         :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
         :type timeout: int, optional
@@ -1643,7 +1636,6 @@ class SartopoSession():
         jp['stroke']=stroke
         jp['fill']=fill
         jp['fill-opacity']=fillOpacity
-        jp['gpstype']=gpstype
         jg['type']='Polygon'
         jg['coordinates']=[points]
         j['properties']=jp
@@ -1686,7 +1678,6 @@ class SartopoSession():
             primaryFrequency='',
             secondaryFrequency='',
             preparedBy='',
-            gpstype='TRACK',
             status='DRAFT',
             existingId=None,
             timeout=0,
@@ -1730,8 +1721,6 @@ class SartopoSession():
         :type secondaryFrequency: str, optional
         :param preparedBy: Name or ID of the person who prepared the assignment; defaults to ''
         :type preparedBy: str, optional
-        :param gpstype: Determines whether the line assignment should appear in exported GPX files as a track or as a route (connection of waypoints); defaults to 'TRACK'
-        :type gpstype: str, optional
         :param status: Overall status of the assignment; must be one of DRAFT, PREPARED, INPROGRESS, or COMPLETED; defaults to 'DRAFT'
         :type status: str, optional
         :param existingId: ID of an existing line assignment to edit using this method; defaults to None
@@ -1769,7 +1758,6 @@ class SartopoSession():
         jp['primaryFrequency']=primaryFrequency
         jp['secondaryFrequency']=secondaryFrequency
         jp['preparedBy']=preparedBy
-        jp['gpstype']=gpstype
         jp['status']=status
         jg['type']='LineString'
         jg['coordinates']=points
@@ -1824,7 +1812,6 @@ class SartopoSession():
             primaryFrequency='',
             secondaryFrequency='',
             preparedBy='',
-            gpstype='TRACK',
             status='DRAFT',
             existingId=None,
             timeout=0,
@@ -1869,8 +1856,6 @@ class SartopoSession():
         :type secondaryFrequency: str, optional
         :param preparedBy: Name or ID of the person who prepared the assignment; defaults to ''
         :type preparedBy: str, optional
-        :param gpstype: Determines whether the assignment boundary should appear in exported GPX files as a track or as a route (connection of waypoints); defaults to 'TRACK'
-        :type gpstype: str, optional
         :param status: Overall status of the assignment; must be one of DRAFT, PREPARED, INPROGRESS, or COMPLETED; defaults to 'DRAFT'
         :type status: str, optional
         :param existingId: ID of an existing area assignment to edit using this method; defaults to None
@@ -1908,7 +1893,6 @@ class SartopoSession():
         jp['primaryFrequency']=primaryFrequency
         jp['secondaryFrequency']=secondaryFrequency
         jp['preparedBy']=preparedBy
-        jp['gpstype']=gpstype
         jp['status']=status
         jg['type']='Polygon'
         jg['coordinates']=[points]
@@ -2790,8 +2774,7 @@ class SartopoSession():
                         strokeWidth=tp.get('stroke-width',None),
                         fillOpacity=tp.get('fill-opacity',None),
                         description=tp.get('description',None),
-                        folderId=tfid,
-                        gpstype=tp.get('gpstype',None)))
+                        folderId=tfid))
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
@@ -2816,7 +2799,6 @@ class SartopoSession():
                         primaryFrequency=tp.get('primaryFrequency',''),
                         secondaryFrequency=tp.get('secondaryFrequency',''),
                         preparedBy=tp.get('preparedBy',''),
-                        gpstype=tp.get('gpstype',''),
                         status=tp.get('status','')))
                 else:
                     logging.warning('cut: target feature class was neither Shape nor Assigment; operation aborted.')
@@ -2846,8 +2828,7 @@ class SartopoSession():
                         width=tp.get('stroke-width',None),
                         pattern=tp.get('pattern',None),
                         description=tp.get('description',None),
-                        folderId=tfid,
-                        gpstype=tp.get('gpstype',None)))
+                        folderId=tfid))
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
@@ -2872,7 +2853,6 @@ class SartopoSession():
                         primaryFrequency=tp.get('primaryFrequency',''),
                         secondaryFrequency=tp.get('secondaryFrequency',''),
                         preparedBy=tp.get('preparedBy',''),
-                        gpstype=tp.get('gpstype',''),
                         status=tp.get('status','')))
                 else:
                     logging.error('cut: target feature class was neither Shape nor Assigment; operation aborted.')
@@ -3290,8 +3270,7 @@ class SartopoSession():
                 strokeOpacity=tp.get('stroke-opacity',None),
                 strokeWidth=tp.get('stroke-width',None),
                 fillOpacity=tp.get('fill-opacity',None),
-                description=tp.get('description',None),
-                gpstype=tp.get('gpstype',None))
+                description=tp.get('description',None))
 
         if not boundaryGeom.intersects(targetGeom):
             logging.warning(targetShape['properties']['title']+','+boundaryShape['properties']['title']+': features do not intersect; no operation performed')
@@ -3373,8 +3352,7 @@ class SartopoSession():
                         strokeWidth=tp.get('stroke-width',None),
                         fillOpacity=tp.get('fill-opacity',None),
                         description=tp.get('description',None),
-                        folderId=tfid,
-                        gpstype=tp.get('gpstype',None)))
+                        folderId=tfid))
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
@@ -3399,7 +3377,6 @@ class SartopoSession():
                         primaryFrequency=tp.get('primaryFrequency',''),
                         secondaryFrequency=tp.get('secondaryFrequency',''),
                         preparedBy=tp.get('preparedBy',''),
-                        gpstype=tp.get('gpstype',''),
                         status=tp.get('status','')))
                 else:
                     logging.warning('crop: target feature class was neither Shape nor Assigment')
@@ -3429,8 +3406,7 @@ class SartopoSession():
                         width=tp.get('stroke-width',None),
                         pattern=tp.get('pattern',None),
                         description=tp.get('description',None),
-                        folderId=tfid,
-                        gpstype=tp.get('gpstype',None)))
+                        folderId=tfid))
                 elif tc=='Assignment':
                     letter=tp['letter']
                     if useResultNameSuffix:
@@ -3453,7 +3429,6 @@ class SartopoSession():
                         primaryFrequency=tp.get('primaryFrequency',''),
                         secondaryFrequency=tp.get('secondaryFrequency',''),
                         preparedBy=tp.get('preparedBy',''),
-                        gpstype=tp.get('gpstype',''),
                         status=tp.get('status','')))
                 else:
                     logging.warning('crop: target feature class was neither Shape nor Assigment')
