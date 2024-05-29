@@ -153,7 +153,7 @@ import functools
 
 # syncing=False
 
-# shapely.geometry improts will generate a logging message if numpy is not installed;
+# shapely.geometry imports will generate a logging message if numpy is not installed;
 #  numpy is not actually required
 from shapely.geometry import LineString,Point,Polygon,MultiLineString,MultiPolygon,GeometryCollection
 from shapely.ops import split,unary_union
@@ -187,7 +187,7 @@ class SartopoSession():
             caseSensitiveComparisons=False):  # case-insensitive comparisons by default, see _caseMatch()
         """The core session object.
 
-        :param domainAndPort: Domain-and-port portion of the URL for CalTopo Desktop sessions; defaults to 'localhost:8080'
+        :param domainAndPort: Domain-and-port portion of the URL; defaults to 'caltopo.com'; for CalTopo Desktop running on localhost, the value should be 'localhost:8080'; a different host name or port can be specified in this manner
         :type domainAndPort: str, optional
         :param mapID: 5-character map ID; omit this argument during initialization to create a 'mapless' session; defaults to None
         :type mapID: str, optional
@@ -276,7 +276,6 @@ class SartopoSession():
 
         :param mapID: 5-character Map ID, defaults to ''
         :type mapID: str, optional
-        :raises STSException: _description_
         :return: True if map was opened successfully; False otherwise.
         :rtype: bool
         """

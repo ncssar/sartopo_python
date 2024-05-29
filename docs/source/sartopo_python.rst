@@ -1,25 +1,21 @@
-sartopo\_python package
-=======================
+:tocdepth: 3
 
-Submodules
-----------
-
-sartopo\_python.sartopo\_python module
---------------------------------------
-.. see https://stackoverflow.com/a/48682589/3577105
-.. currentmodule:: sartopo_python.sartopo_python
+sartopo\_python module
+======================
+.. see https://stackoverflow.com/a/48682589/3577105 for categorization technique
+.. currentmodule:: sartopo_python
 
 .. autoclass:: SartopoSession
 
    **Session setup methods**
-   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   -------------------------
 
    .. automethod:: openMap
    .. automethod:: _setupSession
    .. automethod:: _sendUserdata
 
    **Account data access methods (may be called from a mapless session)**
-   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ----------------------------------------------------------------------
 
    .. automethod:: getAccountData
    .. automethod:: getMapList
@@ -28,7 +24,7 @@ sartopo\_python.sartopo\_python module
    .. automethod:: getGroupAccountTitles
 
    **Feature creation methods**
-   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ----------------------------
 
    .. automethod:: addFolder
    .. automethod:: addMarker
@@ -40,7 +36,7 @@ sartopo\_python.sartopo\_python module
    .. automethod:: flush
 
    **Feature deletion methods**
-   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ----------------------------
 
    .. automethod:: delFeature
    .. automethod:: delFeatures
@@ -48,13 +44,13 @@ sartopo\_python.sartopo\_python module
    .. automethod:: delMarkers
 
    **Feature query methods**
-   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   -------------------------
 
    .. automethod:: getFeature
    .. automethod:: getFeatures
       
    **Feature editing methods**
-   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ---------------------------
    
    .. automethod:: editFeature
    .. automethod:: moveMarker
@@ -63,7 +59,7 @@ sartopo\_python.sartopo\_python module
    .. automethod:: removeSpurs
 
    **Geometry operation methods**
-   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ------------------------------
 
    .. automethod:: cut
    .. automethod:: expand
@@ -73,7 +69,7 @@ sartopo\_python.sartopo\_python module
    .. automethod:: getBounds
 
    **Internal data management methods**
-   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ------------------------------------
 
    .. automethod:: _doSync
    .. automethod:: _refresh
@@ -87,7 +83,7 @@ sartopo\_python.sartopo\_python module
    .. automethod:: _delAsync
 
    **Internal helper methods**
-   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   ---------------------------
 
    .. automethod:: _caseMatch
    .. automethod:: _twoify
@@ -100,10 +96,10 @@ sartopo\_python.sartopo\_python module
    .. :undoc-members:
    .. :show-inheritance:
 
-Module contents
----------------
+.. Module contents
+.. ---------------
 
-.. automodule:: sartopo_python
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. .. automodule:: sartopo_python
+..    :members:
+..    :undoc-members:
+..    :show-inheritance:

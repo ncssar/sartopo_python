@@ -31,6 +31,23 @@ exclude_patterns = []
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'alabaster'
+html_logo = '_static/caltopo_python_logo.png'
+html_theme_options = {
+	'page_width':'80%',
+	# 'sidebar_width':'20%',
+	'sidebar_collapse':True,
+	'fixed_sidebar':True,
+	'logo':'caltopo_python_logo.png'
+}
 html_static_path = ['_static']
+html_sidebars = {
+	'**': [
+		'localtoc.html',
+		# 'relations.html',
+		'searchbox.html'
+	]
+}
 
 autoclass_content = 'both'
+add_module_names = False
+toc_object_entries_show_parents = 'hide'
