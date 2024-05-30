@@ -7,90 +7,94 @@ sartopo\_python module
 
 .. autoclass:: SartopoSession
 
-   **Session setup methods**
-   -------------------------
+.. omitting class name from automethod calls, when the section headers are unindented,
+..   causes these failures, but, the headers need to be unindented for the TOC to recognize them:
+.. WARNING: don't know which module to import for autodocumenting 'openMap' (try placing a "module" or "currentmodule" directive in the document, or giving an explicit module name)
 
-   .. automethod:: openMap
-   .. automethod:: _setupSession
-   .. automethod:: _sendUserdata
+**Session setup methods**
+-------------------------
 
-   **Account data access methods (may be called from a mapless session)**
-   ----------------------------------------------------------------------
+   .. automethod:: SartopoSession.openMap
+   .. automethod:: SartopoSession._setupSession
+   .. automethod:: SartopoSession._sendUserdata
 
-   .. automethod:: getAccountData
-   .. automethod:: getMapList
-   .. automethod:: getAllMapLists
-   .. automethod:: getMapTitle
-   .. automethod:: getGroupAccountTitles
+**Account data access methods (may be called from a mapless session)**
+----------------------------------------------------------------------
 
-   **Feature creation methods**
-   ----------------------------
+   .. automethod:: SartopoSession.getAccountData
+   .. automethod:: SartopoSession.getMapList
+   .. automethod:: SartopoSession.getAllMapLists
+   .. automethod:: SartopoSession.getMapTitle
+   .. automethod:: SartopoSession.getGroupAccountTitles
 
-   .. automethod:: addFolder
-   .. automethod:: addMarker
-   .. automethod:: addLine
-   .. automethod:: addPolygon
-   .. automethod:: addLineAssignment
-   .. automethod:: addAreaAssignment
-   .. automethod:: addAppTrack
-   .. automethod:: flush
+**Feature creation methods**
+----------------------------
 
-   **Feature deletion methods**
-   ----------------------------
+   .. automethod:: SartopoSession.addFolder
+   .. automethod:: SartopoSession.addMarker
+   .. automethod:: SartopoSession.addLine
+   .. automethod:: SartopoSession.addPolygon
+   .. automethod:: SartopoSession.addLineAssignment
+   .. automethod:: SartopoSession.addAreaAssignment
+   .. automethod:: SartopoSession.addAppTrack
+   .. automethod:: SartopoSession.flush
 
-   .. automethod:: delFeature
-   .. automethod:: delFeatures
-   .. automethod:: delMarker
-   .. automethod:: delMarkers
+**Feature deletion methods**
+----------------------------
 
-   **Feature query methods**
-   -------------------------
+   .. automethod:: SartopoSession.delFeature
+   .. automethod:: SartopoSession.delFeatures
+   .. automethod:: SartopoSession.delMarker
+   .. automethod:: SartopoSession.delMarkers
 
-   .. automethod:: getFeature
-   .. automethod:: getFeatures
+**Feature query methods**
+-------------------------
+
+   .. automethod:: SartopoSession.getFeature
+   .. automethod:: SartopoSession.getFeatures
       
-   **Feature editing methods**
-   ---------------------------
+**Feature editing methods**
+---------------------------
    
-   .. automethod:: editFeature
-   .. automethod:: moveMarker
-   .. automethod:: editMarkerDescription
-   .. automethod:: removeDuplicatePoints
-   .. automethod:: removeSpurs
+   .. automethod:: SartopoSession.editFeature
+   .. automethod:: SartopoSession.moveMarker
+   .. automethod:: SartopoSession.editMarkerDescription
+   .. automethod:: SartopoSession.removeDuplicatePoints
+   .. automethod:: SartopoSession.removeSpurs
 
-   **Geometry operation methods**
-   ------------------------------
+**Geometry operation methods**
+------------------------------
 
-   .. automethod:: cut
-   .. automethod:: expand
-   .. automethod:: crop
-   .. automethod:: buffer2
-   .. automethod:: intersection2
-   .. automethod:: getBounds
+   .. automethod:: SartopoSession.cut
+   .. automethod:: SartopoSession.expand
+   .. automethod:: SartopoSession.crop
+   .. automethod:: SartopoSession.buffer2
+   .. automethod:: SartopoSession.intersection2
+   .. automethod:: SartopoSession.getBounds
 
-   **Internal data management methods**
-   ------------------------------------
+**Internal data management methods**
+------------------------------------
 
-   .. automethod:: _doSync
-   .. automethod:: _refresh
-   .. automethod:: __del__
-   .. automethod:: _start
-   .. automethod:: _stop
-   .. automethod:: _pause
-   .. automethod:: _resume
-   .. automethod:: _syncLoop
-   .. automethod:: _sendRequest
-   .. automethod:: _delAsync
+   .. automethod:: SartopoSession._doSync
+   .. automethod:: SartopoSession._refresh
+   .. automethod:: SartopoSession.__del__
+   .. automethod:: SartopoSession._start
+   .. automethod:: SartopoSession._stop
+   .. automethod:: SartopoSession._pause
+   .. automethod:: SartopoSession._resume
+   .. automethod:: SartopoSession._syncLoop
+   .. automethod:: SartopoSession._sendRequest
+   .. automethod:: SartopoSession._delAsync
 
-   **Internal helper methods**
-   ---------------------------
+**Internal helper methods**
+---------------------------
 
-   .. automethod:: _caseMatch
-   .. automethod:: _twoify
-   .. automethod:: _fourify
-   .. automethod:: _getUsedSuffixList
-   .. automethod:: _getNextAvailableSuffix
-   .. automethod:: _getToken
+   .. automethod:: SartopoSession._caseMatch
+   .. automethod:: SartopoSession._twoify
+   .. automethod:: SartopoSession._fourify
+   .. automethod:: SartopoSession._getUsedSuffixList
+   .. automethod:: SartopoSession._getNextAvailableSuffix
+   .. automethod:: SartopoSession._getToken
 
    .. :members:
    .. :undoc-members:
