@@ -11,15 +11,14 @@ sartopo\_python module
 ..   causes these failures, but, the headers need to be unindented for the TOC to recognize them:
 .. WARNING: don't know which module to import for autodocumenting 'openMap' (try placing a "module" or "currentmodule" directive in the document, or giving an explicit module name)
 
-**Session setup methods**
--------------------------
+.. **Session setup methods**
+.. -------------------------
 
-   .. automethod:: SartopoSession.openMap
-   .. automethod:: SartopoSession._setupSession
-   .. automethod:: SartopoSession._sendUserdata
+.. automethod:: SartopoSession.openMap
 
-**Account data access methods (may be called from a mapless session)**
-----------------------------------------------------------------------
+**Account data access methods**
+-------------------------------
+These methods may be called from a mapless session.
 
    .. automethod:: SartopoSession.getAccountData
    .. automethod:: SartopoSession.getMapList
@@ -39,14 +38,6 @@ sartopo\_python module
    .. automethod:: SartopoSession.addAppTrack
    .. automethod:: SartopoSession.flush
 
-**Feature deletion methods**
-----------------------------
-
-   .. automethod:: SartopoSession.delFeature
-   .. automethod:: SartopoSession.delFeatures
-   .. automethod:: SartopoSession.delMarker
-   .. automethod:: SartopoSession.delMarkers
-
 **Feature query methods**
 -------------------------
 
@@ -59,8 +50,14 @@ sartopo\_python module
    .. automethod:: SartopoSession.editFeature
    .. automethod:: SartopoSession.moveMarker
    .. automethod:: SartopoSession.editMarkerDescription
-   .. automethod:: SartopoSession.removeDuplicatePoints
-   .. automethod:: SartopoSession.removeSpurs
+
+**Feature deletion methods**
+----------------------------
+
+   .. automethod:: SartopoSession.delFeature
+   .. automethod:: SartopoSession.delFeatures
+   .. automethod:: SartopoSession.delMarker
+   .. automethod:: SartopoSession.delMarkers
 
 **Geometry operation methods**
 ------------------------------
@@ -75,6 +72,8 @@ sartopo\_python module
 **Internal data management methods**
 ------------------------------------
 
+   .. automethod:: SartopoSession._setupSession
+   .. automethod:: SartopoSession._sendUserdata
    .. automethod:: SartopoSession._doSync
    .. automethod:: SartopoSession._refresh
    .. automethod:: SartopoSession.__del__
@@ -92,6 +91,8 @@ sartopo\_python module
    .. automethod:: SartopoSession._caseMatch
    .. automethod:: SartopoSession._twoify
    .. automethod:: SartopoSession._fourify
+   .. automethod:: SartopoSession._removeDuplicatePoints
+   .. automethod:: SartopoSession._removeSpurs
    .. automethod:: SartopoSession._getUsedSuffixList
    .. automethod:: SartopoSession._getNextAvailableSuffix
    .. automethod:: SartopoSession._getToken

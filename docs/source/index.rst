@@ -53,10 +53,11 @@ Local cache
 If the session is associated with a hosted map, this module will keep a local cache of the entire map data structure.  This reduces
 the number of web requests needed, and the time taken for most tasks.
 
-Sync
-----
-To keep the local cache in sync with the hosted map, this module automatically requests and processes updates from the host every few seconds.  This sync procedure
-is done in a background thread, so that it doesn't delay or interfere with your code.  Sync can be paused or disabled if needed, and the sync interval can be specified.
+Sync with callbacks
+-------------------
+To keep the local cache in sync with the hosted map, this module automatically requests and processes updates from the host at the specified sync interval.  This sync procedure
+is done in a background thread, so that it doesn't delay or interfere with your code.  Sync can be paused or disabled if needed.  You can also write callback functions that will
+be called whenever map data changes are found during sync.
 
 Mapless session
 ---------------
@@ -89,77 +90,124 @@ Opening a session
 
    from sartopo_python import SartopoSession
 
-   sts=SartopoSession('caltopo.com','A1B2C') # opens an online session and map
-   sts=SartopoSession('localhost:8080','A1B2C') # opens a CalTopo Desktop session and map
+   # open an online session and map
+   sts=SartopoSession('caltopo.com','A1B2C',
+         configpath='../../sts.ini',
+         account='joe@domain.com')
 
-Adding a marker
----------------
+   # open a CalTopo Desktop session and map
+   sts=SartopoSession('localhost:8080','A1B2C',
+         configpath='../../sts.ini',
+         account='joe@domain.com')
 
-.. code-block:: python
+   # open an online mapless session
+   sts=SartopoSession('caltopo.com',
+         configpath='../../sts.ini',
+         account='joe@domain.com')
 
-   from sartopo_python import SartopoSession
-   import time
+   # open a map, for a session that was initially mapless
+   sts.openMap('A1B2C')
 
-   sts=SartopoSession("localhost:8080","<offlineMapID>")
-   fid=sts.addFolder("MyFolder")
-   sts.addMarker(39,-120,"stuff")
-   sts.addMarker(39.01,-120.01,"myStuff",folderId=fid)
-   r=sts.getFeatures("Marker")
-   print("r:"+str(r))
-   print("moving the marker after a pause:"+r[0]['id'])
-   time.sleep(5)
-   sts.addMarker(39.02,-120.02,r[0]['properties']['title'],existingId=r[0]['id'])
-
-Moving an existing marker
--------------------------
+Syncing and callbacks
+---------------------
 
 .. code-block:: python
-
-   from sartopo_python import SartopoSession
-   import time
-
-   sts2=SartopoSession(
-      "sartopo.com",
-      "<onlineMapID>",
-      configpath="../../sts.ini",
-      account="<accountName>")
-   fid2=sts2.addFolder("MyOnlineFolder")
-   sts2.addMarker(39,-120,"onlineStuff")
-   sts2.addMarker(39.01,-119.99,"onlineStuff2",folderId=fid2)
-   r2=sts2.getFeatures("Marker")
-   print("return value from getFeatures('Marker'):")
-   print(json.dumps(r2,indent=3))
-   time.sleep(15)
-   print("moving online after a pause:"+r2[0]['id'])
-   sts2.addMarker(39.02,-119.98,r2[0]['properties']['title'],existingId=r2[0]['id'])
-
-Sync and callbacks
-------------------
-
-.. code-block:: python
-
-   from sartopo_python import SartopoSession
 
    def pucb(*args):
-      print("Property Updated: pucb called with args "+str(args))
+      print('Property Updated: pucb called with args '+str(args))
 
    def gucb(*args):
-      print("Geometry Updated: gucb called with args "+str(args))
+      print('Geometry Updated: gucb called with args '+str(args))
 
    def nocb(*args):
-      print("New Object: nocb called with args "+str(args))
+      print('New Object: nocb called with args '+str(args))
 
    def docb(*args):
-      print("Deleted Object: docb called with args "+str(args))
+      print('Deleted Object: docb called with args '+str(args))
 
-   sts=SartopoSession('sartopo.com','xxxx',
+   sts=SartopoSession('caltopo.com','A1B2C',
          configpath='../../sts.ini',
-         account='account@gmail.com',
-         syncDumpFile='../../xxxx.txt',
+         account='joe@domain.com',
          propUpdateCallback=pucb,
          geometryUpdateCallback=gucb,
          newObjectCallback=nocb,
          deletedObjectCallback=docb)
+
+Getting map data and account data
+---------------------------------
+
+.. code-block:: python
+
+   # get the personal map list (for joe@domain.com)
+   sts.getMapList()
+
+   # get the MyTeam map list (assuming joe@domain.com is a member of MyTeam)
+   sts.getMapList('MyTeam')
+
+   # get a dict of all map lists (for joe@domain.com)
+   sts.getAllMapLists()
+
+   # get the title of a map
+   sts.getMapTitle('A1B2C')
+
+   # get the list of titles of group accounts of which joe@domain.com is a member
+   sts.getGroupAccountTitles()
+
+Adding features
+---------------
+
+.. code-block:: python
+
+   # add a marker
+   sts.addMarker(39,-120,'MyMarker')
+
+   # add a folder
+   fid=sts.addFolder('MyFolder')
+
+   # add a marker in the folder
+   myMarker2=sts.addMarker(39.01,-120.01,'MyMarker2',folderId=fid)
+   
+   # add a line
+   sts.addLine([[39,-120],[39.1,-120.1]],'MyLine')
+
+   # prepare to add a polygon - queue it for later
+   sts.addPolygon([[39,-120],[39.1,-120.1],[39.1,-120]],'MyPolygon',queue=True)
+
+   # add an Operational Period
+   op1=sts.addOperationalPeriod('1')
+
+   # prepare to add a line assignment - queue it for later
+   aa=sts.addLineAssignment([[39.2,-120],[39.2,-120.1]],
+         letter='AA',
+         opId=op1,
+         resourceType='DOG-TRAIL',
+         description='FindEm',
+         queue=True)
+
+   sts.addAreaAssignment([[39.3,-120],[39.4,-120.1],[39.4,-120]],
+         letter='AB',
+         number='104',
+         opId=op1,
+         resourceType='DOG-AREA',
+         description='FindEmFirst',
+         responsivePOD='HIGH',
+         priority='HIGH')
+
+   # add the queued features now (MyPolygon and AA)
+   sts.flush()
+
+Querying and editing features
+-----------------------------
+
+.. code-block:: python
+
+   myMarker=sts.getFeature('Marker','MyMarker')
+
+   sts.editFeature(myMarker['id'],properties={'title','NewTitle'})
+
+   sts.moveMarker(39,-121.5,myMarker['id'])
+
+   sts.editMarkerDescription('New marker description',myMarker['id'])
 
 Geometry operations
 -------------------
@@ -183,7 +231,15 @@ Geometry operations
    sts.crop('a14','b14')
    sts.crop('a15','b15',beyond=0)
 
+Deleting features
+-----------------
 
+.. code-block:: python
+
+   sts.delFeature(aa)
+
+   sts.delMarkers([myMarker,myMarker2])
+   
 Indices and tables
 ==================
 

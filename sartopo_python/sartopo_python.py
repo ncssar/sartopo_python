@@ -187,7 +187,7 @@ class SartopoSession():
             caseSensitiveComparisons=False):  # case-insensitive comparisons by default, see _caseMatch()
         """The core session object.
 
-        :param domainAndPort: Domain-and-port portion of the URL; defaults to 'caltopo.com'; for CalTopo Desktop running on localhost, the value should be 'localhost:8080'; a different host name or port can be specified in this manner
+        :param domainAndPort: Domain-and-port portion of the URL; defaults to 'localhost:8080'; common values are 'caltopo.com' for the web interface, and 'localhost:8080' (or different hostname or port as needed) for CalTopo Desktop
         :type domainAndPort: str, optional
         :param mapID: 5-character map ID; omit this argument during initialization to create a 'mapless' session; defaults to None
         :type mapID: str, optional
@@ -213,13 +213,13 @@ class SartopoSession():
         :type syncDumpFile: str, optional
         :param cacheDumpFile: Base filename (will be appended by timestamp) to dump the local cache contents on each sync call; defaults to None
         :type cacheDumpFile: str, optional
-        :param propertyUpdateCallback: Function to call when any feature's property has changed during sync; the function will be called with the new feature object as the only argument; defaults to None
+        :param propertyUpdateCallback: Function to call when any feature's property has changed during sync; the function will be called with the affected feature object as the only argument; defaults to None
         :type propertyUpdateCallback: function, optional
-        :param geometryUpdateCallback: Function to call when any feature's geometry has changed during sync; the function will be called with the new feature object as the only argument; defaults to None
+        :param geometryUpdateCallback: Function to call when any feature's geometry has changed during sync; the function will be called with the affected feature object as the only argument; defaults to None
         :type geometryUpdateCallback: function, optional
         :param newFeatureCallback: Function to call when a new feature was added to the local cache during sync; the function will be called with the new feature object as the only argument; defaults to None
         :type newFeatureCallback: function, optional
-        :param deletedFeatureCallback: Function to call when a feature was deleted from the local cache during sync; the function will be called with the new feature object as the only argument; defaults to None
+        :param deletedFeatureCallback: Function to call when a feature was deleted from the local cache during sync; the function will be called with the deleted feature object as the only argument; defaults to None
         :type deletedFeatureCallback: function, optional
         :param syncCallback: Function to call on each successful sync; the function will be called with no arguments; defaults to None
         :type syncCallback: function, optional
@@ -272,7 +272,7 @@ class SartopoSession():
 
     def openMap(self,mapID: str='') -> bool:
         """Open a map for usage in the current session.
-        This is called internally by _setupSession if a mapID was specified when the session was initialized, but can be called later from your code if the session was initially 'mapless'.
+        This is automatically called during session initialization (by _setupSession) if mapID was specified when the session was created, but can be called later from your code if the session was initially 'mapless'.
 
         :param mapID: 5-character Map ID, defaults to ''
         :type mapID: str, optional
@@ -592,7 +592,7 @@ class SartopoSession():
     def getMapList(self,groupAccountTitle: str='',includeBookmarks=True,refresh=False,titlesOnly=False) -> list:
         """Get a list of all maps in the user's personal account, or in the specified group account.
 
-        :param groupAccountTitle: Title of the group account to get the map list from; defaults to ''
+        :param groupAccountTitle: Title of the group account to get the map list from; defaults to '', in which case only the personal map list is returned
         :type groupAccountTitle: str, optional
         :param includeBookmarks: If True, bookmarks will be included in the returned list; defaults to True
         :type includeBookmarks: bool, optional
@@ -2507,17 +2507,17 @@ class SartopoSession():
         """          
         self.editFeature(id=id,title=title,className='Marker',properties={'description':newDescription})
 
-    # removeDuplicatePoints - walk a list of points - if a given point is
+    # _removeDuplicatePoints - walk a list of points - if a given point is
     #   very close to the previous point, delete it (<0.00001 degrees)
 
-    def removeDuplicatePoints(self,points: list) -> list:
+    def _removeDuplicatePoints(self,points: list) -> list:
         """Walk a list of points; if a given point is very close to the previous point (within 0.00001 degrees), delete it.
 
         :param points: List of [lat,lon] points
         :type points: list
         :return: The possibly-modified list of points; will be the same length as the input list, or shorter
         """        
-        # logging.info('removeDuplicatePoints called')
+        # logging.info('_removeDuplicatePoints called')
         # ls=LineString(points)
         # logging.info('is_valid:'+str(ls.is_valid))
         # logging.info('is_simple:'+str(ls.is_simple))
@@ -2584,10 +2584,10 @@ class SartopoSession():
                 suffix+=1
         return suffix
 
-    # removeSpurs - self-intersecting polygons can be caused by single-point
+    # _removeSpurs - self-intersecting polygons can be caused by single-point
     #   'spurs': a,b,c,d,c,e,f  where c,d,c is the spur.  Change a sequence
     #   like this to a,b,c,e,f.
-    def removeSpurs(self,points: list) -> list:
+    def _removeSpurs(self,points: list) -> list:
         """Walk a list of points; if the points before and after a given point are identical, delete the given point.
 
         :param points: List of [lat,lon] points
@@ -2595,7 +2595,7 @@ class SartopoSession():
         :return: The possibly-modified list of points; will be the same length as the input list, or shorter
         """        
 
-        # logging.info('removeSpurs called')
+        # logging.info('_removeSpurs called')
         # ls=LineString(points)
         # logging.info('is_valid:'+str(ls.is_valid))
         # logging.info('is_simple:'+str(ls.is_simple))
@@ -2660,11 +2660,11 @@ class SartopoSession():
         targetType=tg['type']
         if targetType=='Polygon':
             tgc=tg['coordinates'][0]
-            tgc=self.removeSpurs(tgc)
+            tgc=self._removeSpurs(tgc)
             targetGeom=Polygon(tgc) # Shapely object
         elif targetType=='LineString':
             tgc=tg['coordinates']
-            tgc=self.removeSpurs(tgc)
+            tgc=self._removeSpurs(tgc)
             targetGeom=LineString(tgc) # Shapely object
         else:
             logging.error('cut: unhandled target '+targetStr+' geometry type: '+targetType)
@@ -2692,11 +2692,11 @@ class SartopoSession():
         cutterType=cg['type']
         if cutterType=='Polygon':
             cgc=cg['coordinates'][0]
-            cgc=self.removeSpurs(cgc)
+            cgc=self._removeSpurs(cgc)
             cutterGeom=Polygon(cgc) # Shapely object
         elif cutterType=='LineString':
             cgc=cg['coordinates']
-            cgc=self.removeSpurs(cgc)
+            cgc=self._removeSpurs(cgc)
             cutterGeom=LineString(cgc) # Shapely object
         else:
             logging.error('cut: unhandled cutter geometry type: '+cutterType)
@@ -2893,7 +2893,7 @@ class SartopoSession():
         
         tg=targetShape['geometry']
         tgc=tg['coordinates'][0]
-        tgc=self.removeSpurs(tgc)
+        tgc=self._removeSpurs(tgc)
         targetType=tg['type']
         if targetType=='Polygon':
             targetGeom=Polygon(tgc) # Shapely object
@@ -2921,7 +2921,7 @@ class SartopoSession():
         
         cg=p2Shape['geometry']
         cgc=cg['coordinates'][0]
-        cgc=self.removeSpurs(cgc)
+        cgc=self._removeSpurs(cgc)
         p2Type=cg['type']
         if p2Type=='Polygon':
             p2Geom=Polygon(cgc) # Shapely object
@@ -3092,11 +3092,11 @@ class SartopoSession():
             # logging.info('geometry:'+json.dumps(og,indent=3))
             if objType=='Polygon':
                 ogc=og['coordinates'][0]
-                ogc=self.removeSpurs(ogc)
+                ogc=self._removeSpurs(ogc)
                 objGeom=Polygon(self._twoify(ogc)) # Shapely object
             elif objType=='LineString':
                 ogc=og['coordinates']
-                ogc=self.removeSpurs(ogc)
+                ogc=self._removeSpurs(ogc)
                 objGeom=LineString(self._twoify(ogc)) # Shapely object
             elif objType=='Point':
                 ogc=og['coordinates'][0:2]
@@ -3218,13 +3218,13 @@ class SartopoSession():
         targetType=tg['type']
         if targetType=='Polygon':
             tgc=tg['coordinates'][0]
-            tgc=self.removeSpurs(tgc)
+            tgc=self._removeSpurs(tgc)
             targetGeom=Polygon(tgc) # Shapely object
         elif targetType=='LineString':
             tgc_orig=tg['coordinates']
             tgc=self._twoify(tgc_orig)
             # logging.info('tgc before ('+str(len(tgc))+' points):'+str(tgc))
-            tgc=self.removeSpurs(tgc)
+            tgc=self._removeSpurs(tgc)
             # logging.info('tgc after ('+str(len(tgc))+' points):'+str(tgc))
             targetGeom=LineString(tgc)
         else:
