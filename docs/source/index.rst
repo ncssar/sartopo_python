@@ -11,15 +11,16 @@ CalTopo / SARTopo uses a web API, which is not currently documented or developed
 
 This module provides a 'session' object which manages a data connection to a hosted map, and provides several wrapper methods and convenience methods that make calls to the non-publicized CalTopo API.
 
+**This module is not written or maintained by CalTopo LLC or the authors of caltopo.com or sartopo.com.** See |caltopo_link| and |training_link|.
+
 Categories of provided class methods:
-   - account data access :doc:`test`
+   - account data access
    - feature creation
    - feature editing
    - feature querying
    - feature deletion
    - geometry operations
 
-The python code in this module is not written or maintained by CalTopo LLC or the authors of caltopo.com or sartopo.com.
 
 **NOTE: sartopo_python is changing names to caltopo_python.**
 caltopo_python 1.0.x will be identical to sartopo_python 2.0.x.
@@ -51,19 +52,24 @@ local configuration file.
 Local cache
 -----------
 If the session is associated with a hosted map, this module will keep a local cache of the entire map data structure.  This reduces
-the number of web requests needed, and the time taken for most tasks.
+the number of web requests needed, which reduces the time taken for most tasks.
 
 Sync with callbacks
 -------------------
-To keep the local cache in sync with the hosted map, this module automatically requests and processes updates from the host at the specified sync interval.  This sync procedure
-is done in a background thread, so that it doesn't delay or interfere with your code.  Sync can be paused or disabled if needed.  You can also write callback functions that will
-be called whenever map data changes are found during sync.
+To keep the local cache in sync with the hosted map, this module automatically requests and processes updates from the host at the specified sync interval.
+
+This sync procedure is done in a background thread, so that it doesn't delay or interfere with your code.  Sync can be paused or disabled if needed.
+
+You can also write callback functions that will be called whenever map data changes are found during sync.
 
 Mapless session
 ---------------
 You may want to initialize the session without specifying a map, e.g. if you need to start by checking the list of available maps.
+
 You can open a 'mapless' session by simply omitting the mapID argument when you initialize the session.  In that case, you can
-open a map later, within the same session, with .openMap().  Any of the 'account data access methods' will work in a mapless session.
+open a map later, within the same session, with .openMap().
+
+Any of the 'account data access methods' will work in a mapless session.
 Most of the other class methods require an open map, so will fail with an error message if called in a mapless session.
 
 Fixed choices
@@ -239,10 +245,18 @@ Deleting features
    sts.delFeature(aa)
 
    sts.delMarkers([myMarker,myMarker2])
-   
+
 Indices and tables
 ==================
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+.. |caltopo_link| raw:: html
+
+   <a href="https://caltopo.com" target="_blank">caltopo.com</a>
+
+.. |training_link| raw:: html
+
+   <a href="https://training.caltopo.com" target="_blank">training.caltopo.com</a>
