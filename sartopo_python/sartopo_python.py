@@ -1664,7 +1664,7 @@ class SartopoSession():
                 return False
 
     def addOperationalPeriod(self,
-            title='',
+            title='New OP',
             color='#FF0000', # stroke and fill are separate payload items, but both are the same value
             strokeOpacity=1,
             strokeWidth=2,
@@ -1672,6 +1672,27 @@ class SartopoSession():
             existingId=None,
             timeout=None,
             queue=False):
+        """Add an Operational Period to the current map.\n
+        (This is a SAR-specific feature and has no meaning in 'Recreation' mode.)
+
+        :param title: Title of the operational period; defaults to 'New OP'
+        :type title: str, optional
+        :param color: Color of the fill and lines for assignments in this operational period, in RGB #FFFFFF hex format; defaults to '#FF0000'
+        :type color: str, optional
+        :param strokeOpacity: Opacity of boundary lines of assignments in this operational period, ranging from 0 to 1; defaults to 1
+        :type strokeOpacity: float, optional
+        :param strokeWidth: Width of boundary lines of assignments in this operational period, in pixels; defaults to 2
+        :type strokeWidth: int, optional
+        :param fillOpacity: Opacity of polygon fill of assignments in this operational period, ranging from 0 to 1; defaults to 0.1
+        :type fillOpacity: float, optional
+        :param existingId: ID of an existing operational period to edit using this method; defaults to None
+        :type existingId: str, optional
+        :param timeout: Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0
+        :type timeout: int, optional
+        :param queue: If True, the operational period creation will be enqueued / deferred until a call to .flush; defaults to False
+        :type queue: bool, optional
+        :return: ID of the created operational period, or 0 if queued; False if there was a failure
+        """            
         if not self.mapID or self.apiVersion<0:
             logging.error('addOperationalPeriod request invalid: this sartopo session is not associated with a map.')
             return False

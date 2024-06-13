@@ -33,6 +33,7 @@ These methods may be called from a mapless session.
    .. automethod:: SartopoSession.addMarker
    .. automethod:: SartopoSession.addLine
    .. automethod:: SartopoSession.addPolygon
+   .. automethod:: SartopoSession.addOperationalPeriod
    .. automethod:: SartopoSession.addLineAssignment
    .. automethod:: SartopoSession.addAreaAssignment
    .. automethod:: SartopoSession.addAppTrack
