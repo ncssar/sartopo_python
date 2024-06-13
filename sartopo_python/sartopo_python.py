@@ -969,8 +969,13 @@ class SartopoSession():
             else:
                 mid='/'
         else:
-            apiUrlEnd=apiUrlEnd.lower()
-            if self.apiVersion>0:
+            # if apiUrlEnd is all caps, capitalize;
+            # otherwise, preserve the case;
+            # finally, change Since to since which must still be lowercase in API v1
+            # logging.info('  apUrlEnd:'+apiUrlEnd)
+            apiUrlEndLower=apiUrlEnd.lower()
+            if apiUrlEndLower==apiUrlEnd and self.apiVersion>0:
+            # if self.apiVersion>0:
                 apiUrlEnd=apiUrlEnd.capitalize()
             if apiUrlEnd.startswith("Since"): # 'since' must be lowercase even in API v1
                 apiUrlEnd=apiUrlEnd.lower()
@@ -1364,6 +1369,47 @@ class SartopoSession():
                 rjr=rj['result']
                 id=rjr['id']
                 self.mapData['ids'].setdefault('Shape',[]).append(id)
+                self.mapData['state']['features'].append(rjr)
+                return id
+            else:
+                return False
+
+    def addOperationalPeriod(self,
+            title='',
+            color='#FF0000', # stroke and fill are separate payload items, but both are the same value
+            strokeOpacity=1,
+            strokeWidth=2,
+            fillOpacity=0.1,
+            existingId=None,
+            timeout=None,
+            queue=False):
+        if not self.mapID or self.apiVersion<0:
+            logging.error('addOperationalPeriod request invalid: this sartopo session is not associated with a map.')
+            return False
+        j={}
+        jp={}
+        jp['title']=title
+        jp['stroke']=color
+        jp['fill']=color
+        jp['stroke-opacity']=strokeOpacity
+        jp['fill-opacity']=fillOpacity
+        jp['stroke-width']=strokeWidth
+        j['properties']=jp
+        # if existingId is not None:
+        #     j['id']=existingId
+        j['id']=existingId
+        # logging.info("sending json: "+json.dumps(j,indent=3))
+        if queue:
+            self.queue.setdefault('OperationalPeriod',[]).append(j)
+            return 0
+        else:
+            # return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
+            # add to .mapData immediately
+            rj=self.sendRequest('post','OperationalPeriod',j,id=existingId,returnJson='ALL',timeout=timeout)
+            if rj:
+                rjr=rj['result']
+                id=rjr['id']
+                self.mapData['ids'].setdefault('OperationalPeriod',[]).append(id)
                 self.mapData['state']['features'].append(rjr)
                 return id
             else:
@@ -1884,7 +1930,7 @@ class SartopoSession():
             logging.info(' feature found: '+str(feature))
 
         else:
-            logging.info(' id specified: '+id)
+            logging.info(' id specified: '+str(id))
             features=[f for f in self.mapData['state']['features'] if f['id']==id]
             # logging.info(json.dumps(self.mapData,indent=3))
             if len(features)==1:
