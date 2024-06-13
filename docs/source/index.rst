@@ -11,9 +11,9 @@ CalTopo / SARTopo uses a web API, which is not currently documented or developed
 
 This module provides a 'session' object which manages a data connection to a hosted map, and provides several wrapper methods and convenience methods that make calls to the non-publicized CalTopo API.
 
-**This module is not written or maintained by CalTopo LLC or the authors of caltopo.com or sartopo.com.** See |caltopo_link| and |training_link|.
+**This third-party module is not written or maintained by CalTopo LLC or the authors of caltopo.com or sartopo.com.** See |caltopo_link| and |training_link|.
 
-Categories of provided class methods:
+See the detailed Class Reference.  Categories of provided class methods:
    - account data access
    - feature creation
    - feature editing
@@ -21,6 +21,16 @@ Categories of provided class methods:
    - feature deletion
    - geometry operations
 
+Installation
+============
+Install this package in the usual manner:
+
+.. code-block:: python
+   
+   pip install sartopo_python
+
+To activate online requests, you will need to determine your account ID, credential ID and public key, and place those values
+in your configuration file.  See details at the :doc:`credentials` page.
 
 **NOTE: sartopo_python is changing names to caltopo_python.**
 caltopo_python 1.0.x will be identical to sartopo_python 2.0.x.
@@ -42,12 +52,14 @@ called CalTopo Desktop (formerly CalTopo Offline or SARTopo Offline).  This modu
 Configuration file
 ------------------
 User account details, including the authentication key, are kept on a local config file that you control.  A template configuration file
-comes with this package.
+comes with this package.  See the bottom of the Examples section for details.
 
 Authentication
 --------------
-All HTTP requests sent by this package are signed in the format expected by CalTopo, using the authentication key from your
-local configuration file.
+Authenticaion information required to generate the signed requests includes a request expiration timestamp
+(just a couple of minutes in the future is fine), a public key, and an ID code.
+
+For a good explanation of how to determine those three items, see the README at |sme-sartopo-mapsrv_link|.
 
 Local cache
 -----------
@@ -64,27 +76,14 @@ You can also write callback functions that will be called whenever map data chan
 
 Mapless session
 ---------------
-You may want to initialize the session without specifying a map, e.g. if you need to start by checking the list of available maps.
+You may want to initialize the session without specifying a map, e.g. if you need to start
+by checking the list of available maps before you know which map to open.
 
 You can open a 'mapless' session by simply omitting the mapID argument when you initialize the session.  In that case, you can
 open a map later, within the same session, with .openMap().
 
 Any of the 'account data access methods' will work in a mapless session.
 Most of the other class methods require an open map, so will fail with an error message if called in a mapless session.
-
-Fixed choices
--------------
-- Feature class
-   Shape, Marker, AppTrack, LiveTrack, Folder, MapMediaObject, OperationalPeriod, Assignment, Clue, Resource, SmsLocationRequest
-     - NOTE: Polygons and Lines are both part of the 'Shape' feature class, but are differentiated by the 'Geometry type' of 'Polygon' vs. 'LineString'. 
-- Assignment priority
-   HIGH, MEDIUM, LOW
-- Assignment POD (Responsive, Unresponsive, Clue)
-   HIGH, MEDIUM, LOW
-- Assignment status
-   DRAFT, PREPARED, INPROGRESS, COMPLETED
-- Assignment resource type
-   GROUND, GROUND-1, GROUND-2, GROUND-3, DOG, DOG-TRAIL, DOG-AREA, DOG-HRD, OHV, BIKE, WATER, MOUNTED, AIR
 
 Examples
 ========
@@ -119,6 +118,7 @@ Syncing and callbacks
 
 .. code-block:: python
 
+   # define callback functions
    def pucb(*args):
       print('Property Updated: pucb called with args '+str(args))
 
@@ -131,6 +131,8 @@ Syncing and callbacks
    def docb(*args):
       print('Deleted Object: docb called with args '+str(args))
 
+   # open a session, connecting to the defined callbacks;
+   #  syncing is enabled by default, since the 'sync' argument defaults to True
    sts=SartopoSession('caltopo.com','A1B2C',
          configpath='../../sts.ini',
          account='joe@domain.com',
@@ -153,7 +155,7 @@ Getting map data and account data
    # get a dict of all map lists (for joe@domain.com)
    sts.getAllMapLists()
 
-   # get the title of a map
+   # get the title of a map (assuming joe@domain.com has access to the map)
    sts.getMapTitle('A1B2C')
 
    # get the list of titles of group accounts of which joe@domain.com is a member
@@ -220,21 +222,27 @@ Geometry operations
 
 .. code-block:: python
 
+   # assuming all of the named features below have already been drawn
+
+   # cut area assignment AC 103, using line b0
    sts.cut('AC 103','b0')
+
+   # cut line a1, using line b1
    sts.cut('a1','b1')
+
+   # cut polygon a8, using polygon b8, but do not delete b8 afterwards
    sts.cut('a8','b8',deleteCutter=False)
 
-   # argument is a feature
-   a10=sts.getFeatures(title='a10')[0]
-   b10=sts.getFeatures(title='b10')[0]
-   sts.cut(a10,b10)
-
-   # argument is id
-   a12=sts.getFeatures(title='a12')[0]
-   b12=sts.getFeatures(title='b12')[0]
+   # arguments are ids instead of entire features
    sts.cut(a12['id'],b12['id'])
 
+   # expand polygon a7 to include polygon b7, a.k.a. "a7 = a7 OR b7"
+   sts.expand('a7','b7')
+
+   # crop line a14 using boundary poygon b14
    sts.crop('a14','b14')
+
+   # crop line a15 using boundary polygon b15, with zero oversize
    sts.crop('a15','b15',beyond=0)
 
 Deleting features
@@ -246,12 +254,28 @@ Deleting features
 
    sts.delMarkers([myMarker,myMarker2])
 
-Indices and tables
-==================
+Configuration file
+------------------
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. code-block:: python
+
+   # sartopo_python config file
+   # This file contains credentials used to send API map requests
+   #  to caltopo.com, sartopo.com, or CalTopo Desktop.
+   # Protect and do not distribute these credentials.
+
+   [joe@domain.com] # section referenced by 'account' session object attribute / argument
+   id=A1B2C3D4E5F6 # 12-character credential ID
+   key=............................................ # 44-character caltopo API key
+   accountId=A1B2C3 # 6-character account ID
+
+
+.. Indices and tables
+.. ==================
+
+.. * :ref:`genindex`
+.. * :ref:`modindex`
+.. * :ref:`search`
 
 .. |caltopo_link| raw:: html
 
@@ -260,3 +284,7 @@ Indices and tables
 .. |training_link| raw:: html
 
    <a href="https://training.caltopo.com" target="_blank">training.caltopo.com</a>
+
+.. |sme-sartopo-mapsrv_link| raw:: html
+
+   <a href="https://github.com/elliottshane/sme-sartopo-mapsrv" target="_blank">https://github.com/elliottshane/sme-sartopo-mapsrv</a>
