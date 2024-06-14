@@ -427,6 +427,50 @@ class SartopoSession():
         # logging.info('payload='+str(json.dumps(j,indent=3)))
         self.sendRequest('post','api/v0/userdata',j,domainAndPort=self.domainAndPort)
 
+    def _validatePoints(self,points=[]):
+        # first, confirm that points is a list of lists, the first two elements of each list being floats or ints
+        if not isinstance(points,list):
+            logging.error('Attempt to validate a list of points, but the argument was not a list:'+str(points))
+            return False
+        if not all(isinstance(elem,list) for elem in points):
+            logging.error('Attempt to validate a list of points, but not all list elements are lists:'+str(points))
+            return False
+        if not all(type(point[0]) in [int,float] and type(point[1]) in [int,float] for point in points):
+            logging.error('Attempt to validate a list of points, but a point was found where one of the first two elements was neither float nor int:'+str(points))
+            return False
+        
+        # caltopo's expected sequence is [lon,lat]; but points may have three or four elements
+        # [100,50] is 'obviously valid' because one the first absolute value is >=90 and the second absolute value is <=90
+        # [50,50] is ambiguous i.e. could be swapped or could be valid
+        # [50,100] is 'obviously swapped' becuase the first absolute value is <=90 and the second absolute value is >=90
+        obviouslyValidFound=False
+        obviouslySwappedFound=False
+        for point in points:
+            [a,b]=point[0:2]
+            aObvLon=abs(a)>90
+            bObvLon=abs(b)>90
+            if aObvLon and not bObvLon:
+                obviouslyValidFound=True
+            elif bObvLon and not aObvLon:
+                obviouslySwappedFound=True
+        if obviouslyValidFound and not obviouslySwappedFound:
+            return points
+        if obviouslySwappedFound and not obviouslyValidFound:
+            logging.warning('POINT LIST APPEARS TO HAVE SWAPPED SEQUENCE: caltopo needs [lon,lat] but it looks like the points were specified as [lat,lon].  Since this was unambiguous, the points are being swapped now, prior to the http request.')
+            # return [[b,a] for [a,b] in points] # this works if there are exactly two elements per point
+            newPoints=[]
+            for point in points:
+                newPoint=list(point) # a real copy - not just a reference
+                newPoint[0]=point[1]
+                newPoint[1]=point[0]
+                newPoints.append(newPoint)
+            return newPoints
+        if obviouslyValidFound and obviouslySwappedFound:
+            logging.error('POINT LIST LON/LAT SEQUENCE APPEARS INCONSISTENT! Validation of the point list could not be performed - results may be incorrect!')
+            return points
+        else: # all points were ambiguous: don't swap
+            return points
+
 # terminology:
     # 'account' means a few different things in CalTopo:
     #
