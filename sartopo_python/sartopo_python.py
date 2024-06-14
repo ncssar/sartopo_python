@@ -1524,7 +1524,7 @@ class SartopoSession():
         """Add a line to the current map.\n
         (See .addLineAssignment to add an assignment feature instead.)
 
-        :param points: List of points; each point is a list: [lat,lon]
+        :param points: List of points; each point is a list: [lon,lat]
         :type points: list
         :param title: Title of the line; defaults to 'New Line'
         :type title: str, optional
@@ -1600,7 +1600,7 @@ class SartopoSession():
         """Add a polygon to the current map.\n
         (See .addAreaAssignment to add an assignment feature instead.)
 
-        :param points: List of points; each point is a list: [lat,lon] \n
+        :param points: List of points; each point is a list: [lon,lat] \n
             - The final point does not need to be the same as the first point; the polygon will be automatically closed
         :type points: list
         :param title: Title of the polygon; defaults to 'New Shape'
@@ -1751,7 +1751,7 @@ class SartopoSession():
         """Add a Line Assignment to the current map.\n
         (This is a SAR-specific feature and has no meaning in 'Recreation' mode.)
 
-        :param points: List of points; each point is a list: [lat,lon]
+        :param points: List of points; each point is a list: [lon,lat]
         :type points: list
         :param number: String value to put in the 'number' field, if any; defaults to None
         :type number: str, optional
@@ -1885,7 +1885,7 @@ class SartopoSession():
         """Add an Area Assignment to the current map.\n
         (This is a SAR-specific feature and has no meaning in 'Recreation' mode.)
 
-        :param points: List of points; each point is a list: [lat,lon] \n
+        :param points: List of points; each point is a list: [lon,lat] \n
             - The final point does not need to be the same as the first point; the polygon will be automatically closed
         :type points: list
         :param number: String value to put in the 'number' field, if any; defaults to None
@@ -1999,7 +1999,7 @@ class SartopoSession():
         """Add an AppTrack to the current map.\n
         Normally, AppTracks are only added from the CalTopo app.
 
-        :param points: List of points; each point is a list: [lat,lon]
+        :param points: List of points; each point is a list: [lon,lat]
         :type points: list
         :param title: AppTrack title; defaults to 'New AppTrack'
         :type title: str, optional
@@ -2547,7 +2547,7 @@ class SartopoSession():
         The marker to move can be specified either with ID or by title.\n
         This convenience function calls .editFeature.
 
-        :param newCoords: List of [lat,lon] that the marker should be moved to
+        :param newCoords: List of [lon,lat] that the marker should be moved to
         :type newCoords: list
         :param id: ID of the marker to move; defaults to None
         :type id: str, optional
@@ -2580,7 +2580,7 @@ class SartopoSession():
     def _removeDuplicatePoints(self,points: list) -> list:
         """Walk a list of points; if a given point is very close to the previous point (within 0.00001 degrees), delete it.
 
-        :param points: List of [lat,lon] points
+        :param points: List of [lon,lat] points
         :type points: list
         :return: The possibly-modified list of points; will be the same length as the input list, or shorter
         """        
@@ -2657,7 +2657,7 @@ class SartopoSession():
     def _removeSpurs(self,points: list) -> list:
         """Walk a list of points; if the points before and after a given point are identical, delete the given point.
 
-        :param points: List of [lat,lon] points
+        :param points: List of [lon,lat] points
         :type points: list
         :return: The possibly-modified list of points; will be the same length as the input list, or shorter
         """        
