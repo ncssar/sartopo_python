@@ -1,3 +1,5 @@
+:tocdepth: 1
+
 Credentials
 ===========
 
@@ -30,7 +32,7 @@ To create a new credential and to determine its credential ID and public key, fo
    you should see your user name or login name at the top right, to the right of 'Your Data'.
 
 2. In a separate browser tab, go to |activation-link|.
-   This should show a web page similar to |activation-image_link| From the |desktop-installation_link| instructions.  Don't click Sync Account yet.
+   This should show a web page similar to |activation-image_link| from the |desktop-installation_link| instructions.  Don't click Sync Account yet.
 
 3. Open the developer console of your browser and start monitoring network traffic.
    For Chrome, use F12 to open Chrome DevTools; network traffic logging should be on when you open DevTools,
@@ -83,7 +85,7 @@ To create a new credential and to determine its credential ID and public key, fo
  }
 
 10. Enter the 12-character 'code' value as 'id' in the configuration file.  Enter the 44-character value of 'key'
-    as 'key' in the configuration file.  Enter the 6=character 'id' value as 'accountId' in the configuration file::
+    as 'key' in the configuration file.  Enter the 6-character 'id' value as 'accountId' in the configuration file::
 
 	# sartopo_python config file
 	# This file contains credentials used to send API map requests

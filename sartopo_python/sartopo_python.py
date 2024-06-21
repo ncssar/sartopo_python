@@ -225,7 +225,7 @@ class SartopoSession():
         :type syncCallback: function, optional
         :param useFiddlerProxy: If True, all requests for this session will be sent through the Fiddler proxy, which allows Fiddler to watch outgoing network traffic for debug purposes; defaults to False
         :type useFiddlerProxy: bool, optional
-        :param caseSensitiveComparisons: If True, various string comparisons will be done in a case-sensitive manner; see .caseMatch; defaults to False
+        :param caseSensitiveComparisons: If True, various string comparisons will be done in a case-sensitive manner; see ._caseMatch; defaults to False
         :type caseSensitiveComparisons: bool, optional
         """            
         self.s=requests.session()
@@ -273,8 +273,10 @@ class SartopoSession():
     def openMap(self,mapID: str='') -> bool:
         """Open a map for usage in the current session.
         This is automatically called during session initialization (by _setupSession) if mapID was specified when the session was created, but can be called later from your code if the session was initially 'mapless'.
+        
+        If mapID is '[NEW]', a new map will be created and opened for use in the current session.  The new map's ID will be stored in the session's .mapID varaiable.
 
-        :param mapID: 5-character Map ID, defaults to ''
+        :param mapID: 5-character Map ID, or '[NEW]'; defaults to ''
         :type mapID: str, optional
         :return: True if map was opened successfully; False otherwise.
         :rtype: bool

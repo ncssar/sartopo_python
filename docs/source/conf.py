@@ -44,6 +44,10 @@ html_sidebars = {
 	'**': [
 		'localtoc.html',
 		'searchbox.html'
+	],
+	'credentials': [
+		'globaltoc.html',
+		'searchbox.html'
 	]
 }
 

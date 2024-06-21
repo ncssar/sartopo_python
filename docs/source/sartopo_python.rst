@@ -2,6 +2,13 @@
 
 sartopo\_python module
 ======================
+
+This module provides one main class: SartopoSession.  Class methods are categorized and documented below.
+
+Downstream code should create and use one instance of this class.
+
+An exception class is also defined, STSException, which could be thrown during initialization but is not documented here.
+
 .. see https://stackoverflow.com/a/48682589/3577105 for categorization technique
 .. currentmodule:: sartopo_python
 
@@ -18,7 +25,7 @@ sartopo\_python module
 
 **Account data access methods**
 -------------------------------
-These methods may be called from a mapless session.
+These methods may be called from either a mapless or a map-associated session.
 
    .. automethod:: SartopoSession.getAccountData
    .. automethod:: SartopoSession.getMapList
@@ -72,6 +79,7 @@ These methods may be called from a mapless session.
 
 **Internal data management methods**
 ------------------------------------
+These methods are typically only called internally, from other class methods.  They can be called from downstream code if needed, with caution.
 
    .. automethod:: SartopoSession._setupSession
    .. automethod:: SartopoSession._sendUserdata
@@ -88,6 +96,7 @@ These methods may be called from a mapless session.
 
 **Internal helper methods**
 ---------------------------
+These methods are typically only called internally, from other class methods.  They can be called from downstream code if needed, with caution.
 
    .. automethod:: SartopoSession._caseMatch
    .. automethod:: SartopoSession._twoify

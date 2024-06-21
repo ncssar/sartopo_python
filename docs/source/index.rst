@@ -5,6 +5,13 @@
 
 :tocdepth: 1
 
+.. .. toctree::
+..    .. :maxdepth: 2
+..    :caption: Other pages:
+
+..    credentials
+..    sartopo_python
+
 sartopo_python
 ==========================================
 CalTopo / SARTopo uses a web API, which is not currently documented or developed for general public use, and could change at any time.
@@ -13,13 +20,14 @@ This module provides a 'session' object which manages a data connection to a hos
 
 **This third-party module is not written or maintained by CalTopo LLC or the authors of caltopo.com or sartopo.com.** See |caltopo_link| and |training_link|.
 
-See the detailed Class Reference.  Categories of provided class methods:
+Categories of provided class methods:
    - account data access
    - feature creation
    - feature editing
    - feature querying
    - feature deletion
    - geometry operations
+See the `SartopoSession Class Reference <./sartopo_python.html>`_ for details.
 
 Installation
 ============
@@ -39,7 +47,7 @@ sartopo_python will not receive any updates after 2.0.x.  That is, there will be
 Patches / bug fixes to 1.0 / 2.0 will be applied to both packages, but,
 minor and major version updates will only be applied to caltopo_python.
 
-We suggest that you start incorporating these slight changes to your code now.
+We suggest that you change to caltopo_python as soon as possible; see that package's 'Migration from sartopo_python' documentation.
 
 Key Features
 ===============
