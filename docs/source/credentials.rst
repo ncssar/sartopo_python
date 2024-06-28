@@ -24,9 +24,9 @@ To open the 'Your Account' dialog, sign in to caltopo.com then click your login 
 Each credential has a 'credential ID' (the 12-character code shown in the Credentials table),
 and a 'public key', which takes a bit more work to find.
 
-Currently, the public key can only be determined during the process of creating a new credential.
+Currently, the public key is most easily determined during the process of creating a new credential.
 
-To create a new credential and to determine its credential ID and public key, follow these steps:
+To create a new credential and to determine its credential ID and public key, follow these steps (based on the README at |sme-sartopo-mapsrv_link|):
 
 1. Open a web page to caltopo.com.  Make sure you are signed in to your account:
    you should see your user name or login name at the top right, to the right of 'Your Data'.
@@ -130,3 +130,7 @@ To create a new credential and to determine its credential ID and public key, fo
 .. |desktop-installation_link| raw:: html
 
 	<a href="https://training.caltopo.com/all_users/desktop" target="_blank">CalTopo Desktop Installation</a>
+
+.. |sme-sartopo-mapsrv_link| raw:: html
+
+   <a href="https://github.com/elliottshane/sme-sartopo-mapsrv" target="_blank">https://github.com/elliottshane/sme-sartopo-mapsrv</a>

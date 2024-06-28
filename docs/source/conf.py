@@ -42,11 +42,8 @@ html_theme_options = {
 html_static_path = ['_static']
 html_sidebars = {
 	'**': [
+		'allpages.html',
 		'localtoc.html',
-		'searchbox.html'
-	],
-	'credentials': [
-		'globaltoc.html',
 		'searchbox.html'
 	]
 }

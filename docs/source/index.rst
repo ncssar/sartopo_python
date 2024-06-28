@@ -37,8 +37,7 @@ Install this package in the usual manner:
    
    pip install sartopo_python
 
-To activate online requests, you will need to determine your account ID, credential ID and public key, and place those values
-in your configuration file.  See details at the :doc:`credentials` page.
+To activate online requests, you will need to determine your account ID, credential ID, and public key.  See details at the :doc:`credentials` page.
 
 **NOTE: sartopo_python is changing names to caltopo_python.**
 caltopo_python 1.0.x will be identical to sartopo_python 2.0.x.
@@ -54,20 +53,15 @@ Key Features
 
 Internet or locally-hosted
 --------------------------
-In addition to the standard caltopo.com web interface, CalTopo provides a downloadable local HTTP server
+In addition to the standard caltopo.com or sartopo.com web interface, CalTopo provides a downloadable local HTTP server
 called CalTopo Desktop (formerly CalTopo Offline or SARTopo Offline).  This module works with either solution.
 
 Configuration file
 ------------------
-User account details, including the authentication key, are kept on a local config file that you control.  A template configuration file
-comes with this package.  See the bottom of the Examples section for details.
+User account details, including the authentication public key (used to generate signed requests, as required by caltopo.com and sartopo.com),
+are kept in a local configuration file that you control.  A template configuration file comes with this package.
 
-Authentication
---------------
-Authenticaion information required to generate the signed requests includes a request expiration timestamp
-(just a couple of minutes in the future is fine), a public key, and an ID code.
-
-For a good explanation of how to determine those three items, see the README at |sme-sartopo-mapsrv_link|.
+See the bottom of the Examples section for configuration file examples.  See the :doc:`credentials` page for details on authentication.
 
 Local cache
 -----------
@@ -293,6 +287,4 @@ Configuration file
 
    <a href="https://training.caltopo.com" target="_blank">training.caltopo.com</a>
 
-.. |sme-sartopo-mapsrv_link| raw:: html
 
-   <a href="https://github.com/elliottshane/sme-sartopo-mapsrv" target="_blank">https://github.com/elliottshane/sme-sartopo-mapsrv</a>
