@@ -33,8 +33,8 @@ exclude_patterns = []
 html_theme = 'alabaster'
 html_logo = '_static/caltopo_python_logo.png'
 html_theme_options = {
-	'page_width':'80%',
-	# 'sidebar_width':'20%',
+	'page_width':'85%',
+	'sidebar_width':'250px',
 	'sidebar_collapse':True,
 	'fixed_sidebar':True,
 	'logo':'caltopo_python_logo.png'
