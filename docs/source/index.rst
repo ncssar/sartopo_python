@@ -27,6 +27,7 @@ Categories of provided class methods:
    - feature querying
    - feature deletion
    - geometry operations
+   
 See the `SartopoSession Class Reference <./sartopo_python.html>`_ for details.
 
 Installation

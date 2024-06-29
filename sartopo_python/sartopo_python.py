@@ -276,6 +276,8 @@ class SartopoSession():
         
         If mapID is '[NEW]', a new map will be created and opened for use in the current session.  The new map's ID will be stored in the session's .mapID varaiable.
 
+        NOTE: New map creation only works with CalTopo Desktop in this version of the module.  It does not currently work for sartopo.com or caltopo.com.
+
         :param mapID: 5-character Map ID, or '[NEW]'; defaults to ''
         :type mapID: str, optional
         :return: True if map was opened successfully; False otherwise.
@@ -291,6 +293,9 @@ class SartopoSession():
         # new map requested
         # 1. send a POST request to /map - payload (tested on CTD 4225; won't work with <4221) =
         if self.mapID=='[NEW]':
+            if self.domainAndPort.lower() in ['caltopo.com','sartopo.com']:
+                logging.error("New map creation only works with CalTopo Desktop in this version of sartopo_python.")
+                return False
             j={}
             j['properties']={
                 'mapConfig':json.dumps({'activeLayers':[['mbt',1]]}),
@@ -313,7 +318,7 @@ class SartopoSession():
                         'id':'11111111-1111-1111-1111-111111111111',
                         'type':'Feature',
                         'properties':{
-                            'creator':accountId,
+                            'creator':self.accountId,
                             'title':'NewMapDummyMarker',
                             'class':'Marker'
                         }
@@ -1202,6 +1207,9 @@ class SartopoSession():
             # else:
             #     logging.warning('A request is about to be sent to the internet, but accountIdInternet was not specified.  The request will use accountId, but will fail if that ID does not have valid permissions at the internet host.')
             prefix='https://'
+            if newMap:
+                logging.error("New map creation only works with CalTopo Desktop in this version of sartopo_python.")
+                return False
             if not self.key or not self.id:
                 logging.error("There was an attempt to send an internet request, but 'id' and/or 'key' was not specified for this session.  The request will not be sent.")
                 return False
