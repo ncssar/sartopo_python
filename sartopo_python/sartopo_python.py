@@ -1725,7 +1725,7 @@ class SartopoSession():
         else:
             # return self.sendRequest('post','marker',j,id=existingId,returnJson='ID')
             # add to .mapData immediately
-            rj=self.sendRequest('post','OperationalPeriod',j,id=existingId,returnJson='ALL',timeout=timeout)
+            rj=self._sendRequest('post','OperationalPeriod',j,id=existingId,returnJson='ALL',timeout=timeout)
             if rj:
                 rjr=rj['result']
                 id=rjr['id']
@@ -1775,13 +1775,13 @@ class SartopoSession():
         :type resourceType: str, optional
         :param teamSize: Team size (number of people), defaults to 0
         :type teamSize: int, optional
-        :param priority: Priority for the assignment; must be one of LOW, MED, or HIGH; defaults to 'LOW'
+        :param priority: Priority for the assignment; must be one of LOW, MEDIUM, or HIGH; defaults to 'LOW'
         :type priority: str, optional
-        :param responsivePOD: Expected POD for a responsive subject; must be one of LOW, MED, or HIGH; defaults to 'LOW'
+        :param responsivePOD: Expected POD for a responsive subject; must be one of LOW, MEDIUM, or HIGH; defaults to 'LOW'
         :type responsivePOD: str, optional
-        :param unresponsivePOD: Expected POD for an unresponsive subject; must be one of LOW, MED, or HIGH; defaults to 'LOW'
+        :param unresponsivePOD: Expected POD for an unresponsive subject; must be one of LOW, MEDIUM, or HIGH; defaults to 'LOW'
         :type unresponsivePOD: str, optional
-        :param cluePOD: Expected POD for clues; must be one of LOW, MED, or HIGH; defaults to 'LOW'
+        :param cluePOD: Expected POD for clues; must be one of LOW, MEDIUM, or HIGH; defaults to 'LOW'
         :type cluePOD: str, optional
         :param description: Assignment description; defaults to ''
         :type description: str, optional
@@ -1910,13 +1910,13 @@ class SartopoSession():
         :type resourceType: str, optional
         :param teamSize: Team size (number of people), defaults to 0
         :type teamSize: int, optional
-        :param priority: Priority for the assignment; must be one of LOW, MED, or HIGH; defaults to 'LOW'
+        :param priority: Priority for the assignment; must be one of LOW, MEDIUM, or HIGH; defaults to 'LOW'
         :type priority: str, optional
-        :param responsivePOD: Expected POD for a responsive subject; must be one of LOW, MED, or HIGH; defaults to 'LOW'
+        :param responsivePOD: Expected POD for a responsive subject; must be one of LOW, MEDIUM, or HIGH; defaults to 'LOW'
         :type responsivePOD: str, optional
-        :param unresponsivePOD: Expected POD for an unresponsive subject; must be one of LOW, MED, or HIGH; defaults to 'LOW'
+        :param unresponsivePOD: Expected POD for an unresponsive subject; must be one of LOW, MEDIUM, or HIGH; defaults to 'LOW'
         :type unresponsivePOD: str, optional
-        :param cluePOD: Expected POD for clues; must be one of LOW, MED, or HIGH; defaults to 'LOW'
+        :param cluePOD: Expected POD for clues; must be one of LOW, MEDIUM, or HIGH; defaults to 'LOW'
         :type cluePOD: str, optional
         :param description: Assignment description; defaults to ''
         :type description: str, optional
