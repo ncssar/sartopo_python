@@ -36,6 +36,10 @@ These methods may be called from either a mapless or a map-associated session.
 **Feature creation methods**
 ----------------------------
 
+Most of these feature creation methods can be used to edit an existing feature,
+by specifying the existingId argument.  .editFeature is a convenience method
+that calls the appropriate .add... method with existingId specified.
+
    .. automethod:: SartopoSession.addFolder
    .. automethod:: SartopoSession.addMarker
    .. automethod:: SartopoSession.addLine
@@ -54,7 +58,7 @@ These methods may be called from either a mapless or a map-associated session.
       
 **Feature editing methods**
 ---------------------------
-   
+
    .. automethod:: SartopoSession.editFeature
    .. automethod:: SartopoSession.moveMarker
    .. automethod:: SartopoSession.editMarkerDescription

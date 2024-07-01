@@ -2099,6 +2099,9 @@ class SartopoSession():
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
             return False
+        if len(markersOrIds)==0:
+            logging.warning('nothing to delete: empty list was passed to delMarkers')
+            return False
         if type(markersOrIds[0])==str:
             ids=markersOrIds
         elif type(markersOrIds[0])==dict:
@@ -2140,7 +2143,7 @@ class SartopoSession():
                     logging.error('unable to determine feature class during delFeature with feature object specified')
                     return False
         else:
-            logging.error('invalid argument in call to delFeature: '+str(markersOrIds))
+            logging.error('invalid argument in call to delFeature: '+str(featureOrId))
             return False
         return self._sendRequest("delete",fClass,None,id=str(id),returnJson="ALL",timeout=timeout)
 
@@ -2160,6 +2163,9 @@ class SartopoSession():
         """        
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
+            return False
+        if len(featuresOrIdAndClassList)==0:
+            logging.warning('nothing to delete: empty list was passed to delFeatures')
             return False
         if type(featuresOrIdAndClassList[0]) is not dict:
             logging.error('invalid argument in call to delFeatures: '+str(featuresOrIdAndClassList))
@@ -2433,6 +2439,8 @@ class SartopoSession():
         properties and geometry arguments; they will be merged with existing properties and geometries.
         However, when editing geometry, it probably makes more sense to overwrite the entire geometry dictionary.
 
+        This is a convenience method that calls the appropriate .add... method with existingId specified.
+        
         :param id: ID of the feature to edit; defaults to None
         :type id: str, optional
         :param className: Feature class name used for selection; defaults to None
