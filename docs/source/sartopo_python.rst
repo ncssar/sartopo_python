@@ -35,7 +35,6 @@ These methods may be called from either a mapless or a map-associated session.
 
 **Feature creation methods**
 ----------------------------
-
 Most of these feature creation methods can be used to edit an existing feature,
 by specifying the existingId argument.  .editFeature is a convenience method
 that calls the appropriate .add... method with existingId specified.
@@ -73,12 +72,11 @@ that calls the appropriate .add... method with existingId specified.
 
 **Geometry operation methods**
 ------------------------------
+These methods use the python |shapely_link| module.
 
    .. automethod:: SartopoSession.cut
    .. automethod:: SartopoSession.expand
    .. automethod:: SartopoSession.crop
-   .. automethod:: SartopoSession.buffer2
-   .. automethod:: SartopoSession.intersection2
    .. automethod:: SartopoSession.getBounds
 
 **Internal data management methods**
@@ -97,6 +95,8 @@ These methods are typically only called internally, from other class methods.  T
    .. automethod:: SartopoSession._syncLoop
    .. automethod:: SartopoSession._sendRequest
    .. automethod:: SartopoSession._delAsync
+   .. automethod:: SartopoSession._buffer2
+   .. automethod:: SartopoSession._intersection2
 
 **Internal helper methods**
 ---------------------------
@@ -111,14 +111,6 @@ These methods are typically only called internally, from other class methods.  T
    .. automethod:: SartopoSession._getNextAvailableSuffix
    .. automethod:: SartopoSession._getToken
 
-   .. :members:
-   .. :undoc-members:
-   .. :show-inheritance:
+.. |shapely_link| raw:: html
 
-.. Module contents
-.. ---------------
-
-.. .. automodule:: sartopo_python
-..    :members:
-..    :undoc-members:
-..    :show-inheritance:
+   <a href="https://shapely.readthedocs.io/en/stable/" target="_blank">Shapely</a>

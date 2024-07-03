@@ -2082,7 +2082,7 @@ class SartopoSession():
         if not self.mapID or self.apiVersion<0:
             logging.error('delFeature request invalid: this sartopo session is not associated with a map.')
             return False
-        self.delFeature(featureOrId=markerOrId,fClass="marker",timeout=timeout)
+        self.delFeature(markerOrId,fClass="marker",timeout=timeout)
 
     # delMarkers - calls asynchronous non-blocking delFeatures
     def delMarkers(self,markersOrIds=[],timeout=0):
@@ -2440,7 +2440,7 @@ class SartopoSession():
         However, when editing geometry, it probably makes more sense to overwrite the entire geometry dictionary.
 
         This is a convenience method that calls the appropriate .add... method with existingId specified.
-        
+
         :param id: ID of the feature to edit; defaults to None
         :type id: str, optional
         :param className: Feature class name used for selection; defaults to None
@@ -2942,7 +2942,7 @@ class SartopoSession():
                     logging.error('cut: target feature class was neither Shape nor Assigment; operation aborted.')
                     return False
         if deleteCutter:
-            self.delFeature(id=cutterShape['id'],fClass=cutterShape['properties']['class'])
+            self.delFeature(cutterShape['id'],fClass=cutterShape['properties']['class'])
 
         return rids # resulting feature IDs
 
@@ -3027,11 +3027,11 @@ class SartopoSession():
             return False
 
         if deleteP2:
-            self.delFeature(id=p2Shape['id'],fClass=p2Shape['properties']['class'])
+            self.delFeature(p2Shape['id'],fClass=p2Shape['properties']['class'])
 
         return True # success
 
-    def buffer2(self,boundaryGeom,beyond: float):
+    def _buffer2(self,boundaryGeom,beyond: float):
         """Return a copy of the original polygon, increased in size by the specified value.\n
         This method does not modify the original geometry.\n
         This method is used to oversize a Polygon; Shapely's LineString.buffer method should be used to oversize a line.
@@ -3047,7 +3047,7 @@ class SartopoSession():
         merged=unary_union(a)
         return merged.buffer(beyond)
 
-    # intersection2(targetGeom,boundaryGeom)
+    # _intersection2(targetGeom,boundaryGeom)
     # we want a function that can take the place of shapely.ops.intersection
     #  when the target is a LineString and the boundary is a Polygon,
     #  which will preserve complex (is_simple=False) lines i.e. with internal crossovers
@@ -3059,7 +3059,7 @@ class SartopoSession():
     #  A outside, B inside --> append B; append point at intersection of this segment with boundary; don't append A
     #  A outside, B outside --> don't append either point; instead, append the intersection as a new line segment
 
-    def intersection2(self,targetGeom,boundaryGeom):
+    def _intersection2(self,targetGeom,boundaryGeom):
         """Return the intersection of the targetGeom (a LineString) and the boundaryGeom (a Polygon).\n
         For other geometry types, shapely.ops.intersection should be used.\n
         This function will preseve complex (non-simple) lines, i.e. with internal crossovers, by walking through the input points (except for the last point) where 'A' signifies the current point and 'B' signifies the next point:
@@ -3337,7 +3337,7 @@ class SartopoSession():
         boundaryType=cg['type']
         if boundaryType=='Polygon':
             cgc=cg['coordinates'][0]
-            boundaryGeom=self.buffer2(Polygon(cgc),beyond)
+            boundaryGeom=self._buffer2(Polygon(cgc),beyond)
         elif boundaryType=='LineString':
             cgc=self._twoify(cg['coordinates'])
             boundaryGeom=LineString(cgc).buffer(beyond)
@@ -3360,9 +3360,9 @@ class SartopoSession():
             logging.warning(targetShape['properties']['title']+','+boundaryShape['properties']['title']+': features do not intersect; no operation performed')
             return False
 
-        # if target is a line, and boundary is a polygon, use intersection2; see notes above
+        # if target is a line, and boundary is a polygon, use _intersection2; see notes above
         if isinstance(targetGeom,LineString) and isinstance(boundaryGeom,Polygon):
-            result=self.intersection2(targetGeom,boundaryGeom)
+            result=self._intersection2(targetGeom,boundaryGeom)
         else:
             result=targetGeom&boundaryGeom # could be MultiPolygon or MultiLinestring or GeometryCollection
         # logging.info('crop targetGeom:'+str(targetGeom))
@@ -3519,7 +3519,7 @@ class SartopoSession():
                     return False
 
         if deleteBoundary:
-            self.delFeature(id=boundaryShape['id'],fClass=boundaryShape['properties']['class'])
+            self.delFeature(boundaryShape['id'],fClass=boundaryShape['properties']['class'])
 
         return rids # resulting feature IDs
 
