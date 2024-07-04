@@ -13,7 +13,7 @@ You can place these values in the configuration file, or you can specify them as
 See examples at the bottom of this page.
 
 This section only refers to your CalTopo account credentials - it does not refer to your external account provider credentials
-(Google, Yahoo, MSN, Apple, etc.).  This module does not need credentials for your external account provider.
+(Google, Yahoo, MSN, Apple, etc.).  **This module does not need credentials for your external account provider.**
 
 Your CalTopo account may have multiple sets of credentials.  These show up in the 'Credentials' section at the bottom
 of the 'Your Account' dialog.

@@ -14,11 +14,18 @@
 
 sartopo_python
 ==========================================
-CalTopo / SARTopo uses a web API, which is not currently documented or developed for general public use, and could change at any time.
+
+CalTopo is a very popular web-browser-based and smartphone-app-based mapping tool.  SARTopo is a mostly-obsolete
+name that refers to a set of Search-And-Rescue-specific features inside the CalTopo tool. See |caltopo_link| and |training_link|.
+
+Being a web-based tool, CalTopo / SARTopo uses a web API to accomplish most user actions.  The API is not currently documented or developed for general public use, and could change at any time.
 
 This module provides a 'session' object which manages a data connection to a hosted map, and provides several wrapper methods and convenience methods that make calls to the non-publicized CalTopo API.
 
-**This third-party module is not written or maintained by CalTopo LLC or the authors of caltopo.com or sartopo.com.** See |caltopo_link| and |training_link|.
+**This third-party module is not written or maintained by CalTopo LLC or the authors of caltopo.com or sartopo.com.**
+
+**DISCLAIMER: This module can edit and delete CalTopo / SARTopo map features.  At the time of this module's publication, CalTopo and SARTopo do not have any 'undo' capability.**
+Only you can take steps to prevent loss of map data due to use of this module - whether due to accidental misuse, or due to an unexpected bug in the module.  You should always consider exporting a full GeoJSON from your map before using this code.
 
 Categories of provided class methods:
    - account data access
@@ -27,7 +34,7 @@ Categories of provided class methods:
    - feature querying
    - feature deletion
    - geometry operations
-   
+
 See the `SartopoSession Class Reference <./sartopo_python.html>`_ for details.
 
 Installation
@@ -43,11 +50,9 @@ To activate online requests, you will need to determine your account ID, credent
 **NOTE: sartopo_python is changing names to caltopo_python.**
 caltopo_python 1.0.x will be identical to sartopo_python 2.0.x.
 
-sartopo_python will not receive any updates after 2.0.x.  That is, there will be no sartopo_python 2.1.0.
-Patches / bug fixes to 1.0 / 2.0 will be applied to both packages, but,
-minor and major version updates will only be applied to caltopo_python.
+We suggest that you change to caltopo_python as soon as possible.  If you are just getting started with sartopo_python, we suggest that you use caltopo_python instead.
 
-We suggest that you change to caltopo_python as soon as possible; see that package's 'Migration from sartopo_python' documentation.
+For more information, see the :doc:`migration` page.
 
 Key Features
 ===============
@@ -64,6 +69,17 @@ are kept in a local configuration file that you control.  A template configurati
 
 See the bottom of the Examples section for configuration file examples.  See the :doc:`credentials` page for details on authentication.
 
+Mapless session
+---------------
+You may want to initialize the session without specifying a map, e.g. if you need to start
+by checking the list of available maps before you know which map to open.
+
+You can open a 'mapless' session by simply omitting the mapID argument when you initialize the session.  In that case, you can
+open a map later, within the same session, with .openMap().
+
+Any of the 'account data access methods' will work in a mapless session.
+Most of the other class methods require an open map, so will fail with an error message if called in a mapless session.
+
 Local cache
 -----------
 If the session is associated with a hosted map, this module will keep a local cache of the entire map data structure.  This reduces
@@ -76,17 +92,6 @@ To keep the local cache in sync with the hosted map, this module automatically r
 This sync procedure is done in a background thread, so that it doesn't delay or interfere with your code.  Sync can be paused or disabled if needed.
 
 You can also write callback functions that will be called whenever map data changes are found during sync.
-
-Mapless session
----------------
-You may want to initialize the session without specifying a map, e.g. if you need to start
-by checking the list of available maps before you know which map to open.
-
-You can open a 'mapless' session by simply omitting the mapID argument when you initialize the session.  In that case, you can
-open a map later, within the same session, with .openMap().
-
-Any of the 'account data access methods' will work in a mapless session.
-Most of the other class methods require an open map, so will fail with an error message if called in a mapless session.
 
 Examples
 ========
