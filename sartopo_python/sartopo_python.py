@@ -286,8 +286,8 @@ class SartopoSession():
         if self.mapID and self.lastSuccessfulSyncTimestamp>0:
             logging.warning('WARNING: this SartopoSession object is already connected to map '+self.mapID+'.  Call to openMap ignored.')
             return
-        if not mapID or not isinstance(mapID,str) or len(mapID)<3 or len(mapID)>5:
-            logging.warning('WARNING: map ID must be a three-to-five-character sartopo map ID string (end of the URL).  No map will be opened for this SartopoSession object.')
+        if not mapID or not isinstance(mapID,str) or len(mapID)<3 or len(mapID)>7:
+            logging.warning('WARNING: map ID must be a three-to-seven-character sartopo map ID string (end of the URL).  No map will be opened for this SartopoSession object.')
             raise STSException
         self.mapID=mapID
         # new map requested
