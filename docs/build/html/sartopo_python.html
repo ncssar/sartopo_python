@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>sartopo_python module &#8212; sartopo_python 2.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=b649bb2e" />
+    <script src="_static/documentation_options.js?v=51b770b3"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/caltopo_python_logo.png" alt="Logo"/>
+            </a></p><hr />
+<p><ul>
+<li><a href="./index.html">Home</a>
+<li><a href="./sartopo_python.html">Class Reference</a>
+<li><a href="./credentials.html">Credentials</a>
+<li><a href="./fixedChoices.html">Fixed Choices</a>
+<li><a href="./migration.html">Migration</a>
+</ul></p>
+
+  <div>
+    <hr>
+    <ul>
+<li><a class="reference internal" href="#">sartopo_python module</a><ul>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession"><code class="docutils literal notranslate"><span class="pre">SartopoSession</span></code></a><ul>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.openMap"><code class="docutils literal notranslate"><span class="pre">openMap()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#account-data-access-methods"><strong>Account data access methods</strong></a><ul>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.getAccountData"><code class="docutils literal notranslate"><span class="pre">getAccountData()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.getMapList"><code class="docutils literal notranslate"><span class="pre">getMapList()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.getAllMapLists"><code class="docutils literal notranslate"><span class="pre">getAllMapLists()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.getMapTitle"><code class="docutils literal notranslate"><span class="pre">getMapTitle()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.getGroupAccountTitles"><code class="docutils literal notranslate"><span class="pre">getGroupAccountTitles()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#feature-creation-methods"><strong>Feature creation methods</strong></a><ul>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.addFolder"><code class="docutils literal notranslate"><span class="pre">addFolder()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.addMarker"><code class="docutils literal notranslate"><span class="pre">addMarker()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.addLine"><code class="docutils literal notranslate"><span class="pre">addLine()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.addPolygon"><code class="docutils literal notranslate"><span class="pre">addPolygon()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.addOperationalPeriod"><code class="docutils literal notranslate"><span class="pre">addOperationalPeriod()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.addLineAssignment"><code class="docutils literal notranslate"><span class="pre">addLineAssignment()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.addAreaAssignment"><code class="docutils literal notranslate"><span class="pre">addAreaAssignment()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.addAppTrack"><code class="docutils literal notranslate"><span class="pre">addAppTrack()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.flush"><code class="docutils literal notranslate"><span class="pre">flush()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#feature-query-methods"><strong>Feature query methods</strong></a><ul>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.getFeature"><code class="docutils literal notranslate"><span class="pre">getFeature()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.getFeatures"><code class="docutils literal notranslate"><span class="pre">getFeatures()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#feature-editing-methods"><strong>Feature editing methods</strong></a><ul>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.editFeature"><code class="docutils literal notranslate"><span class="pre">editFeature()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.moveMarker"><code class="docutils literal notranslate"><span class="pre">moveMarker()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.editMarkerDescription"><code class="docutils literal notranslate"><span class="pre">editMarkerDescription()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#feature-deletion-methods"><strong>Feature deletion methods</strong></a><ul>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.delFeature"><code class="docutils literal notranslate"><span class="pre">delFeature()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.delFeatures"><code class="docutils literal notranslate"><span class="pre">delFeatures()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.delMarker"><code class="docutils literal notranslate"><span class="pre">delMarker()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.delMarkers"><code class="docutils literal notranslate"><span class="pre">delMarkers()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#geometry-operation-methods"><strong>Geometry operation methods</strong></a><ul>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.cut"><code class="docutils literal notranslate"><span class="pre">cut()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.expand"><code class="docutils literal notranslate"><span class="pre">expand()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.crop"><code class="docutils literal notranslate"><span class="pre">crop()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.getBounds"><code class="docutils literal notranslate"><span class="pre">getBounds()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#internal-data-management-methods"><strong>Internal data management methods</strong></a><ul>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._setupSession"><code class="docutils literal notranslate"><span class="pre">_setupSession()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._sendUserdata"><code class="docutils literal notranslate"><span class="pre">_sendUserdata()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._doSync"><code class="docutils literal notranslate"><span class="pre">_doSync()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._refresh"><code class="docutils literal notranslate"><span class="pre">_refresh()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession.__del__"><code class="docutils literal notranslate"><span class="pre">__del__()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._start"><code class="docutils literal notranslate"><span class="pre">_start()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._stop"><code class="docutils literal notranslate"><span class="pre">_stop()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._pause"><code class="docutils literal notranslate"><span class="pre">_pause()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._resume"><code class="docutils literal notranslate"><span class="pre">_resume()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._syncLoop"><code class="docutils literal notranslate"><span class="pre">_syncLoop()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._sendRequest"><code class="docutils literal notranslate"><span class="pre">_sendRequest()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._delAsync"><code class="docutils literal notranslate"><span class="pre">_delAsync()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._buffer2"><code class="docutils literal notranslate"><span class="pre">_buffer2()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._intersection2"><code class="docutils literal notranslate"><span class="pre">_intersection2()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#internal-helper-methods"><strong>Internal helper methods</strong></a><ul>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._caseMatch"><code class="docutils literal notranslate"><span class="pre">_caseMatch()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._twoify"><code class="docutils literal notranslate"><span class="pre">_twoify()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._fourify"><code class="docutils literal notranslate"><span class="pre">_fourify()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._removeDuplicatePoints"><code class="docutils literal notranslate"><span class="pre">_removeDuplicatePoints()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._removeSpurs"><code class="docutils literal notranslate"><span class="pre">_removeSpurs()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._getUsedSuffixList"><code class="docutils literal notranslate"><span class="pre">_getUsedSuffixList()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._getNextAvailableSuffix"><code class="docutils literal notranslate"><span class="pre">_getNextAvailableSuffix()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._getToken"><code class="docutils literal notranslate"><span class="pre">_getToken()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="sartopo-python-module">
+<h1>sartopo_python module<a class="headerlink" href="#sartopo-python-module" title="Link to this heading">¶</a></h1>
+<p>This module provides one main class: SartopoSession.  Class methods are categorized and documented below.</p>
+<p>Downstream code should create and use one instance of this class.</p>
+<p>An exception class is also defined, STSException, which could be thrown during initialization but is not documented here.</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">SartopoSession</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domainAndPort</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'localhost:8080'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapID</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">configpath</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">account</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accountId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">accountIdInternet</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sync</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncInterval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncTimeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncDumpFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cacheDumpFile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">propertyUpdateCallback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometryUpdateCallback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">newFeatureCallback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deletedFeatureCallback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncCallback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">useFiddlerProxy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">caseSensitiveComparisons</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession" title="Link to this definition">¶</a></dt>
+<dd><p>The core session object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>domainAndPort</strong> (<em>str</em><em>, </em><em>optional</em>) – Domain-and-port portion of the URL; defaults to ‘localhost:8080’; common values are ‘caltopo.com’ for the web interface, and ‘localhost:8080’ (or different hostname or port as needed) for CalTopo Desktop</p></li>
+<li><p><strong>mapID</strong> (<em>str</em><em>, </em><em>optional</em>) – 5-character map ID; omit this argument during initialization to create a ‘mapless’ session; defaults to None</p></li>
+<li><p><strong>configpath</strong> (<em>str</em><em>, </em><em>optional</em>) – Configuration file path (full file name); defaults to None</p></li>
+<li><p><strong>account</strong> (<em>str</em><em>, </em><em>optional</em>) – Account name; used to reference a section of the config file; defaults to None</p></li>
+<li><p><strong>id</strong> (<em>_type_</em><em>, </em><em>optional</em>) – 12-character credential ID; specify here to override value from config file; defaults to None</p></li>
+<li><p><strong>key</strong> (<em>str</em><em>, </em><em>optional</em>) – Credential key; specify here to override value from config file; defaults to None</p></li>
+<li><p><strong>accountId</strong> (<em>str</em><em>, </em><em>optional</em>) – 6-character account ID; specify here to override value from config file; defaults to None</p></li>
+<li><p><strong>accountIdInternet</strong> (<em>str</em><em>, </em><em>optional</em>) – 6-character internet-specific account ID; specify here to override value from config file; defaults to None</p></li>
+<li><p><strong>sync</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the session will use multi-threaded background sync to keep the local cache in sync with the specified hosted map; defaults to True</p></li>
+<li><p><strong>syncInterval</strong> (<em>int</em><em>, </em><em>optional</em>) – Sync interval in seconds; defaults to 5</p></li>
+<li><p><strong>syncTimeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Sync timeout in seconds; defaults to 10</p></li>
+<li><p><strong>syncDumpFile</strong> (<em>str</em><em>, </em><em>optional</em>) – Base filename (will be appended by timestamp) to dump the results of each sync call; defaults to None</p></li>
+<li><p><strong>cacheDumpFile</strong> (<em>str</em><em>, </em><em>optional</em>) – Base filename (will be appended by timestamp) to dump the local cache contents on each sync call; defaults to None</p></li>
+<li><p><strong>propertyUpdateCallback</strong> (<em>function</em><em>, </em><em>optional</em>) – Function to call when any feature’s property has changed during sync; the function will be called with the affected feature object as the only argument; defaults to None</p></li>
+<li><p><strong>geometryUpdateCallback</strong> (<em>function</em><em>, </em><em>optional</em>) – Function to call when any feature’s geometry has changed during sync; the function will be called with the affected feature object as the only argument; defaults to None</p></li>
+<li><p><strong>newFeatureCallback</strong> (<em>function</em><em>, </em><em>optional</em>) – Function to call when a new feature was added to the local cache during sync; the function will be called with the new feature object as the only argument; defaults to None</p></li>
+<li><p><strong>deletedFeatureCallback</strong> (<em>function</em><em>, </em><em>optional</em>) – Function to call when a feature was deleted from the local cache during sync; the function will be called with the deleted feature object as the only argument; defaults to None</p></li>
+<li><p><strong>syncCallback</strong> (<em>function</em><em>, </em><em>optional</em>) – Function to call on each successful sync; the function will be called with no arguments; defaults to None</p></li>
+<li><p><strong>useFiddlerProxy</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, all requests for this session will be sent through the Fiddler proxy, which allows Fiddler to watch outgoing network traffic for debug purposes; defaults to False</p></li>
+<li><p><strong>caseSensitiveComparisons</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, various string comparisons will be done in a case-sensitive manner; see ._caseMatch; defaults to False</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.openMap">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">openMap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapID</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession.openMap" title="Link to this definition">¶</a></dt>
+<dd><p>Open a map for usage in the current session.
+This is automatically called during session initialization (by _setupSession) if mapID was specified when the session was created, but can be called later from your code if the session was initially ‘mapless’.</p>
+<p>If mapID is ‘[NEW]’, a new map will be created and opened for use in the current session.  The new map’s ID will be stored in the session’s .mapID varaiable.</p>
+<p>NOTE: New map creation only works with CalTopo Desktop in this version of the module.  It does not currently work for sartopo.com or caltopo.com.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mapID</strong> (<em>str</em><em>, </em><em>optional</em>) – 5-character Map ID, or ‘[NEW]’; defaults to ‘’</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if map was opened successfully; False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<section id="account-data-access-methods">
+<h2><strong>Account data access methods</strong><a class="headerlink" href="#account-data-access-methods" title="Link to this heading">¶</a></h2>
+<p>These methods may be called from either a mapless or a map-associated session.</p>
+<blockquote>
+<div><dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.getAccountData">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">getAccountData</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession.getAccountData" title="Link to this definition">¶</a></dt>
+<dd><p>Get all account data for the session account.  Populates .accountData, .groupAccounts, and .personalAccounts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>value of .accountData</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.getMapList">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">getMapList</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">groupAccountTitle</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">includeBookmarks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">refresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">titlesOnly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession.getMapList" title="Link to this definition">¶</a></dt>
+<dd><p>Get a list of all maps in the user’s personal account, or in the specified group account.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>groupAccountTitle</strong> (<em>str</em><em>, </em><em>optional</em>) – Title of the group account to get the map list from; defaults to ‘’, in which case only the personal map list is returned</p></li>
+<li><p><strong>includeBookmarks</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, bookmarks will be included in the returned list; defaults to True</p></li>
+<li><p><strong>refresh</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, a refresh will be performed before getting the map list; defaults to False</p></li>
+<li><p><strong>titlesOnly</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the return value will be a list of strings only; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>List of dicts, chronologically sorted (most recent first) by the value of ‘updated’:</p>
+<p><em>id</em> -&gt; 5-character map ID</p>
+<p><em>title</em> -&gt; map title</p>
+<p><em>updated</em> -&gt; timestamp of most recent update to the map</p>
+<p><em>type</em> -&gt; ‘map’ or ‘bookmark’</p>
+<blockquote>
+<div><p>if type is ‘bookmark’, another key <em>permission</em> will exist, with corresponding value</p>
+</div></blockquote>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.getAllMapLists">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">getAllMapLists</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">includePersonal</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">includeBookmarks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">refresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">titlesOnly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession.getAllMapLists" title="Link to this definition">¶</a></dt>
+<dd><p>Get a structured list of maps from all group accounts of which the current user is a member.  Optionally include the user’s personal account(s).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>includePersonal</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the user’s personal account(s) will be included in the return value; defaults to False</p></li>
+<li><p><strong>includeBookmarks</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, bookmarks will be included in the returned lists; defaults to True</p></li>
+<li><p><strong>refresh</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, a refresh will be performed before getting the map lists; defaults to False</p></li>
+<li><p><strong>titlesOnly</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the return value will be a list of strings only; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>list of dicts:</p>
+<p><em>groupAccountTitle</em> -&gt; title of the group account</p>
+<blockquote>
+<div><p>-OR-</p>
+</div></blockquote>
+<p><em>personalAccountTitle</em> -&gt; title of the personal account</p>
+<p><em>mapList</em> -&gt; list of maps for this group account, in the same format as the return value from .getMapList</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.getMapTitle">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">getMapTitle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapID</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">refresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession.getMapTitle" title="Link to this definition">¶</a></dt>
+<dd><p>Get the title of a map specified by mapID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mapID</strong> (<em>str</em><em>, </em><em>optional</em>) – 5-character map ID; defaults to ‘’</p></li>
+<li><p><strong>refresh</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, a refresh will be performed before getting the map title; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Map title</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.getGroupAccountTitles">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">getGroupAccountTitles</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">refresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession.getGroupAccountTitles" title="Link to this definition">¶</a></dt>
+<dd><p>Get the titles of all of the user’s group accounts.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>refresh</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, a refresh will be performed before getting the account titles; defaults to False</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of account titles</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div></blockquote>
+</section>
+<section id="feature-creation-methods">
+<h2><strong>Feature creation methods</strong><a class="headerlink" href="#feature-creation-methods" title="Link to this heading">¶</a></h2>
+<p>Most of these feature creation methods can be used to edit an existing feature,
+by specifying the existingId argument.  .editFeature is a convenience method
+that calls the appropriate .add… method with existingId specified.</p>
+<blockquote>
+<div><dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.addFolder">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">addFolder</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'New</span> <span class="pre">Folder'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.addFolder" title="Link to this definition">¶</a></dt>
+<dd><p>Add a folder to the current map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>label</strong> (<em>str</em><em>, </em><em>optional</em>) – Name of the folder; defaults to “New Folder”</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the folder creation will be enqueued / deferred until a call to .flush; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ID of the created folder, or 0 if queued; False if there was a failure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.addMarker">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">addMarker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lon</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'New</span> <span class="pre">Marker'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#FF0000'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'point'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rotation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folderId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">existingId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">update</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.addMarker" title="Link to this definition">¶</a></dt>
+<dd><p>Add a marker to the current map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lat</strong> (<em>float</em>) – Latitude of the marker, in decimal degrees; positive values indicate the northern hemisphere</p></li>
+<li><p><strong>lon</strong> (<em>float</em>) – Longitude of the marker, in decimal degrees; negative values indicate the western hemisphere</p></li>
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – Title of the marker; defaults to ‘New Marker’</p></li>
+<li><p><strong>description</strong> (<em>str</em><em>, </em><em>optional</em>) – Marker description; defaults to ‘’</p></li>
+<li><p><strong>color</strong> (<em>str</em><em>, </em><em>optional</em>) – Marker color, in RGB #FFFFFF hex notation; defaults to ‘#FF0000’</p></li>
+<li><p><strong>symbol</strong> (<em>str</em><em>, </em><em>optional</em>) – Marker symbol name; must be one of the known symbol names; defaults to ‘point’</p></li>
+<li><p><strong>rotation</strong> – Marker rotation; not valid for all marker styles; defaults to None</p></li>
+<li><p><strong>folderId</strong> (<em>str</em><em>, </em><em>optional</em>) – Folder ID of the folder this marker should be created in, if any; defaults to None</p></li>
+<li><p><strong>existingId</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of an existing marker to edit using this method; defaults to None</p></li>
+<li><p><strong>update</strong> (<em>int</em><em>, </em><em>optional</em>) – Updated timestamp for this feature; defaults to 0</p></li>
+<li><p><strong>size</strong> (<em>int</em><em>, </em><em>optional</em>) – Marker size; defaults to 1</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the marker creation will be enqueued / deferred until a call to .flush; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ID of the created marker, or 0 if queued; False if there was a failure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.addLine">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">addLine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'New</span> <span class="pre">Line'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#FF0000'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pattern</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'solid'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folderId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">existingId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.addLine" title="Link to this definition">¶</a></dt>
+<dd><p>Add a line to the current map.</p>
+<p>(See .addLineAssignment to add an assignment feature instead.)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<em>list</em>) – List of points; each point is a list: [lon,lat]</p></li>
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – Title of the line; defaults to ‘New Line’</p></li>
+<li><p><strong>description</strong> (<em>str</em><em>, </em><em>optional</em>) – Line description; defaults to ‘’</p></li>
+<li><p><strong>width</strong> (<em>int</em><em>, </em><em>optional</em>) – Line width in pixels; defaults to 2</p></li>
+<li><p><strong>opacity</strong> (<em>float</em><em>, </em><em>optional</em>) – Line opacity, ranging from 0 to 1; defaults to 1</p></li>
+<li><p><strong>color</strong> (<em>str</em><em>, </em><em>optional</em>) – Line color, in RGB #FFFFFF hex notation; defaults to ‘#FF0000’</p></li>
+<li><p><strong>pattern</strong> (<em>str</em><em>, </em><em>optional</em>) – Line dash pattern; must be from the known list of pattern names; defaults to ‘solid’</p></li>
+<li><p><strong>folderId</strong> – Folder ID of the folder this line should be created in, if any; defaults to None</p></li>
+<li><p><strong>existingId</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of an existing line to edit using this method; defaults to None</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the line creation will be enqueued / deferred until a call to .flush; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ID of the created line, or 0 if queued; False if there was a failure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.addPolygon">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">addPolygon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'New</span> <span class="pre">Shape'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folderId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strokeOpacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strokeWidth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillOpacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stroke</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#FF0000'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fill</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#FF0000'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">existingId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.addPolygon" title="Link to this definition">¶</a></dt>
+<dd><p>Add a polygon to the current map.</p>
+<p>(See .addAreaAssignment to add an assignment feature instead.)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<em>list</em>) – <p>List of points; each point is a list: [lon,lat]</p>
+<ul>
+<li><p>The final point does not need to be the same as the first point; the polygon will be automatically closed</p></li>
+</ul>
+</p></li>
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – Title of the polygon; defaults to ‘New Shape’</p></li>
+<li><p><strong>folderId</strong> – Folder ID of the folder this line should be created in, if any; defaults to None</p></li>
+<li><p><strong>description</strong> (<em>str</em><em>, </em><em>optional</em>) – Polygon description; defaults to ‘’</p></li>
+<li><p><strong>strokeOpacity</strong> (<em>float</em><em>, </em><em>optional</em>) – Opacity of the boundary line, ranging from 0 to 1; defaults to 1</p></li>
+<li><p><strong>strokeWidth</strong> (<em>int</em><em>, </em><em>optional</em>) – Width of the boundary line in pixels; defaults to 2</p></li>
+<li><p><strong>fillOpacity</strong> (<em>float</em><em>, </em><em>optional</em>) – Opacity of the polygon fill, ranging from 0 to 1; defaults to 0.1</p></li>
+<li><p><strong>stroke</strong> (<em>str</em><em>, </em><em>optional</em>) – Color of the boundary line, in RGB #FFFFFF hex format; defaults to ‘#FF0000’</p></li>
+<li><p><strong>fill</strong> (<em>str</em><em>, </em><em>optional</em>) – Color of the polygon fill, in RGB #FFFFFF hex format; defaults to ‘#FF0000’</p></li>
+<li><p><strong>existingId</strong> – ID of an existing polygon to edit using this method; defaults to None</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the polygon creation will be enqueued / deferred until a call to .flush; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ID of the created polygon, or 0 if queued; False if there was a failure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.addOperationalPeriod">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">addOperationalPeriod</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'New</span> <span class="pre">OP'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'#FF0000'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strokeOpacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">strokeWidth</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fillOpacity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">existingId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.addOperationalPeriod" title="Link to this definition">¶</a></dt>
+<dd><p>Add an Operational Period to the current map.</p>
+<p>(This is a SAR-specific feature and has no meaning in ‘Recreation’ mode.)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – Title of the operational period; defaults to ‘New OP’</p></li>
+<li><p><strong>color</strong> (<em>str</em><em>, </em><em>optional</em>) – Color of the fill and lines for assignments in this operational period, in RGB #FFFFFF hex format; defaults to ‘#FF0000’</p></li>
+<li><p><strong>strokeOpacity</strong> (<em>float</em><em>, </em><em>optional</em>) – Opacity of boundary lines of assignments in this operational period, ranging from 0 to 1; defaults to 1</p></li>
+<li><p><strong>strokeWidth</strong> (<em>int</em><em>, </em><em>optional</em>) – Width of boundary lines of assignments in this operational period, in pixels; defaults to 2</p></li>
+<li><p><strong>fillOpacity</strong> (<em>float</em><em>, </em><em>optional</em>) – Opacity of polygon fill of assignments in this operational period, ranging from 0 to 1; defaults to 0.1</p></li>
+<li><p><strong>existingId</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of an existing operational period to edit using this method; defaults to None</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the operational period creation will be enqueued / deferred until a call to .flush; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ID of the created operational period, or 0 if queued; False if there was a failure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.addLineAssignment">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">addLineAssignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">letter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folderId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resourceType</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'GROUND'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">teamSize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LOW'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responsivePOD</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LOW'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unresponsivePOD</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LOW'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluePOD</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LOW'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">previousEfforts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transportation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeAllocated</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">primaryFrequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secondaryFrequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preparedBy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'DRAFT'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">existingId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.addLineAssignment" title="Link to this definition">¶</a></dt>
+<dd><p>Add a Line Assignment to the current map.</p>
+<p>(This is a SAR-specific feature and has no meaning in ‘Recreation’ mode.)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<em>list</em>) – List of points; each point is a list: [lon,lat]</p></li>
+<li><p><strong>number</strong> (<em>str</em><em>, </em><em>optional</em>) – String value to put in the ‘number’ field, if any; defaults to None</p></li>
+<li><p><strong>letter</strong> (<em>str</em><em>, </em><em>optional</em>) – String value to put in the ‘letter’ field, if any; defaults to None</p></li>
+<li><p><strong>opId</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of the Operational Period feature that this assignment will belong to, if any; defaults to None</p></li>
+<li><p><strong>folderId</strong> (<em>str</em><em>, </em><em>optional</em>) – Folder ID of the folder this line assignment should be created in, if any; defaults to None</p></li>
+<li><p><strong>resourceType</strong> (<em>str</em><em>, </em><em>optional</em>) – Resource type; must be from the allowable list of resource types; defaults to ‘GROUND’</p></li>
+<li><p><strong>teamSize</strong> (<em>int</em><em>, </em><em>optional</em>) – Team size (number of people), defaults to 0</p></li>
+<li><p><strong>priority</strong> (<em>str</em><em>, </em><em>optional</em>) – Priority for the assignment; must be one of LOW, MEDIUM, or HIGH; defaults to ‘LOW’</p></li>
+<li><p><strong>responsivePOD</strong> (<em>str</em><em>, </em><em>optional</em>) – Expected POD for a responsive subject; must be one of LOW, MEDIUM, or HIGH; defaults to ‘LOW’</p></li>
+<li><p><strong>unresponsivePOD</strong> (<em>str</em><em>, </em><em>optional</em>) – Expected POD for an unresponsive subject; must be one of LOW, MEDIUM, or HIGH; defaults to ‘LOW’</p></li>
+<li><p><strong>cluePOD</strong> (<em>str</em><em>, </em><em>optional</em>) – Expected POD for clues; must be one of LOW, MEDIUM, or HIGH; defaults to ‘LOW’</p></li>
+<li><p><strong>description</strong> (<em>str</em><em>, </em><em>optional</em>) – Assignment description; defaults to ‘’</p></li>
+<li><p><strong>previousEfforts</strong> (<em>str</em><em>, </em><em>optional</em>) – Description of previous efforts in the assignment; defaults to ‘’</p></li>
+<li><p><strong>transportation</strong> (<em>str</em><em>, </em><em>optional</em>) – Description of how the team should transport to and from the assignment; defaults to ‘’</p></li>
+<li><p><strong>timeAllocated</strong> (<em>str</em><em>, </em><em>optional</em>) – Allotted time (typically a number of hours) to complete the assignment; can be a string or integer; defaults to 0</p></li>
+<li><p><strong>primaryFrequency</strong> (<em>str</em><em>, </em><em>optional</em>) – Primary radio frequency or channel name; defaults to ‘’</p></li>
+<li><p><strong>secondaryFrequency</strong> (<em>str</em><em>, </em><em>optional</em>) – Secondary radio frequency or channel name; defaults to ‘’</p></li>
+<li><p><strong>preparedBy</strong> (<em>str</em><em>, </em><em>optional</em>) – Name or ID of the person who prepared the assignment; defaults to ‘’</p></li>
+<li><p><strong>status</strong> (<em>str</em><em>, </em><em>optional</em>) – Overall status of the assignment; must be one of DRAFT, PREPARED, INPROGRESS, or COMPLETED; defaults to ‘DRAFT’</p></li>
+<li><p><strong>existingId</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of an existing line assignment to edit using this method; defaults to None</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the line assignment creation will be enqueued / deferred until a call to .flush; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ID of the created line assignment, or 0 if queued; False if there was a failure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.addAreaAssignment">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">addAreaAssignment</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">letter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folderId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resourceType</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'GROUND'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">teamSize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">priority</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LOW'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">responsivePOD</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LOW'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unresponsivePOD</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LOW'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cluePOD</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'LOW'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">previousEfforts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transportation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeAllocated</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">primaryFrequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">secondaryFrequency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">preparedBy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">status</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'DRAFT'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">existingId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">queue</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.addAreaAssignment" title="Link to this definition">¶</a></dt>
+<dd><p>Add an Area Assignment to the current map.</p>
+<p>(This is a SAR-specific feature and has no meaning in ‘Recreation’ mode.)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<em>list</em>) – <p>List of points; each point is a list: [lon,lat]</p>
+<ul>
+<li><p>The final point does not need to be the same as the first point; the polygon will be automatically closed</p></li>
+</ul>
+</p></li>
+<li><p><strong>number</strong> (<em>str</em><em>, </em><em>optional</em>) – String value to put in the ‘number’ field, if any; defaults to None</p></li>
+<li><p><strong>letter</strong> (<em>str</em><em>, </em><em>optional</em>) – String value to put in the ‘letter’ field, if any; defaults to None</p></li>
+<li><p><strong>opId</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of the Operational Period feature that this assignment will belong to, if any; defaults to None</p></li>
+<li><p><strong>folderId</strong> (<em>str</em><em>, </em><em>optional</em>) – Folder ID of the folder this line assignment should be created in, if any; defaults to None</p></li>
+<li><p><strong>resourceType</strong> (<em>str</em><em>, </em><em>optional</em>) – Resource type; must be from the allowable list of resource types; defaults to ‘GROUND’</p></li>
+<li><p><strong>teamSize</strong> (<em>int</em><em>, </em><em>optional</em>) – Team size (number of people), defaults to 0</p></li>
+<li><p><strong>priority</strong> (<em>str</em><em>, </em><em>optional</em>) – Priority for the assignment; must be one of LOW, MEDIUM, or HIGH; defaults to ‘LOW’</p></li>
+<li><p><strong>responsivePOD</strong> (<em>str</em><em>, </em><em>optional</em>) – Expected POD for a responsive subject; must be one of LOW, MEDIUM, or HIGH; defaults to ‘LOW’</p></li>
+<li><p><strong>unresponsivePOD</strong> (<em>str</em><em>, </em><em>optional</em>) – Expected POD for an unresponsive subject; must be one of LOW, MEDIUM, or HIGH; defaults to ‘LOW’</p></li>
+<li><p><strong>cluePOD</strong> (<em>str</em><em>, </em><em>optional</em>) – Expected POD for clues; must be one of LOW, MEDIUM, or HIGH; defaults to ‘LOW’</p></li>
+<li><p><strong>description</strong> (<em>str</em><em>, </em><em>optional</em>) – Assignment description; defaults to ‘’</p></li>
+<li><p><strong>previousEfforts</strong> (<em>str</em><em>, </em><em>optional</em>) – Description of previous efforts in the assignment; defaults to ‘’</p></li>
+<li><p><strong>transportation</strong> (<em>str</em><em>, </em><em>optional</em>) – Description of how the team should transport to and from the assignment; defaults to ‘’</p></li>
+<li><p><strong>timeAllocated</strong> (<em>str</em><em>, </em><em>optional</em>) – Allotted time (typically a number of hours) to complete the assignment; can be a string or integer; defaults to 0</p></li>
+<li><p><strong>primaryFrequency</strong> (<em>str</em><em>, </em><em>optional</em>) – Primary radio frequency or channel name; defaults to ‘’</p></li>
+<li><p><strong>secondaryFrequency</strong> (<em>str</em><em>, </em><em>optional</em>) – Secondary radio frequency or channel name; defaults to ‘’</p></li>
+<li><p><strong>preparedBy</strong> (<em>str</em><em>, </em><em>optional</em>) – Name or ID of the person who prepared the assignment; defaults to ‘’</p></li>
+<li><p><strong>status</strong> (<em>str</em><em>, </em><em>optional</em>) – Overall status of the assignment; must be one of DRAFT, PREPARED, INPROGRESS, or COMPLETED; defaults to ‘DRAFT’</p></li>
+<li><p><strong>existingId</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of an existing area assignment to edit using this method; defaults to None</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+<li><p><strong>queue</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the area assignment creation will be enqueued / deferred until a call to .flush; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ID of the created area assignment, or 0 if queued; False if there was a failure</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.addAppTrack">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">addAppTrack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'New</span> <span class="pre">AppTrack'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">folderId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">existingId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.addAppTrack" title="Link to this definition">¶</a></dt>
+<dd><p>Add an AppTrack to the current map.</p>
+<p>Normally, AppTracks are only added from the CalTopo app.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<em>list</em>) – List of points; each point is a list: [lon,lat]</p></li>
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – AppTrack title; defaults to ‘New AppTrack’</p></li>
+<li><p><strong>description</strong> (<em>str</em><em>, </em><em>optional</em>) – AppTrack description; defaults to ‘’</p></li>
+<li><p><strong>folderId</strong> (<em>str</em><em>, </em><em>optional</em>) – Folder ID of the folder this AppTrack should be created in, if any; defaults to None</p></li>
+<li><p><strong>existingId</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of an existing AppTrack to edit using this method; defaults to ‘’</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Entire JSON response from the AppTrack creation request, or False if there was a failure prior to the request</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.flush">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">flush</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.flush" title="Link to this definition">¶</a></dt>
+<dd><p>Saves any queued (deferred) request data to the hosted map.</p>
+<p>Any of the feature creation methods can be called with queue=True to queue (defer) the creation until this method is called.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Maximum allowable duration for the save request, in seconds; defaults to 20</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div></blockquote>
+</section>
+<section id="feature-query-methods">
+<h2><strong>Feature query methods</strong><a class="headerlink" href="#feature-query-methods" title="Link to this heading">¶</a></h2>
+<blockquote>
+<div><dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.getFeature">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">getFeature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">featureClass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">featureClassExcludeList</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">letterOnly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allowMultiTitleMatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forceRefresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.getFeature" title="Link to this definition">¶</a></dt>
+<dd><p>Get the complete feature data structure for one feature from the local cache, after a refresh if needed.</p>
+<p>This convenience function calls .getFeatures, but will only have a valid return if exactly one feature is a match.</p>
+<p>All arguments are the same as for .getFeatures; see that method’s documentation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Data structure (dict) of the feature matching the requested filtering (if any), or False if zero or multiple features matched the fitler, or if there was an error prior to the cache search</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.getFeatures">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">getFeatures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">featureClass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">featureClassExcludeList</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">letterOnly</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">allowMultiTitleMatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">forceRefresh</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.getFeatures" title="Link to this definition">¶</a></dt>
+<dd><p>Get the complete feature data structure/s for one or more features from the local cache, after a refresh if needed.</p>
+<p>The features to get data for can be specified / filtered in various methods:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>all features of a given class</p></li>
+<li><p>all features of any one of several classes (see featureClassExcludeList)</p></li>
+<li><p>one feature with an exact ID</p></li>
+<li><p>feature/s with specified title (can return mutliple features; see allowMultiTitleMatch)</p></li>
+<li><p>assignment features specified by ‘letter’, regardless of ‘number’ (see letterOnly)</p></li>
+<li><p>all features / the entire cache, if none of featureClass, ID, or title are specified</p></li>
+</ul>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>featureClass</strong> (<em>str</em><em>, </em><em>optional</em>) – <p>Feature class name used for selection filtering; defaults to None</p>
+<ul>
+<li><p>if neither ID nor title are specified, then all features of this class will be returned</p></li>
+<li><p>if ID is not specified but title is specified, then feature/s of this class matching the title (possibly only the letter; see letterOnly) will be returned</p></li>
+</ul>
+</p></li>
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – <p>Feature title used for selection filtering; defaults to None</p>
+<ul>
+<li><p>title is only relevant if ID is not specified</p></li>
+<li><p>only features whose class name matches featureClass (if specified) or whose class name is not in featureClassExcludeList are candidates for title matching; so, if neither featureClass nor featureClassExcludeList are specified, all features will be checked for title match</p></li>
+<li><p>see allowMultiTitleMatch for handling of multiple features that have the specified title</p></li>
+</ul>
+</p></li>
+<li><p><strong>id</strong> (<em>str</em><em>, </em><em>optional</em>) – Feature ID; if specified, only one feature will be returned, if there is a match; defaults to None</p></li>
+<li><p><strong>featureClassExcludeList</strong> (<em>list</em><em>, </em><em>optional</em>) – List of feature classes to exclude from possible matches; not relevant if featureClass or ID are specified; defaults to []</p></li>
+<li><p><strong>letterOnly</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, all assignments with matching ‘letter’ will be returned, regardless of ‘number’; defaults to False</p></li>
+<li><p><strong>allowMultiTitleMatch</strong> (<em>bool</em><em>, </em><em>optional</em>) – <p>If True, and there are multiple features that have the specified title, they will all be returned; defaults to False</p>
+<p>If False, and there are multiple features that have the specified title, a warning will be displayed and the return will be an empty list</p>
+</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+<li><p><strong>forceRefresh</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, a refresh will be performed before getting the map list, even if the cache has been refreshed within the standard sync interval; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of data structures (dicts) of feature/s matching the requested filtering; the list will be empty if there are no matches or if there was a failure prior to the cache request</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div></blockquote>
+</section>
+<section id="feature-editing-methods">
+<h2><strong>Feature editing methods</strong><a class="headerlink" href="#feature-editing-methods" title="Link to this heading">¶</a></h2>
+<blockquote>
+<div><dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.editFeature">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">editFeature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">className</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">letter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">properties</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">geometry</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.editFeature" title="Link to this definition">¶</a></dt>
+<dd><p>Edit properties and/or geometry of a specified feature.</p>
+<p>The feature to edit can be specified in various methods:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>exact ID</p></li>
+<li><p>class name, with either the title or the letter</p></li>
+</ul>
+</div></blockquote>
+<p>Only the specific properties or geometries to be edited need to be included in the
+properties and geometry arguments; they will be merged with existing properties and geometries.
+However, when editing geometry, it probably makes more sense to overwrite the entire geometry dictionary.</p>
+<p>This is a convenience method that calls the appropriate .add… method with existingId specified.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>id</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of the feature to edit; defaults to None</p></li>
+<li><p><strong>className</strong> (<em>str</em><em>, </em><em>optional</em>) – Feature class name used for selection; defaults to None</p></li>
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – Feature title used for selection; defaults to None</p></li>
+<li><p><strong>letter</strong> (<em>str</em><em>, </em><em>optional</em>) – <p>Assignment letter used for selection; defaults to None</p>
+<p>(only relevant for assignment features)</p>
+</p></li>
+<li><p><strong>properties</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dict of properties to edit; defaults to None</p></li>
+<li><p><strong>geometry</strong> (<em>dict</em><em>, </em><em>optional</em>) – Dict of geometry to edit; defaults to None</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ID of the edited feature (should be the same as the ‘id’ argument), or False if there was a failure prior to the edit request</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.moveMarker">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">moveMarker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">newCoords</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.moveMarker" title="Link to this definition">¶</a></dt>
+<dd><p>Move an existing marker.</p>
+<p>The marker to move can be specified either with ID or by title.</p>
+<p>This convenience function calls .editFeature.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>newCoords</strong> (<em>list</em>) – List of [lon,lat] that the marker should be moved to</p></li>
+<li><p><strong>id</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of the marker to move; defaults to None</p></li>
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – Title of the marker to move; defaults to None</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ID of the edited feature (should be the same as the ‘id’ argument, if specified), or False if there was a failure prior to the edit request</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.editMarkerDescription">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">editMarkerDescription</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">newDescription</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.editMarkerDescription" title="Link to this definition">¶</a></dt>
+<dd><p>Edit the description of an existing marker.</p>
+<p>The marker to edit can be specified either with ID or by title.</p>
+<p>This convenience function calls .editFeature.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>newDescription</strong> – The new description</p></li>
+<li><p><strong>id</strong> (<em>str</em><em>, </em><em>optional</em>) – ID of the marker to move; defaults to None</p></li>
+<li><p><strong>title</strong> (<em>str</em><em>, </em><em>optional</em>) – Title of the marker to move; defaults to None</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>ID of the edited feature (should be the same as the ‘id’ argument, if specified), or False if there was a failure prior to the edit request</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div></blockquote>
+</section>
+<section id="feature-deletion-methods">
+<h2><strong>Feature deletion methods</strong><a class="headerlink" href="#feature-deletion-methods" title="Link to this heading">¶</a></h2>
+<blockquote>
+<div><dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.delFeature">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">delFeature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">featureOrId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fClass</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.delFeature" title="Link to this definition">¶</a></dt>
+<dd><p>Delete the specified feature from the current map.
+The feature to delete can be specified by ID, or by passing the entire marker data object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>featureOrId</strong> (<em>str</em><em>, </em><em>optional</em>) – Feature ID, or entire feature data object; defaults to ‘’</p></li>
+<li><p><strong>fClass</strong> (<em>str</em><em>, </em><em>optional</em>) – Feature class; there should be no need to specify a value here, since the code will try to automatically determine the class from the feature data object; defaults to ‘’</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Return value from the delete request, or False if there was an error prior to the request</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.delFeatures">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">delFeatures</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">featuresOrIdAndClassList</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.delFeatures" title="Link to this definition">¶</a></dt>
+<dd><p>Delete one or more features on the current map, in a non-blocking asynchronous batch of delete requests.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>featuresOrIdAndClassList</strong> (<em>list</em><em>, </em><em>optional</em>) – <p>List of dicts specifying the features to delete; each dict is either a complete feature data object, or this simplified dict; defaults to []</p>
+<ul>
+<li><p><em>id</em> -&gt; the feature’s ID</p></li>
+<li><p><em>class</em> -&gt; the feature’s class name</p></li>
+</ul>
+</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Return value of the asynchronous delete loop initialization routine, or False if there was an error prior to the loop</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.delMarker">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">delMarker</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">markerOrId</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.delMarker" title="Link to this definition">¶</a></dt>
+<dd><p>Delete a marker on the current map.</p>
+<p>The marker to delete can be specified by ID, or by passing the entire marker data object.</p>
+<p>This convenience function calls .delFeature.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>markerOrId</strong> – Marker ID, or entire marker data object; defaults to ‘’</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Return value from the delete request, or False if there was an error prior to the request</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.delMarkers">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">delMarkers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">markersOrIds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.delMarkers" title="Link to this definition">¶</a></dt>
+<dd><p>Delete one or more markers on the current map, in a non-blocking asynchronous batch of delete requests.</p>
+<p>The markers to delete can be specified by ID, or by passing the entire marker data objects; all markers to delete should be specified in the same manner.</p>
+<p>This convenience function calls .delFeatures.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>markersOrIds</strong> (<em>list</em><em>, </em><em>optional</em>) – List of marker IDs, or of entire marker data objects; defaults to []</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Return value from the delete request, or False if there was an error prior to the request</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div></blockquote>
+</section>
+<section id="geometry-operation-methods">
+<h2><strong>Geometry operation methods</strong><a class="headerlink" href="#geometry-operation-methods" title="Link to this heading">¶</a></h2>
+<p>These methods use the python <a href="https://shapely.readthedocs.io/en/stable/" target="_blank">Shapely</a> module.</p>
+<blockquote>
+<div><dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.cut">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">cut</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cutter</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deleteCutter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">useResultNameSuffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.cut" title="Link to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Cut a ‘target’ geometry using a ‘cutter’ geometry:</dt><dd><ul class="simple">
+<li><p>remove a notch from a polygon target, using a polygon cutter</p></li>
+<li><p>slice a polygon target, using a polygon cutter or a line cutter</p></li>
+<li><p>slice a line target, using a polygon cutter or a line cutter</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target</strong> – ID, title, or entire feature dict of the target feature</p></li>
+<li><p><strong>cutter</strong> – ID, title, or entire feature dict of the cutter feature</p></li>
+<li><p><strong>deleteCutter</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, delete the cutter feature after the cut operation; defaults to True</p></li>
+<li><p><strong>useResultNameSuffix</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, any new features resulting from the cut operation will have their titles suffixed; defaults to True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of resulting feature IDs, or False if a failure occured prior to the cut operation</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.expand">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">expand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deleteP2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.expand" title="Link to this definition">¶</a></dt>
+<dd><p>Expand a ‘target’ polygon to include the area of the ‘p2’ polygon.</p>
+<p>This is basically a boolean ‘OR’ operation, using Shapely’s ‘|’ method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target</strong> – ID, title, or entire feature dict of the target feature</p></li>
+<li><p><strong>p2</strong> – ID, title, or entire feature dict of the p2 feature</p></li>
+<li><p><strong>deleteP2</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, delete the p2 feature after the expand operation; defaults to True</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if successful; False otherwise</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.crop">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">crop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundary</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beyond</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">deleteBoundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">useResultNameSuffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drawSizedBoundary</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">noDraw</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.crop" title="Link to this definition">¶</a></dt>
+<dd><p>Remove portions of a line or polygon that are outside a boundary polygon.
+Optionally grow the boundary polygon by the specified distance before cropping.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target</strong> – ID, title, or entire feature dict of the target feature</p></li>
+<li><p><strong>boundary</strong> – ID, title, or entire feature dict of the boundary polygon</p></li>
+<li><p><strong>beyond</strong> (<em>float</em><em>, </em><em>optional</em>) – Distance to oversize the boundary polygon (in degrees) prior to the crop operation; defaults to 0.0001</p></li>
+<li><p><strong>deleteBoundary</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the boundary polygon will be deleted after the crop operation; defaults to False</p></li>
+<li><p><strong>useResultNameSuffix</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, any new features resulting from the cut operation will have their titles suffixed; defaults to False</p></li>
+<li><p><strong>drawSizedBoundary</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the oversized boundary polygon will be drawn as a feature; defaults to False</p></li>
+<li><p><strong>noDraw</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True return the resulting coordinate list(s) instead of editing / adding map features; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Resulting feature IDs, or resulting coordinate list(s) (see noDraw), or False if a failure occurred prior to the crop operation</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.getBounds">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">getBounds</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">objectList</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padDeg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padPct</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.getBounds" title="Link to this definition">¶</a></dt>
+<dd><p>Get the bounding box of a list of features, optionally oversized by padDeg or padPct.</p>
+<p>Shapely.bounds is used to compute the extent of each feature.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>objectList</strong> (<em>list</em>) – List of IDs, titles or entire feature dicts of the features in question</p></li>
+<li><p><strong>padDeg</strong> (<em>float</em><em>, </em><em>optional</em>) – Amount to expand the bounding box, in degrees; defaults to 0.0001; only relevant if padPct is not specified</p></li>
+<li><p><strong>padPct</strong> (<em>float</em><em>, </em><em>optional</em>) – <p>Amount to expand the bounding box, in percent (integer), or as a fraction (from 0 to 1); defaults to None;</p>
+<p>If padPct is specified, it will be applied; if padPct is not specified, the padDeg value will be applied</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Bounding box of the features in question, optionally oversized as above; returned as a list, in the same format as shapely.bounds: [min X, min Y, max X, max Y]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div></blockquote>
+</section>
+<section id="internal-data-management-methods">
+<h2><strong>Internal data management methods</strong><a class="headerlink" href="#internal-data-management-methods" title="Link to this heading">¶</a></h2>
+<p>These methods are typically only called internally, from other class methods.  They can be called from downstream code if needed, with caution.</p>
+<blockquote>
+<div><dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._setupSession">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_setupSession</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession._setupSession" title="Link to this definition">¶</a></dt>
+<dd><p>Called internally from __init__, regardless of whether this is a mapless session.  Reads account information from the config file and takes care of various other setup tasks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>True if setup was successful; False otherwise (which will raise STSException from __init__).</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._sendUserdata">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_sendUserdata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">activeLayers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[['mbt',</span> <span class="pre">1]]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">center</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[-120,</span> <span class="pre">39]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zoom</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">13</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._sendUserdata" title="Link to this definition">¶</a></dt>
+<dd><p>Send a POST request to /api/v0/userdata with initial map center and zoom; this might actually no longer be needed; only called during creation of a new map.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>activeLayers</strong> (<em>list</em><em>, </em><em>optional</em>) – initial map layer setup, defaults to [[‘mbt’,1]]</p></li>
+<li><p><strong>center</strong> (<em>list</em><em>, </em><em>optional</em>) – initial map center location, defaults to [-120,39]</p></li>
+<li><p><strong>zoom</strong> (<em>int</em><em>, </em><em>optional</em>) – initial map zoom, defaults to 13</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._doSync">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_doSync</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._doSync" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method to keep the cache (.mapData) in sync with the associated hosted map. <strong>Calling this method directly could cause sync problems.</strong></p>
+<ul class="simple">
+<li><p>called on a regular interval from ._syncLoop in the sync thread</p></li>
+<li><p>called once from .openMap, when the map is first opened</p></li>
+<li><p>called as needed from ._refresh</p></li>
+</ul>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._refresh">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_refresh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">forceImmediate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._refresh" title="Link to this definition">¶</a></dt>
+<dd><p>Refresh the cache (.mapData).  <strong>This method should not need to be called when sync is on.</strong></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>forceImmediate</strong> (<em>bool</em><em>, </em><em>optional</em>) – If True, the refresh will happen immediately, even if a refresh was already done within the timeout period; defaults to False</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession.__del__">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">__del__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession.__del__" title="Link to this definition">¶</a></dt>
+<dd><p>Object destructor.  Also stops the sync thread if needed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._start">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._start" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method to start the sync thread.</p>
+<p>Called from .openMap if sync is enabled.  Calls ._syncLoop in a new thread.  <strong>Calling this method directly could cause sync problems.</strong></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._stop">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._stop" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method to stop the sync thread.</p>
+<p>Called from __del__ (when the object is destroyed) if sync was enabled.  <strong>Calling this method directly could cause sync problems.</strong></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._pause">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_pause</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._pause" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method to manually pause the sync thread.</p>
+<p>Sync is normally paused at the start of every call to _sendRequest; this method can be used to pause at any other time if needed.</p>
+<p>After calling this method, sync will remain paused until a call to ._resume.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._resume">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_resume</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._resume" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method to resume the sync thread, following a call to ._pause.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._syncLoop">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_syncLoop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._syncLoop" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method that calls _doSync at regular intervals, in a blocking loop.</p>
+<p>This should only be called from ._start, which calls this method in a new thread, to
+avoid blocking of the main thread.  <strong>Calling this method directly could cause sync problems.</strong></p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._sendRequest">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_sendRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">apiUrlEnd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">id</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returnJson</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">domainAndPort</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._sendRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Send HTTP request to the server.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>type</strong> (<em>str</em>) – HTTP request action verb; currently, the only acceptable values are ‘GET’, ‘POST’, or ‘DELETE’</p></li>
+<li><p><strong>apiUrlEnd</strong> (<em>str</em>) – <p>Text of the ‘final section’ of the request URL</p>
+<ul>
+<li><p>typical values are ‘Folder’, ‘Shape’, ‘Marker’, etc.</p></li>
+<li><p>any occurrances of ‘[MAPID]’ in apiUrlEnd will be replaced by the current map ID</p></li>
+<li><p>can be the keyword ‘[NEW]’ which indicates that a new map should be created</p></li>
+<li><p>can be a longer URL with multiple tokens and slashes</p></li>
+</ul>
+</p></li>
+<li><p><strong>j</strong> (<em>dict</em>) – JSON structure to send with the request; only relevant for POST requests</p></li>
+<li><p><strong>id</strong> (<em>str</em><em>, </em><em>optional</em>) – Feature ID, when relevant; defaults to ‘’</p></li>
+<li><p><strong>returnJson</strong> (<em>str</em><em>, </em><em>optional</em>) – see ‘Returns’ section below; defaults to ‘’</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+<li><p><strong>domainAndPort</strong> (<em>str</em><em>, </em><em>optional</em>) – Domain and port to send the request to; if not specified here, uses the value of .domainAndPort; defaults to ‘’</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>various, depending on request details:</p>
+<ul class="simple">
+<li><p>False for any error or failure</p></li>
+<li><p>Entire response json structure (dict) if returnJson is ‘ALL’</p></li>
+<li><p>ID only, if returnJson is ‘ID’</p></li>
+<li><p>map ID of newly created map, if apiUrlEnd contains ‘[NEW]’</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._delAsync">
+<em class="property"><span class="pre">async</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_delAsync</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">idAndClassList</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._delAsync" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method to delete several features asynchronously, in a sepearate thread pool.
+<strong>This method should not be called directly.  It is called by .delFeatures.</strong></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>idAndClassList</strong> (<em>list</em><em>, </em><em>optional</em>) – <p>list of dicts of features to delete; defaults to []</p>
+<ul>
+<li><p><em>id</em> -&gt; the feature’s ID</p></li>
+<li><p><em>class</em> -&gt; the feature’s class name</p></li>
+</ul>
+</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – request timeout in seconds; if specified as 0 here, uses the value of .syncTimeout; defaults to 0</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._buffer2">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_buffer2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">boundaryGeom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">beyond</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._buffer2" title="Link to this definition">¶</a></dt>
+<dd><p>Return a copy of the original polygon, increased in size by the specified value.</p>
+<p>This method does not modify the original geometry.</p>
+<p>This method is used to oversize a Polygon; Shapely’s LineString.buffer method should be used to oversize a line.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>boundaryGeom</strong> (<em>shapely.geometry.Polygon</em>) – Boundary geometry to be oversized</p></li>
+<li><p><strong>beyond</strong> (<em>float</em>) – Amount to oversize the boundary geometry (in degrees)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Oversized geometry (the orignal geometry is not modified)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>shapely.geometry.Polygon or .MultiPolygon</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._intersection2">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_intersection2</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">targetGeom</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">boundaryGeom</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._intersection2" title="Link to this definition">¶</a></dt>
+<dd><p>Return the intersection of the targetGeom (a LineString) and the boundaryGeom (a Polygon).</p>
+<p>For other geometry types, shapely.ops.intersection should be used.</p>
+<dl class="simple">
+<dt>This function will preseve complex (non-simple) lines, i.e. with internal crossovers, by walking through the input points (except for the last point) where ‘A’ signifies the current point and ‘B’ signifies the next point:</dt><dd><ul class="simple">
+<li><p>if A and B are both inside the boundary: append A to the output points list</p></li>
+<li><p>if A is inside but B is outside: append A, then append the intestection of the current segment with the boundary</p></li>
+<li><p>if A is outside but B is inside: append B, then append the intersection of the current segment with the boundary</p></li>
+<li><p>if A and B are both ouside: don’t append either point; instead, append the intersection as a new line segment</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>targetGeom</strong> (<em>shapely.geometry.LineString</em>) – Target geometry</p></li>
+<li><p><strong>boundaryGeom</strong> (<em>shapely.geometry.Polygon</em>) – Boundary geometry</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Result of the intersection operation; could be one of various shapely.geometry classes</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div></blockquote>
+</section>
+<section id="internal-helper-methods">
+<h2><strong>Internal helper methods</strong><a class="headerlink" href="#internal-helper-methods" title="Link to this heading">¶</a></h2>
+<p>These methods are typically only called internally, from other class methods.  They can be called from downstream code if needed, with caution.</p>
+<blockquote>
+<div><dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._caseMatch">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_caseMatch</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession._caseMatch" title="Link to this definition">¶</a></dt>
+<dd><p>Compare two input strings to see if they are equal, based on the value of .caseSensitiveComparisons.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a</strong> (<em>str</em>) – First string to compare.</p></li>
+<li><p><strong>b</strong> (<em>str</em>) – Second string to compare.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>If .caseSensitiveComparisons is True, ‘ABC’ will not match ‘Abc’, and the return value will be False.</p>
+<p>If .caseSensitiveComparisons is False, ‘ABC’ will match ‘Abc’, and the return value will be True.</p>
+<p>Regardless of the value of .caseSensitiveComparisons, ‘ABC’ will match ‘ABC’, and the return value will be True.</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._twoify">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_twoify</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession._twoify" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method to turn four-element-vertex-data into two-element-vertex-data for use by the shapely methods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>points</strong> (<em>list</em>) – List of points, or a single point</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of two-coordinate versions of the input point/s</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._fourify">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_fourify</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">origPoints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession._fourify" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method to make a list of four-element points from a list of possibly-two-element points, by comparison with an original list of four-element points.</p>
+<p>Used internally to make sure geometry operation results are compliant with subsequent operations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<em>list</em>) – List of possibly-two-element points to be copied into a list of four-element points</p></li>
+<li><p><strong>origPoints</strong> (<em>list</em>) – List of four-element points that can be used to inform the copy operation as needed</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of four-element points</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._removeDuplicatePoints">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_removeDuplicatePoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession._removeDuplicatePoints" title="Link to this definition">¶</a></dt>
+<dd><p>Walk a list of points; if a given point is very close to the previous point (within 0.00001 degrees), delete it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>points</strong> (<em>list</em>) – List of [lon,lat] points</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The possibly-modified list of points; will be the same length as the input list, or shorter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._removeSpurs">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_removeSpurs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession._removeSpurs" title="Link to this definition">¶</a></dt>
+<dd><p>Walk a list of points; if the points before and after a given point are identical, delete the given point.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>points</strong> (<em>list</em>) – List of [lon,lat] points</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The possibly-modified list of points; will be the same length as the input list, or shorter</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._getUsedSuffixList">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_getUsedSuffixList</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._getUsedSuffixList" title="Link to this definition">¶</a></dt>
+<dd><p>Get a list of integers of all used suffixes for the specified base title.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>base</strong> (<em>str</em>) – Base title to check</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of integers of all used suffxies, or False if there was a failure prior to checking the cache</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._getNextAvailableSuffix">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_getNextAvailableSuffix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">usedSuffixList</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession._getNextAvailableSuffix" title="Link to this definition">¶</a></dt>
+<dd><p>Get the next available suffix, give a list of used suffixes.</p>
+<p>In case the used suffix list is not contiguous, e.g. if an intermediate suffixed feature has been deleted, the lowest available suffix number will be returned.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>usedSuffixList</strong> (<em>list</em>) – List of integer suffixes that are already used; does not need to be contiguous</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Lowest available suffix number</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._getToken">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_getToken</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession._getToken" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method to get the token needed for signed requests.</p>
+<p>Normally only called from _sendRequest.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> (<em>str</em>) – Data to be signed</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Signed token</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div></blockquote>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2024, Tom Grundy.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/sartopo_python.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

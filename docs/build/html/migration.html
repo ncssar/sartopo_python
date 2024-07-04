@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Migration &#8212; sartopo_python 2.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=b649bb2e" />
+    <script src="_static/documentation_options.js?v=51b770b3"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/caltopo_python_logo.png" alt="Logo"/>
+            </a></p><hr />
+<p><ul>
+<li><a href="./index.html">Home</a>
+<li><a href="./sartopo_python.html">Class Reference</a>
+<li><a href="./credentials.html">Credentials</a>
+<li><a href="./fixedChoices.html">Fixed Choices</a>
+<li><a href="./migration.html">Migration</a>
+</ul></p>
+
+  <div>
+    <hr>
+    <ul>
+<li><a class="reference internal" href="#">Migration</a><ul>
+<li><a class="reference internal" href="#sartopo-python-is-changing-names-to-caltopo-python">1. sartopo_python is changing names to caltopo_python</a></li>
+<li><a class="reference internal" href="#migrating-to-sartopo-python-2-0-0-from-an-earlier-version">2. migrating to sartopo_python 2.0.0 from an earlier version</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="migration">
+<h1>Migration<a class="headerlink" href="#migration" title="Link to this heading">¶</a></h1>
+<p>There are two categories of migration that you might be concerned with:</p>
+<section id="sartopo-python-is-changing-names-to-caltopo-python">
+<h2>1. sartopo_python is changing names to caltopo_python<a class="headerlink" href="#sartopo-python-is-changing-names-to-caltopo-python" title="Link to this heading">¶</a></h2>
+<p>This module began as ‘sartopo_python’.  There are several reasons for chaning the module name, including:</p>
+<ul class="simple">
+<li><p>most of the features in this module are not SAR-specific</p></li>
+<li><p>sartopo.com is now effectively the same as caltopo.com; the only difference is the ‘SAR’ vs. ‘Recreation’ mode setting for each map</p></li>
+<li><p>caltopo.com has much broader name recognition than sartopo.com outside of the SAR community</p></li>
+<li><p>CalTopo is the name of the app; there is no ‘SARTopo app’</p></li>
+<li><p>the name of the downloadble server is CalTopo Desktop (formerly SARTopo Offline or CalTopo Offline); there is no ‘SARTopo Desktop’</p></li>
+</ul>
+<p>caltopo_python 1.0.x will be identical to sartopo_python 2.0.x.</p>
+<p>sartopo_python will not receive any updates after 2.0.x.  That is, there will be no sartopo_python 2.1.0.
+Patches / bug fixes to 1.0 / 2.0 will be applied to both packages, but,
+minor and major version updates will only be applied to caltopo_python.</p>
+<p>We suggest that you change to caltopo_python as soon as possible.  If you are just getting started with sartopo_python, we suggest that you use caltopo_python instead.</p>
+<p><em>How do I migrate from sartopo_python to caltopo_python?</em></p>
+<ol class="arabic simple">
+<li><p>pip install caltopo_python</p></li>
+<li><p>import caltopo_python instead of import sartopo_python</p></li>
+<li><p>create an instance of CaltopoSession instead of SartopoSession</p></li>
+</ol>
+<p>There is no change to class method names or signatures.  The class name is the only difference.</p>
+</section>
+<section id="migrating-to-sartopo-python-2-0-0-from-an-earlier-version">
+<h2>2. migrating to sartopo_python 2.0.0 from an earlier version<a class="headerlink" href="#migrating-to-sartopo-python-2-0-0-from-an-earlier-version" title="Link to this heading">¶</a></h2>
+<p>(or, migrating to caltopo_python 1.0.0 from an earlier version of sartopo_python)</p>
+<p>Some class method names and signatures have changed from earlier versions.</p>
+<p>Several method names now start with an underscore, to indicate that they are not likely to be needed directly
+in your downstream code.  These ‘internal’ data management and helper methods are normally only called internally
+by other class methods.</p>
+<p>They can still be called from your downstream code if there is a specific need, as long as you are fully aware
+of their impacts on internal class data - especially the local cache and the threaded queueing operations.</p>
+<p>These previously-non-underscored methods from the latest PyPi version (1.1.2) are now ‘internal’ (e.g. .setupSession is now ._setupSession):</p>
+<ul class="simple">
+<li><p>._setupSession, ._sendRequest</p></li>
+</ul>
+<p>In addition, these previously-non-underscored methods from more recent versions of source code are now ‘internal’:</p>
+<ul class="simple">
+<li><p>._sendUserdata, ._doSync, ._refresh, ._start, ._stop, ._pause, ._resume, ._buffer2, ._intersection2, ._caseMatch, ._twoify, ._fourify, ._removeDuplicatePoints, ._removeSpurs, ._getUsedSuffixList, ._getNextAvailableSuffix, ._getToken</p></li>
+</ul>
+<p>In general, the changes from the latest PyPi version (1.1.2) are extensive enough that documenting
+the differences would not be any more helpful than looking in the Class Reference.</p>
+<p>Changes from more recent versions of source code mainly involve method signatures (argument names, types, and sequences).</p>
+<p>In either case, migrating your code from previous versions may be a fair amount of work, but the new feature set and
+forward compatibility should be a good payoff.  Use the Examples section of the main page,
+and the Class Reference, as your guides.</p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2024, Tom Grundy.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/migration.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

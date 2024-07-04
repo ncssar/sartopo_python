@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>sartopo_python &#8212; sartopo_python 2.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=b649bb2e" />
+    <script src="_static/documentation_options.js?v=51b770b3"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="#">
+              <img class="logo" src="_static/caltopo_python_logo.png" alt="Logo"/>
+            </a></p><hr />
+<p><ul>
+<li><a href="./index.html">Home</a>
+<li><a href="./sartopo_python.html">Class Reference</a>
+<li><a href="./credentials.html">Credentials</a>
+<li><a href="./fixedChoices.html">Fixed Choices</a>
+<li><a href="./migration.html">Migration</a>
+</ul></p>
+
+  <div>
+    <hr>
+    <ul>
+<li><a class="reference internal" href="#">sartopo_python</a></li>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#key-features">Key Features</a></li>
+<li><a class="reference internal" href="#examples">Examples</a></li>
+</ul>
+
+  </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="sartopo-python">
+<h1>sartopo_python<a class="headerlink" href="#sartopo-python" title="Link to this heading">¶</a></h1>
+<p>CalTopo is a very popular web-browser-based and smartphone-app-based mapping tool.  SARTopo is a mostly-obsolete
+name that refers to a set of Search-And-Rescue-specific features inside the CalTopo tool. See <a href="https://caltopo.com" target="_blank">caltopo.com</a> and <a href="https://training.caltopo.com" target="_blank">training.caltopo.com</a>.</p>
+<p>Being a web-based tool, CalTopo / SARTopo uses a web API to accomplish most user actions.  The API is not currently documented or developed for general public use, and could change at any time.</p>
+<p>This module provides a ‘session’ object which manages a data connection to a hosted map, and provides several wrapper methods and convenience methods that make calls to the non-publicized CalTopo API.</p>
+<p><strong>This third-party module is not written or maintained by CalTopo LLC or the authors of caltopo.com or sartopo.com.</strong></p>
+<p><strong>DISCLAIMER: This module can edit and delete CalTopo / SARTopo map features.  At the time of this module’s publication, CalTopo and SARTopo do not have any ‘undo’ capability.</strong>
+Only you can take steps to prevent loss of map data due to use of this module - whether due to accidental misuse, or due to an unexpected bug in the module.  You should always consider exporting a full GeoJSON from your map before using this code.</p>
+<dl class="simple">
+<dt>Categories of provided class methods:</dt><dd><ul class="simple">
+<li><p>account data access</p></li>
+<li><p>feature creation</p></li>
+<li><p>feature editing</p></li>
+<li><p>feature querying</p></li>
+<li><p>feature deletion</p></li>
+<li><p>geometry operations</p></li>
+</ul>
+</dd>
+</dl>
+<p>See the <a class="reference external" href="./sartopo_python.html">SartopoSession Class Reference</a> for details.</p>
+</section>
+<section id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h1>
+<p>Install this package in the usual manner:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">sartopo_python</span>
+</pre></div>
+</div>
+<p>To activate online requests, you will need to determine your account ID, credential ID, and public key.  See details at the <a class="reference internal" href="credentials.html"><span class="doc">Credentials</span></a> page.</p>
+<p><strong>NOTE: sartopo_python is changing names to caltopo_python.</strong>
+caltopo_python 1.0.x will be identical to sartopo_python 2.0.x.</p>
+<p>We suggest that you change to caltopo_python as soon as possible.  If you are just getting started with sartopo_python, we suggest that you use caltopo_python instead.</p>
+<p>For more information, see the <a class="reference internal" href="migration.html"><span class="doc">Migration</span></a> page.</p>
+</section>
+<section id="key-features">
+<h1>Key Features<a class="headerlink" href="#key-features" title="Link to this heading">¶</a></h1>
+<section id="internet-or-locally-hosted">
+<h2>Internet or locally-hosted<a class="headerlink" href="#internet-or-locally-hosted" title="Link to this heading">¶</a></h2>
+<p>In addition to the standard caltopo.com or sartopo.com web interface, CalTopo provides a downloadable local HTTP server
+called CalTopo Desktop (formerly CalTopo Offline or SARTopo Offline).  This module works with either solution.</p>
+</section>
+<section id="configuration-file">
+<h2>Configuration file<a class="headerlink" href="#configuration-file" title="Link to this heading">¶</a></h2>
+<p>User account details, including the authentication public key (used to generate signed requests, as required by caltopo.com and sartopo.com),
+are kept in a local configuration file that you control.  A template configuration file comes with this package.</p>
+<p>See the bottom of the Examples section for configuration file examples.  See the <a class="reference internal" href="credentials.html"><span class="doc">Credentials</span></a> page for details on authentication.</p>
+</section>
+<section id="mapless-session">
+<h2>Mapless session<a class="headerlink" href="#mapless-session" title="Link to this heading">¶</a></h2>
+<p>You may want to initialize the session without specifying a map, e.g. if you need to start
+by checking the list of available maps before you know which map to open.</p>
+<p>You can open a ‘mapless’ session by simply omitting the mapID argument when you initialize the session.  In that case, you can
+open a map later, within the same session, with .openMap().</p>
+<p>Any of the ‘account data access methods’ will work in a mapless session.
+Most of the other class methods require an open map, so will fail with an error message if called in a mapless session.</p>
+</section>
+<section id="local-cache">
+<h2>Local cache<a class="headerlink" href="#local-cache" title="Link to this heading">¶</a></h2>
+<p>If the session is associated with a hosted map, this module will keep a local cache of the entire map data structure.  This reduces
+the number of web requests needed, which reduces the time taken for most tasks.</p>
+</section>
+<section id="sync-with-callbacks">
+<h2>Sync with callbacks<a class="headerlink" href="#sync-with-callbacks" title="Link to this heading">¶</a></h2>
+<p>To keep the local cache in sync with the hosted map, this module automatically requests and processes updates from the host at the specified sync interval.</p>
+<p>This sync procedure is done in a background thread, so that it doesn’t delay or interfere with your code.  Sync can be paused or disabled if needed.</p>
+<p>You can also write callback functions that will be called whenever map data changes are found during sync.</p>
+</section>
+</section>
+<section id="examples">
+<h1>Examples<a class="headerlink" href="#examples" title="Link to this heading">¶</a></h1>
+<section id="opening-a-session">
+<h2>Opening a session<a class="headerlink" href="#opening-a-session" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">sartopo_python</span> <span class="kn">import</span> <span class="n">SartopoSession</span>
+
+<span class="c1"># open an online session and map</span>
+<span class="n">sts</span><span class="o">=</span><span class="n">SartopoSession</span><span class="p">(</span><span class="s1">&#39;caltopo.com&#39;</span><span class="p">,</span><span class="s1">&#39;A1B2C&#39;</span><span class="p">,</span>
+      <span class="n">configpath</span><span class="o">=</span><span class="s1">&#39;../../sts.ini&#39;</span><span class="p">,</span>
+      <span class="n">account</span><span class="o">=</span><span class="s1">&#39;joe@domain.com&#39;</span><span class="p">)</span>
+
+<span class="c1"># open a CalTopo Desktop session and map</span>
+<span class="n">sts</span><span class="o">=</span><span class="n">SartopoSession</span><span class="p">(</span><span class="s1">&#39;localhost:8080&#39;</span><span class="p">,</span><span class="s1">&#39;A1B2C&#39;</span><span class="p">,</span>
+      <span class="n">configpath</span><span class="o">=</span><span class="s1">&#39;../../sts.ini&#39;</span><span class="p">,</span>
+      <span class="n">account</span><span class="o">=</span><span class="s1">&#39;joe@domain.com&#39;</span><span class="p">)</span>
+
+<span class="c1"># open an online mapless session</span>
+<span class="n">sts</span><span class="o">=</span><span class="n">SartopoSession</span><span class="p">(</span><span class="s1">&#39;caltopo.com&#39;</span><span class="p">,</span>
+      <span class="n">configpath</span><span class="o">=</span><span class="s1">&#39;../../sts.ini&#39;</span><span class="p">,</span>
+      <span class="n">account</span><span class="o">=</span><span class="s1">&#39;joe@domain.com&#39;</span><span class="p">)</span>
+
+<span class="c1"># open a map, for a session that was initially mapless</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">openMap</span><span class="p">(</span><span class="s1">&#39;A1B2C&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="syncing-and-callbacks">
+<h2>Syncing and callbacks<a class="headerlink" href="#syncing-and-callbacks" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># define callback functions</span>
+<span class="k">def</span> <span class="nf">pucb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Property Updated: pucb called with args &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">gucb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Geometry Updated: gucb called with args &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">nocb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;New Object: nocb called with args &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+<span class="k">def</span> <span class="nf">docb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Deleted Object: docb called with args &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+<span class="c1"># open a session, connecting to the defined callbacks;</span>
+<span class="c1">#  syncing is enabled by default, since the &#39;sync&#39; argument defaults to True</span>
+<span class="n">sts</span><span class="o">=</span><span class="n">SartopoSession</span><span class="p">(</span><span class="s1">&#39;caltopo.com&#39;</span><span class="p">,</span><span class="s1">&#39;A1B2C&#39;</span><span class="p">,</span>
+      <span class="n">configpath</span><span class="o">=</span><span class="s1">&#39;../../sts.ini&#39;</span><span class="p">,</span>
+      <span class="n">account</span><span class="o">=</span><span class="s1">&#39;joe@domain.com&#39;</span><span class="p">,</span>
+      <span class="n">propUpdateCallback</span><span class="o">=</span><span class="n">pucb</span><span class="p">,</span>
+      <span class="n">geometryUpdateCallback</span><span class="o">=</span><span class="n">gucb</span><span class="p">,</span>
+      <span class="n">newObjectCallback</span><span class="o">=</span><span class="n">nocb</span><span class="p">,</span>
+      <span class="n">deletedObjectCallback</span><span class="o">=</span><span class="n">docb</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="getting-map-data-and-account-data">
+<h2>Getting map data and account data<a class="headerlink" href="#getting-map-data-and-account-data" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># get the personal map list (for joe@domain.com)</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">getMapList</span><span class="p">()</span>
+
+<span class="c1"># get the MyTeam map list (assuming joe@domain.com is a member of MyTeam)</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">getMapList</span><span class="p">(</span><span class="s1">&#39;MyTeam&#39;</span><span class="p">)</span>
+
+<span class="c1"># get a dict of all map lists (for joe@domain.com)</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">getAllMapLists</span><span class="p">()</span>
+
+<span class="c1"># get the title of a map (assuming joe@domain.com has access to the map)</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">getMapTitle</span><span class="p">(</span><span class="s1">&#39;A1B2C&#39;</span><span class="p">)</span>
+
+<span class="c1"># get the list of titles of group accounts of which joe@domain.com is a member</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">getGroupAccountTitles</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="adding-features">
+<h2>Adding features<a class="headerlink" href="#adding-features" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># add a marker</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">addMarker</span><span class="p">(</span><span class="mi">39</span><span class="p">,</span><span class="o">-</span><span class="mi">120</span><span class="p">,</span><span class="s1">&#39;MyMarker&#39;</span><span class="p">)</span>
+
+<span class="c1"># add a folder</span>
+<span class="n">fid</span><span class="o">=</span><span class="n">sts</span><span class="o">.</span><span class="n">addFolder</span><span class="p">(</span><span class="s1">&#39;MyFolder&#39;</span><span class="p">)</span>
+
+<span class="c1"># add a marker in the folder</span>
+<span class="n">myMarker2</span><span class="o">=</span><span class="n">sts</span><span class="o">.</span><span class="n">addMarker</span><span class="p">(</span><span class="mf">39.01</span><span class="p">,</span><span class="o">-</span><span class="mf">120.01</span><span class="p">,</span><span class="s1">&#39;MyMarker2&#39;</span><span class="p">,</span><span class="n">folderId</span><span class="o">=</span><span class="n">fid</span><span class="p">)</span>
+
+<span class="c1"># add a line</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">addLine</span><span class="p">([[</span><span class="mi">39</span><span class="p">,</span><span class="o">-</span><span class="mi">120</span><span class="p">],[</span><span class="mf">39.1</span><span class="p">,</span><span class="o">-</span><span class="mf">120.1</span><span class="p">]],</span><span class="s1">&#39;MyLine&#39;</span><span class="p">)</span>
+
+<span class="c1"># prepare to add a polygon - queue it for later</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">addPolygon</span><span class="p">([[</span><span class="mi">39</span><span class="p">,</span><span class="o">-</span><span class="mi">120</span><span class="p">],[</span><span class="mf">39.1</span><span class="p">,</span><span class="o">-</span><span class="mf">120.1</span><span class="p">],[</span><span class="mf">39.1</span><span class="p">,</span><span class="o">-</span><span class="mi">120</span><span class="p">]],</span><span class="s1">&#39;MyPolygon&#39;</span><span class="p">,</span><span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># add an Operational Period</span>
+<span class="n">op1</span><span class="o">=</span><span class="n">sts</span><span class="o">.</span><span class="n">addOperationalPeriod</span><span class="p">(</span><span class="s1">&#39;1&#39;</span><span class="p">)</span>
+
+<span class="c1"># prepare to add a line assignment - queue it for later</span>
+<span class="n">aa</span><span class="o">=</span><span class="n">sts</span><span class="o">.</span><span class="n">addLineAssignment</span><span class="p">([[</span><span class="mf">39.2</span><span class="p">,</span><span class="o">-</span><span class="mi">120</span><span class="p">],[</span><span class="mf">39.2</span><span class="p">,</span><span class="o">-</span><span class="mf">120.1</span><span class="p">]],</span>
+      <span class="n">letter</span><span class="o">=</span><span class="s1">&#39;AA&#39;</span><span class="p">,</span>
+      <span class="n">opId</span><span class="o">=</span><span class="n">op1</span><span class="p">,</span>
+      <span class="n">resourceType</span><span class="o">=</span><span class="s1">&#39;DOG-TRAIL&#39;</span><span class="p">,</span>
+      <span class="n">description</span><span class="o">=</span><span class="s1">&#39;FindEm&#39;</span><span class="p">,</span>
+      <span class="n">queue</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">sts</span><span class="o">.</span><span class="n">addAreaAssignment</span><span class="p">([[</span><span class="mf">39.3</span><span class="p">,</span><span class="o">-</span><span class="mi">120</span><span class="p">],[</span><span class="mf">39.4</span><span class="p">,</span><span class="o">-</span><span class="mf">120.1</span><span class="p">],[</span><span class="mf">39.4</span><span class="p">,</span><span class="o">-</span><span class="mi">120</span><span class="p">]],</span>
+      <span class="n">letter</span><span class="o">=</span><span class="s1">&#39;AB&#39;</span><span class="p">,</span>
+      <span class="n">number</span><span class="o">=</span><span class="s1">&#39;104&#39;</span><span class="p">,</span>
+      <span class="n">opId</span><span class="o">=</span><span class="n">op1</span><span class="p">,</span>
+      <span class="n">resourceType</span><span class="o">=</span><span class="s1">&#39;DOG-AREA&#39;</span><span class="p">,</span>
+      <span class="n">description</span><span class="o">=</span><span class="s1">&#39;FindEmFirst&#39;</span><span class="p">,</span>
+      <span class="n">responsivePOD</span><span class="o">=</span><span class="s1">&#39;HIGH&#39;</span><span class="p">,</span>
+      <span class="n">priority</span><span class="o">=</span><span class="s1">&#39;HIGH&#39;</span><span class="p">)</span>
+
+<span class="c1"># add the queued features now (MyPolygon and AA)</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="querying-and-editing-features">
+<h2>Querying and editing features<a class="headerlink" href="#querying-and-editing-features" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">myMarker</span><span class="o">=</span><span class="n">sts</span><span class="o">.</span><span class="n">getFeature</span><span class="p">(</span><span class="s1">&#39;Marker&#39;</span><span class="p">,</span><span class="s1">&#39;MyMarker&#39;</span><span class="p">)</span>
+
+<span class="n">sts</span><span class="o">.</span><span class="n">editFeature</span><span class="p">(</span><span class="n">myMarker</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">],</span><span class="n">properties</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;title&#39;</span><span class="p">,</span><span class="s1">&#39;NewTitle&#39;</span><span class="p">})</span>
+
+<span class="n">sts</span><span class="o">.</span><span class="n">moveMarker</span><span class="p">(</span><span class="mi">39</span><span class="p">,</span><span class="o">-</span><span class="mf">121.5</span><span class="p">,</span><span class="n">myMarker</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])</span>
+
+<span class="n">sts</span><span class="o">.</span><span class="n">editMarkerDescription</span><span class="p">(</span><span class="s1">&#39;New marker description&#39;</span><span class="p">,</span><span class="n">myMarker</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+<section id="geometry-operations">
+<h2>Geometry operations<a class="headerlink" href="#geometry-operations" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># assuming all of the named features below have already been drawn</span>
+
+<span class="c1"># cut area assignment AC 103, using line b0</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="s1">&#39;AC 103&#39;</span><span class="p">,</span><span class="s1">&#39;b0&#39;</span><span class="p">)</span>
+
+<span class="c1"># cut line a1, using line b1</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="s1">&#39;a1&#39;</span><span class="p">,</span><span class="s1">&#39;b1&#39;</span><span class="p">)</span>
+
+<span class="c1"># cut polygon a8, using polygon b8, but do not delete b8 afterwards</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="s1">&#39;a8&#39;</span><span class="p">,</span><span class="s1">&#39;b8&#39;</span><span class="p">,</span><span class="n">deleteCutter</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="c1"># arguments are ids instead of entire features</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="n">a12</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">],</span><span class="n">b12</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">])</span>
+
+<span class="c1"># expand polygon a7 to include polygon b7, a.k.a. &quot;a7 = a7 OR b7&quot;</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="s1">&#39;a7&#39;</span><span class="p">,</span><span class="s1">&#39;b7&#39;</span><span class="p">)</span>
+
+<span class="c1"># crop line a14 using boundary poygon b14</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="s1">&#39;a14&#39;</span><span class="p">,</span><span class="s1">&#39;b14&#39;</span><span class="p">)</span>
+
+<span class="c1"># crop line a15 using boundary polygon b15, with zero oversize</span>
+<span class="n">sts</span><span class="o">.</span><span class="n">crop</span><span class="p">(</span><span class="s1">&#39;a15&#39;</span><span class="p">,</span><span class="s1">&#39;b15&#39;</span><span class="p">,</span><span class="n">beyond</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="deleting-features">
+<h2>Deleting features<a class="headerlink" href="#deleting-features" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sts</span><span class="o">.</span><span class="n">delFeature</span><span class="p">(</span><span class="n">aa</span><span class="p">)</span>
+
+<span class="n">sts</span><span class="o">.</span><span class="n">delMarkers</span><span class="p">([</span><span class="n">myMarker</span><span class="p">,</span><span class="n">myMarker2</span><span class="p">])</span>
+</pre></div>
+</div>
+</section>
+<section id="id1">
+<h2>Configuration file<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># sartopo_python config file</span>
+<span class="c1"># This file contains credentials used to send API map requests</span>
+<span class="c1">#  to caltopo.com, sartopo.com, or CalTopo Desktop.</span>
+<span class="c1"># Protect and do not distribute these credentials.</span>
+
+<span class="p">[</span><span class="n">joe</span><span class="nd">@domain</span><span class="o">.</span><span class="n">com</span><span class="p">]</span> <span class="c1"># section referenced by &#39;account&#39; session object attribute / argument</span>
+<span class="nb">id</span><span class="o">=</span><span class="n">A1B2C3D4E5F6</span> <span class="c1"># 12-character credential ID</span>
+<span class="n">key</span><span class="o">=............................................</span> <span class="c1"># 44-character caltopo API key</span>
+<span class="n">accountId</span><span class="o">=</span><span class="n">A1B2C3</span> <span class="c1"># 6-character account ID</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2024, Tom Grundy.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

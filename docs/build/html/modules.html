@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>sartopo_python &#8212; sartopo_python 2.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d1102ebc" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css?v=b649bb2e" />
+    <script src="_static/documentation_options.js?v=51b770b3"></script>
+    <script src="_static/doctools.js?v=9a2dae69"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/caltopo_python_logo.png" alt="Logo"/>
+            </a></p><hr />
+<p><ul>
+<li><a href="./index.html">Home</a>
+<li><a href="./sartopo_python.html">Class Reference</a>
+<li><a href="./credentials.html">Credentials</a>
+</ul></p>
+
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="sartopo-python">
+<h1>sartopo_python<a class="headerlink" href="#sartopo-python" title="Link to this heading">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="sartopo_python.html">sartopo_python module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession"><code class="docutils literal notranslate"><span class="pre">SartopoSession</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.openMap"><code class="docutils literal notranslate"><span class="pre">openMap()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sartopo_python.html#account-data-access-methods"><strong>Account data access methods</strong></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.getAccountData"><code class="docutils literal notranslate"><span class="pre">getAccountData()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.getMapList"><code class="docutils literal notranslate"><span class="pre">getMapList()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.getAllMapLists"><code class="docutils literal notranslate"><span class="pre">getAllMapLists()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.getMapTitle"><code class="docutils literal notranslate"><span class="pre">getMapTitle()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.getGroupAccountTitles"><code class="docutils literal notranslate"><span class="pre">getGroupAccountTitles()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sartopo_python.html#feature-creation-methods"><strong>Feature creation methods</strong></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.addFolder"><code class="docutils literal notranslate"><span class="pre">addFolder()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.addMarker"><code class="docutils literal notranslate"><span class="pre">addMarker()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.addLine"><code class="docutils literal notranslate"><span class="pre">addLine()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.addPolygon"><code class="docutils literal notranslate"><span class="pre">addPolygon()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.addOperationalPeriod"><code class="docutils literal notranslate"><span class="pre">addOperationalPeriod()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.addLineAssignment"><code class="docutils literal notranslate"><span class="pre">addLineAssignment()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.addAreaAssignment"><code class="docutils literal notranslate"><span class="pre">addAreaAssignment()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.addAppTrack"><code class="docutils literal notranslate"><span class="pre">addAppTrack()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.flush"><code class="docutils literal notranslate"><span class="pre">flush()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sartopo_python.html#feature-query-methods"><strong>Feature query methods</strong></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.getFeature"><code class="docutils literal notranslate"><span class="pre">getFeature()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.getFeatures"><code class="docutils literal notranslate"><span class="pre">getFeatures()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sartopo_python.html#feature-editing-methods"><strong>Feature editing methods</strong></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.editFeature"><code class="docutils literal notranslate"><span class="pre">editFeature()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.moveMarker"><code class="docutils literal notranslate"><span class="pre">moveMarker()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.editMarkerDescription"><code class="docutils literal notranslate"><span class="pre">editMarkerDescription()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sartopo_python.html#feature-deletion-methods"><strong>Feature deletion methods</strong></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.delFeature"><code class="docutils literal notranslate"><span class="pre">delFeature()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.delFeatures"><code class="docutils literal notranslate"><span class="pre">delFeatures()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.delMarker"><code class="docutils literal notranslate"><span class="pre">delMarker()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.delMarkers"><code class="docutils literal notranslate"><span class="pre">delMarkers()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sartopo_python.html#geometry-operation-methods"><strong>Geometry operation methods</strong></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.cut"><code class="docutils literal notranslate"><span class="pre">cut()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.expand"><code class="docutils literal notranslate"><span class="pre">expand()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.crop"><code class="docutils literal notranslate"><span class="pre">crop()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.getBounds"><code class="docutils literal notranslate"><span class="pre">getBounds()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sartopo_python.html#internal-data-management-methods"><strong>Internal data management methods</strong></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._setupSession"><code class="docutils literal notranslate"><span class="pre">_setupSession()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._sendUserdata"><code class="docutils literal notranslate"><span class="pre">_sendUserdata()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._doSync"><code class="docutils literal notranslate"><span class="pre">_doSync()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._refresh"><code class="docutils literal notranslate"><span class="pre">_refresh()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession.__del__"><code class="docutils literal notranslate"><span class="pre">__del__()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._start"><code class="docutils literal notranslate"><span class="pre">_start()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._stop"><code class="docutils literal notranslate"><span class="pre">_stop()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._pause"><code class="docutils literal notranslate"><span class="pre">_pause()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._resume"><code class="docutils literal notranslate"><span class="pre">_resume()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._syncLoop"><code class="docutils literal notranslate"><span class="pre">_syncLoop()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._sendRequest"><code class="docutils literal notranslate"><span class="pre">_sendRequest()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._delAsync"><code class="docutils literal notranslate"><span class="pre">_delAsync()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._buffer2"><code class="docutils literal notranslate"><span class="pre">_buffer2()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._intersection2"><code class="docutils literal notranslate"><span class="pre">_intersection2()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sartopo_python.html#internal-helper-methods"><strong>Internal helper methods</strong></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._caseMatch"><code class="docutils literal notranslate"><span class="pre">_caseMatch()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._twoify"><code class="docutils literal notranslate"><span class="pre">_twoify()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._fourify"><code class="docutils literal notranslate"><span class="pre">_fourify()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._removeDuplicatePoints"><code class="docutils literal notranslate"><span class="pre">_removeDuplicatePoints()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._removeSpurs"><code class="docutils literal notranslate"><span class="pre">_removeSpurs()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._getUsedSuffixList"><code class="docutils literal notranslate"><span class="pre">_getUsedSuffixList()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._getNextAvailableSuffix"><code class="docutils literal notranslate"><span class="pre">_getNextAvailableSuffix()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sartopo_python.html#sartopo_python.SartopoSession._getToken"><code class="docutils literal notranslate"><span class="pre">_getToken()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &#169;2024, Tom Grundy.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.3.7</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/modules.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
