@@ -189,7 +189,7 @@ class SartopoSession():
 
         :param domainAndPort: Domain-and-port portion of the URL; defaults to 'localhost:8080'; common values are 'caltopo.com' for the web interface, and 'localhost:8080' (or different hostname or port as needed) for CalTopo Desktop
         :type domainAndPort: str, optional
-        :param mapID: 5-character map ID; omit this argument during initialization to create a 'mapless' session; defaults to None
+        :param mapID: 3-to-7-character map ID, or [NEW] followed by new map specification (see .openMap documentation); omit this argument during initialization to create a 'mapless' session; defaults to None
         :type mapID: str, optional
         :param configpath: Configuration file path (full file name); defaults to None
         :type configpath: str, optional
@@ -274,11 +274,17 @@ class SartopoSession():
         """Open a map for usage in the current session.
         This is automatically called during session initialization (by _setupSession) if mapID was specified when the session was created, but can be called later from your code if the session was initially 'mapless'.
         
-        If mapID is '[NEW]', a new map will be created and opened for use in the current session.  The new map's ID will be stored in the session's .mapID varaiable.
+        If mapID starts with '[NEW]', a new map will be created and opened for use in the current session.  You can follow the [NEW] keyword by the new map's mode and title in the format *[sar:]<title>*
+
+        - [NEW] - creates a new map with the default title 'newMap'
+        - [NEW]myOtherMap - creates a new map with the title 'myOtherMap'
+        - [NEW]sar:mySARMap - creates a new SAR-mode map with the title 'mySARMap'
+        
+        The new map's ID will be stored in the session's .mapID varaiable.
 
         NOTE: New map creation only works with CalTopo Desktop in this version of the module.  It does not currently work for sartopo.com or caltopo.com.
 
-        :param mapID: 5-character Map ID, or '[NEW]'; defaults to ''
+        :param mapID: 3-to-7-character Map ID, or '[NEW]' with specification described above; defaults to ''
         :type mapID: str, optional
         :return: True if map was opened successfully; False otherwise.
         :rtype: bool
@@ -286,22 +292,35 @@ class SartopoSession():
         if self.mapID and self.lastSuccessfulSyncTimestamp>0:
             logging.warning('WARNING: this SartopoSession object is already connected to map '+self.mapID+'.  Call to openMap ignored.')
             return
-        if not mapID or not isinstance(mapID,str) or len(mapID)<3 or len(mapID)>7:
+        if not mapID or not isinstance(mapID,str) or ((len(mapID)<3 or len(mapID)>7) and not mapID.startswith('[NEW]')):
             logging.warning('WARNING: map ID must be a three-to-seven-character sartopo map ID string (end of the URL).  No map will be opened for this SartopoSession object.')
             raise STSException
         self.mapID=mapID
         # new map requested
         # 1. send a POST request to /map - payload (tested on CTD 4225; won't work with <4221) =
-        if self.mapID=='[NEW]':
+        if mapID.startswith('[NEW]'):
             if self.domainAndPort.lower() in ['caltopo.com','sartopo.com']:
                 logging.error("New map creation only works with CalTopo Desktop in this version of sartopo_python.")
                 return False
+            title='newMap'
+            mode='cal'
+            if len(mapID)>5:
+                newMapTailParse=mapID[5:].split(':')
+                if len(newMapTailParse)>1 and newMapTailParse[1]!='':
+                    title=newMapTailParse[1]
+                    mode=newMapTailParse[0].lower()
+                    if mode!='sar':
+                        logging.warning('new map specification '+str(mapID)+' did not parse correctly; using mode "cal" for recreation mode')
+                        mode='cal'
+                else:
+                    title=newMapTailParse[0]
+            logging.info('about to create a new map with title "'+title+'" and mode "'+mode+'"')
             j={}
             j['properties']={
                 'mapConfig':json.dumps({'activeLayers':[['mbt',1]]}),
                 'cfgLocked':True,
-                'title':'new',
-                'mode':'sar' # 'cal' for recreation, 'sar' for SAR
+                'title':title,
+                'mode':mode # 'cal' for recreation, 'sar' for SAR
             }
             j['state']={
                 'type':'FeatureCollection',
@@ -333,7 +352,7 @@ class SartopoSession():
                 self.s=requests.session()
                 self._sendUserdata() # to get session cookies for new session
                 time.sleep(1) # to avoid a 401 on the subsequent get request
-                self.delMarker(id='11111111-1111-1111-1111-111111111111')
+                self.delMarker('11111111-1111-1111-1111-111111111111')
             else:
                 logging.info('New map request failed.  See the log for details.')
                 return False

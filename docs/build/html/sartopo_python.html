@@ -153,7 +153,7 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>domainAndPort</strong> (<em>str</em><em>, </em><em>optional</em>) – Domain-and-port portion of the URL; defaults to ‘localhost:8080’; common values are ‘caltopo.com’ for the web interface, and ‘localhost:8080’ (or different hostname or port as needed) for CalTopo Desktop</p></li>
-<li><p><strong>mapID</strong> (<em>str</em><em>, </em><em>optional</em>) – 5-character map ID; omit this argument during initialization to create a ‘mapless’ session; defaults to None</p></li>
+<li><p><strong>mapID</strong> (<em>str</em><em>, </em><em>optional</em>) – 3-to-7-character map ID, or [NEW] followed by new map specification (see .openMap documentation); omit this argument during initialization to create a ‘mapless’ session; defaults to None</p></li>
 <li><p><strong>configpath</strong> (<em>str</em><em>, </em><em>optional</em>) – Configuration file path (full file name); defaults to None</p></li>
 <li><p><strong>account</strong> (<em>str</em><em>, </em><em>optional</em>) – Account name; used to reference a section of the config file; defaults to None</p></li>
 <li><p><strong>id</strong> (<em>_type_</em><em>, </em><em>optional</em>) – 12-character credential ID; specify here to override value from config file; defaults to None</p></li>
@@ -182,11 +182,17 @@
 <span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">openMap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapID</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#sartopo_python.SartopoSession.openMap" title="Link to this definition">¶</a></dt>
 <dd><p>Open a map for usage in the current session.
 This is automatically called during session initialization (by _setupSession) if mapID was specified when the session was created, but can be called later from your code if the session was initially ‘mapless’.</p>
-<p>If mapID is ‘[NEW]’, a new map will be created and opened for use in the current session.  The new map’s ID will be stored in the session’s .mapID varaiable.</p>
+<p>If mapID starts with ‘[NEW]’, a new map will be created and opened for use in the current session.  You can follow the [NEW] keyword by the new map’s mode and title in the format <em>[sar:]&lt;title&gt;</em></p>
+<ul class="simple">
+<li><p>[NEW] - creates a new map with the default title ‘newMap’</p></li>
+<li><p>[NEW]myOtherMap - creates a new map with the title ‘myOtherMap’</p></li>
+<li><p>[NEW]sar:mySARMap - creates a new SAR-mode map with the title ‘mySARMap’</p></li>
+</ul>
+<p>The new map’s ID will be stored in the session’s .mapID varaiable.</p>
 <p>NOTE: New map creation only works with CalTopo Desktop in this version of the module.  It does not currently work for sartopo.com or caltopo.com.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>mapID</strong> (<em>str</em><em>, </em><em>optional</em>) – 5-character Map ID, or ‘[NEW]’; defaults to ‘’</p>
+<dd class="field-odd"><p><strong>mapID</strong> (<em>str</em><em>, </em><em>optional</em>) – 3-to-7-character Map ID, or ‘[NEW]’ with specification described above; defaults to ‘’</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>True if map was opened successfully; False otherwise.</p>
