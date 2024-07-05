@@ -133,11 +133,11 @@ Syncing and callbacks
    def gucb(*args):
       print('Geometry Updated: gucb called with args '+str(args))
 
-   def nocb(*args):
-      print('New Object: nocb called with args '+str(args))
+   def nfcb(*args):
+      print('New Feature: nfcb called with args '+str(args))
 
-   def docb(*args):
-      print('Deleted Object: docb called with args '+str(args))
+   def dfcb(*args):
+      print('Deleted Feature: dfcb called with args '+str(args))
 
    # open a session, connecting to the defined callbacks;
    #  syncing is enabled by default, since the 'sync' argument defaults to True
@@ -146,8 +146,8 @@ Syncing and callbacks
          account='joe@domain.com',
          propUpdateCallback=pucb,
          geometryUpdateCallback=gucb,
-         newObjectCallback=nocb,
-         deletedObjectCallback=docb)
+         newFeatureCallback=nfcb,
+         deletedFeatureCallback=dfcb)
 
 Getting map data and account data
 ---------------------------------
