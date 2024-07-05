@@ -1153,6 +1153,64 @@ class SartopoSession():
         # logging.info("hashed data:"+str(token))
         return token
 
+    def _validatePoints(self,points: list,modify: bool=False):
+        """Internal method to find any points in a list of points that are 'obviously' lon-lat-swapped.  \n
+        Normally only called from _sendRequest.
+
+        The 'correct' sequence for each point, as expected by caltopo.com, is [lon,lat] i.e longitude then latitude.
+
+        First, each point in the list of points is categorized:
+
+        - 'obviously swapped' : abs(lat)>90
+        - 'obviously valid' : 90<=abs(lon)<=180 and abs(lat)<=90
+        - 'ambiguous' - neither of the above; note that half of the world is 'ambiguous' by this definition (west half of east hemisphere, and east half of west hemisphere: all points where longitude is between 90 and -90)
+
+        If *modify* is True:
+
+        - if there are obviously-swapped points but no obviously-valid points: swap lon and lat of all points in the list
+        - if there are both obviously-swapped and obviously-valid points: return an error
+        - otherwise: no not modify any points; note, this includes the case where there are obviously-valid points but no obviously-swapped points
+
+        Log messages will be generated as needed, regardless of the value of *modify*.
+        
+        :param points: List of points to be checked
+        :type points: list
+        :param modify: True to modify the points list before returning if needed as above; False to always return the unmodified list; defaults to False
+        :type modify: bool
+        :return: List of points, either modified or unmodified based on *modify*; or False if an error was found during validation
+        """
+        obvSwappedPoint=False
+        obvValidPoint=False
+        newPoints=points
+        # don't use _twoify, since each point may have more than two elements, in which case we need to preserve any elements after the first two
+        for point in points:
+            [lon,lat]=point[0:2]
+            if abs(lat)>90:
+                obvSwappedPoint=point
+            elif 90<=abs(lon)<=180: # abs(lat)<=90 is implicit since the 'if' clause did not match
+                obvValidPoint=point
+        if obvSwappedPoint:
+            if obvValidPoint:
+                logging.error('POINT LIST VALIDATION: at least one obviously valid point '+str(obvValidPoint)+' and at least one obviously swapped point '+str(obvSwappedPoint)+' were found in the same point list; not sure whether to swap the lat/long sequence')
+                return False
+            else:
+                # swap first to elements of every point
+                logging.warn('POINT LIST VALIDATION: at least one obviously swapped point '+str(obvSwappedPoint)+' was found, and no obviously valid points were found')
+                if modify:
+                    logging.warn('   and the modify switch is True, so the first two elements of every point are being swapped')
+                    newPoints=[]
+                    for point in points:
+                        newPoint=[point[1],point[0]]
+                        if len(point)>2:
+                            newPoint+=point[2:]
+                        newPoints.append(newPoint)
+                    # logging.info('NEWPOINTS:'+str(newPoints))
+                    points=newPoints
+                else:
+                    logging.warn('   but the modify switch is False, so no points will be modified; you may see unexpected map results')
+        # logging.info('POINTS just before return from _validatePoints:'+str(points))
+        return points
+
     def _sendRequest(self,type: str,apiUrlEnd: str,j: dict,id: str='',returnJson: str='',timeout: int=0,domainAndPort: str=''):
         """Send HTTP request to the server.
 
@@ -1182,6 +1240,13 @@ class SartopoSession():
         """        
         # objgraph.show_growth()
         # logging.info('RAM:'+str(process.memory_info().rss/1024**2)+'MB')
+        # validate coordinates
+        if j:
+            jg=j.get('geometry')
+            if jg:
+                coords=jg.get('coordinates') # may be a triple-nested list to accommodate multipart geometries
+                if coords:
+                    j['geometry']['coordinates']=self._validatePoints(coords,modify=True)
         self.syncPause=True
         timeout=timeout or self.syncTimeout
         newMap='[NEW]' in apiUrlEnd  # specific mapID that indicates a new map should be created

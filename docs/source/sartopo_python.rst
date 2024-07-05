@@ -109,6 +109,7 @@ These methods are typically only called internally, from other class methods.  T
    .. automethod:: SartopoSession._removeSpurs
    .. automethod:: SartopoSession._getUsedSuffixList
    .. automethod:: SartopoSession._getNextAvailableSuffix
+   .. automethod:: SartopoSession._validatePoints
    .. automethod:: SartopoSession._getToken
 
 .. |shapely_link| raw:: html

@@ -114,6 +114,7 @@
 <li><a class="reference internal" href="#sartopo_python.SartopoSession._removeSpurs"><code class="docutils literal notranslate"><span class="pre">_removeSpurs()</span></code></a></li>
 <li><a class="reference internal" href="#sartopo_python.SartopoSession._getUsedSuffixList"><code class="docutils literal notranslate"><span class="pre">_getUsedSuffixList()</span></code></a></li>
 <li><a class="reference internal" href="#sartopo_python.SartopoSession._getNextAvailableSuffix"><code class="docutils literal notranslate"><span class="pre">_getNextAvailableSuffix()</span></code></a></li>
+<li><a class="reference internal" href="#sartopo_python.SartopoSession._validatePoints"><code class="docutils literal notranslate"><span class="pre">_validatePoints()</span></code></a></li>
 <li><a class="reference internal" href="#sartopo_python.SartopoSession._getToken"><code class="docutils literal notranslate"><span class="pre">_getToken()</span></code></a></li>
 </ul>
 </li>
@@ -1213,6 +1214,38 @@ avoid blocking of the main thread.  <strong>Calling this method directly could c
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="sartopo_python.SartopoSession._validatePoints">
+<span class="sig-prename descclassname"><span class="pre">SartopoSession.</span></span><span class="sig-name descname"><span class="pre">_validatePoints</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">modify</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#sartopo_python.SartopoSession._validatePoints" title="Link to this definition">¶</a></dt>
+<dd><p>Internal method to find any points in a list of points that are ‘obviously’ lon-lat-swapped.</p>
+<p>Normally only called from _sendRequest.</p>
+<p>The ‘correct’ sequence for each point, as expected by caltopo.com, is [lon,lat] i.e longitude then latitude.</p>
+<p>First, each point in the list of points is categorized:</p>
+<ul class="simple">
+<li><p>‘obviously swapped’ : abs(lat)&gt;90</p></li>
+<li><p>‘obviously valid’ : 90&lt;=abs(lon)&lt;=180 and abs(lat)&lt;=90</p></li>
+<li><p>‘ambiguous’ - neither of the above; note that half of the world is ‘ambiguous’ by this definition (west half of east hemisphere, and east half of west hemisphere: all points where longitude is between 90 and -90)</p></li>
+</ul>
+<p>If <em>modify</em> is True:</p>
+<ul class="simple">
+<li><p>if there are obviously-swapped points but no obviously-valid points: swap lon and lat of all points in the list</p></li>
+<li><p>if there are both obviously-swapped and obviously-valid points: return an error</p></li>
+<li><p>otherwise: no not modify any points; note, this includes the case where there are obviously-valid points but no obviously-swapped points</p></li>
+</ul>
+<p>Log messages will be generated as needed, regardless of the value of <em>modify</em>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>points</strong> (<em>list</em>) – List of points to be checked</p></li>
+<li><p><strong>modify</strong> (<em>bool</em>) – True to modify the points list before returning if needed as above; False to always return the unmodified list; defaults to False</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of points, either modified or unmodified based on <em>modify</em>; or False if an error was found during validation</p>
 </dd>
 </dl>
 </dd></dl>
