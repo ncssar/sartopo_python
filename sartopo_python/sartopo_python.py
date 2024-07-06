@@ -1193,8 +1193,8 @@ class SartopoSession():
 
         # determine if this is a point, or a list of points, or a list of lists of points;
         #  create LOLOP - the List of Lists of Points to be processed by the validation code
-        if type(geom[0])==list:
-            if type(geom[0][0])==list:
+        if type(geom[0]) in [list,tuple]:
+            if type(geom[0][0]) in [list,tuple]:
                 level=3
                 LOLOP=geom
             else:
@@ -3321,7 +3321,7 @@ class SartopoSession():
                 return False
             bbox=objGeom.bounds
             rval=[min(bbox[0],rval[0]),min(bbox[1],rval[1]),max(bbox[2],rval[2]),max(bbox[3],rval[3])]
-        if not padPct:
+        if padPct is None: # don't use 'if not padPct' which evaluates True for padPct=0
             pad=padDeg
         else:
             if padPct<1: # if specified as a ratio
@@ -3339,9 +3339,9 @@ class SartopoSession():
         :type points: list
         :return: List of two-coordinate versions of the input point/s
         """        
-        if not isinstance(points,list):
+        if not type(points) in [list,tuple]:
             return points
-        if isinstance(points[0],list): # the arg is a list of points
+        if type(points[0]) in [list,tuple]:
             return [p[0:2] for p in points]
         else: # the arg is just one point
             return points[0:2]
