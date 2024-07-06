@@ -184,7 +184,8 @@ class SartopoSession():
             deletedFeatureCallback=None,
             syncCallback=None,
             useFiddlerProxy=False,
-            caseSensitiveComparisons=False):  # case-insensitive comparisons by default, see _caseMatch()
+            caseSensitiveComparisons=False,  # case-insensitive comparisons by default, see _caseMatch()
+            validatePoints='modify'):
         """The core session object.
 
         :param domainAndPort: Domain-and-port portion of the URL; defaults to 'localhost:8080'; common values are 'caltopo.com' for the web interface, and 'localhost:8080' (or different hostname or port as needed) for CalTopo Desktop
@@ -227,6 +228,8 @@ class SartopoSession():
         :type useFiddlerProxy: bool, optional
         :param caseSensitiveComparisons: If True, various string comparisons will be done in a case-sensitive manner; see ._caseMatch; defaults to False
         :type caseSensitiveComparisons: bool, optional
+        :param validatePoints: one of 'modify', 'warn', or False: should coordinates be checked or modified for correct longitude-then-latitide sequence as requests are sent; defaults to 'modify'; setting to False disables calls to ._validatePoints from ._sendRequest
+        :type validatePoints: optional
         """            
         self.s=requests.session()
         self.apiVersion=-1
@@ -259,6 +262,7 @@ class SartopoSession():
         self.useFiddlerProxy=useFiddlerProxy
         self.syncing=False
         self.caseSensitiveComparisons=caseSensitiveComparisons
+        self.validatePoints=validatePoints
         self.accountData=None
         # call _setupSession even if this is a mapless session, to read the config file, setup fidddler proxy, get userdata/cookies, etc.
         if not self._setupSession():
@@ -1153,13 +1157,19 @@ class SartopoSession():
         # logging.info("hashed data:"+str(token))
         return token
 
-    def _validatePoints(self,points: list,modify: bool=False):
-        """Internal method to find any points in a list of points that are 'obviously' lon-lat-swapped.  \n
+    def _validatePoints(self,geom: list,modify: bool=False):
+        """Internal method to find any points from the specified geometry that are 'obviously' lon-lat-swapped.  \n
         Normally only called from _sendRequest.
 
         The 'correct' sequence for each point, as expected by caltopo.com, is [lon,lat] i.e longitude then latitude.
 
-        First, each point in the list of points is categorized:
+        The specified geometry is a possibly-nested list:
+
+        - a single point: [lon,lat]
+        - a single list of points, a.k.a. a line: [[lon1,lat1],[lon2,lat2],[lon3,lat3]]
+        - a list of lists of points, a.k.a. a polygon that could have multiple segments: [[[lonA1,latA1],[lonA2,latA2]], [[lonB1,latB1],[lonB2,latB2]], [[lonC1,latC1],[lonC2,latC2]]]
+        
+        First, each point in each list of points is categorized:
 
         - 'obviously swapped' : abs(lat)>90
         - 'obviously valid' : 90<=abs(lon)<=180 and abs(lat)<=90
@@ -1168,48 +1178,84 @@ class SartopoSession():
         If *modify* is True:
 
         - if there are obviously-swapped points but no obviously-valid points: swap lon and lat of all points in the list
-        - if there are both obviously-swapped and obviously-valid points: return an error
-        - otherwise: no not modify any points; note, this includes the case where there are obviously-valid points but no obviously-swapped points
+        - if there are both obviously-swapped and obviously-valid points: flag an error; return the unmodified geom if modify is False, or return False if modify is True which will probably cause the feature to not generate
+        - otherwise: do not modify any points; note, this includes the case where there are obviously-valid points but no obviously-swapped points
 
         Log messages will be generated as needed, regardless of the value of *modify*.
         
-        :param points: List of points to be checked
-        :type points: list
+        :param geom: point, list of points, or list of lists of points
+        :type geom: list
         :param modify: True to modify the points list before returning if needed as above; False to always return the unmodified list; defaults to False
         :type modify: bool
-        :return: List of points, either modified or unmodified based on *modify*; or False if an error was found during validation
+        :return: A modified or unmodified copy of the geom argument value, based on *modify*
         """
-        obvSwappedPoint=False
-        obvValidPoint=False
-        newPoints=points
-        # don't use _twoify, since each point may have more than two elements, in which case we need to preserve any elements after the first two
-        for point in points:
-            [lon,lat]=point[0:2]
-            if abs(lat)>90:
-                obvSwappedPoint=point
-            elif 90<=abs(lon)<=180: # abs(lat)<=90 is implicit since the 'if' clause did not match
-                obvValidPoint=point
-        if obvSwappedPoint:
-            if obvValidPoint:
-                logging.error('POINT LIST VALIDATION: at least one obviously valid point '+str(obvValidPoint)+' and at least one obviously swapped point '+str(obvSwappedPoint)+' were found in the same point list; not sure whether to swap the lat/long sequence')
-                return False
+        # note: if self.validatePoints is False, this method is never called
+
+        # determine if this is a point, or a list of points, or a list of lists of points;
+        #  create LOLOP - the List of Lists of Points to be processed by the validation code
+        if type(geom[0])==list:
+            if type(geom[0][0])==list:
+                level=3
+                LOLOP=geom
             else:
-                # swap first to elements of every point
-                logging.warn('POINT LIST VALIDATION: at least one obviously swapped point '+str(obvSwappedPoint)+' was found, and no obviously valid points were found')
-                if modify:
-                    logging.warn('   and the modify switch is True, so the first two elements of every point are being swapped')
-                    newPoints=[]
-                    for point in points:
-                        newPoint=[point[1],point[0]]
-                        if len(point)>2:
-                            newPoint+=point[2:]
-                        newPoints.append(newPoint)
-                    # logging.info('NEWPOINTS:'+str(newPoints))
-                    points=newPoints
+                level=2
+                LOLOP=[geom]
+        else:
+            level=1
+            LOLOP=[[geom]]
+        # logging.info('validatePoints called:level'+str(level)+':'+str(geom))
+        newLOLOP=[]
+        rval=geom
+
+        # validate each list of points
+        # note: a problem with this algorithm is that it will check and possibly modify each list of points
+        #  independent from any other lists of points in the same LOLOP.  This case would probably never
+        #  happen anyway, and if it does slip through the cracks, the results should be obvious.
+        for LOP in LOLOP:
+            obvSwappedPoint=False
+            obvValidPoint=False
+            newPoints=LOP
+            # don't use _twoify, since each point may have more than two elements, in which case we need to preserve any elements after the first two
+            for point in LOP:
+                [lon,lat]=point[0:2]
+                if abs(lat)>90:
+                    obvSwappedPoint=point
+                elif 90<=abs(lon)<=180: # abs(lat)<=90 is implicit since the 'if' clause did not match
+                    obvValidPoint=point
+            if obvSwappedPoint:
+                if obvValidPoint:
+                    logging.error('POINT LIST VALIDATION: at least one obviously valid point '+str(obvValidPoint)+' and at least one obviously swapped point '+str(obvSwappedPoint)+' were found in the same point list; not sure whether to swap the lat/long sequence; this feature may fail to generate')
+                    if modify:
+                        return False
+                    else:
+                        return geom
                 else:
-                    logging.warn('   but the modify switch is False, so no points will be modified; you may see unexpected map results')
-        # logging.info('POINTS just before return from _validatePoints:'+str(points))
-        return points
+                    # swap first to elements of every point
+                    logging.warn('POINT LIST VALIDATION: at least one obviously swapped point '+str(obvSwappedPoint)+' was found, and no obviously valid points were found')
+                    if modify:
+                        logging.warn('   and the modify switch is True, so the first two elements of every point are being swapped')
+                        newPoints=[]
+                        for point in LOP:
+                            newPoint=[point[1],point[0]]
+                            if len(point)>2:
+                                newPoint+=point[2:]
+                            newPoints.append(newPoint)
+                        # logging.info('NEWPOINTS:'+str(newPoints))
+                        LOP=newPoints
+                    else:
+                        logging.warn('   but the modify switch is False, so no points will be modified; you may see unexpected map results')
+            if modify:
+                newLOLOP.append(LOP)
+        # logging.info('newLOLOP:'+str(newLOLOP))
+        if modify: # now unpack newLOLOP - always a List of Lists of Points
+            if level==3: # level 3 needs no unpacking
+                rval=newLOLOP
+            if level==2: # level 2: unpack one level
+                rval=newLOLOP[0]
+            elif level==1: # level 1: unpack two levels
+                rval=newLOLOP[0][0]
+            # logging.info('POINTS just before return from _validatePoints:'+str(rval))
+        return rval
 
     def _sendRequest(self,type: str,apiUrlEnd: str,j: dict,id: str='',returnJson: str='',timeout: int=0,domainAndPort: str=''):
         """Send HTTP request to the server.
@@ -1241,12 +1287,12 @@ class SartopoSession():
         # objgraph.show_growth()
         # logging.info('RAM:'+str(process.memory_info().rss/1024**2)+'MB')
         # validate coordinates
-        if j:
+        if self.validatePoints and j:
             jg=j.get('geometry')
             if jg:
                 coords=jg.get('coordinates') # may be a triple-nested list to accommodate multipart geometries
                 if coords:
-                    j['geometry']['coordinates']=self._validatePoints(coords,modify=True)
+                    j['geometry']['coordinates']=self._validatePoints(coords,modify=self.validatePoints=='modify')
         self.syncPause=True
         timeout=timeout or self.syncTimeout
         newMap='[NEW]' in apiUrlEnd  # specific mapID that indicates a new map should be created
