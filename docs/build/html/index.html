@@ -167,11 +167,11 @@ the number of web requests needed, which reduces the time taken for most tasks.<
 <span class="k">def</span> <span class="nf">gucb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Geometry Updated: gucb called with args &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
 
-<span class="k">def</span> <span class="nf">nocb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
-   <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;New Object: nocb called with args &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+<span class="k">def</span> <span class="nf">nfcb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;New Feature: nfcb called with args &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
 
-<span class="k">def</span> <span class="nf">docb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
-   <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Deleted Object: docb called with args &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+<span class="k">def</span> <span class="nf">dfcb</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">):</span>
+   <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Deleted Feature: dfcb called with args &#39;</span><span class="o">+</span><span class="nb">str</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
 
 <span class="c1"># open a session, connecting to the defined callbacks;</span>
 <span class="c1">#  syncing is enabled by default, since the &#39;sync&#39; argument defaults to True</span>
@@ -180,8 +180,8 @@ the number of web requests needed, which reduces the time taken for most tasks.<
       <span class="n">account</span><span class="o">=</span><span class="s1">&#39;joe@domain.com&#39;</span><span class="p">,</span>
       <span class="n">propUpdateCallback</span><span class="o">=</span><span class="n">pucb</span><span class="p">,</span>
       <span class="n">geometryUpdateCallback</span><span class="o">=</span><span class="n">gucb</span><span class="p">,</span>
-      <span class="n">newObjectCallback</span><span class="o">=</span><span class="n">nocb</span><span class="p">,</span>
-      <span class="n">deletedObjectCallback</span><span class="o">=</span><span class="n">docb</span><span class="p">)</span>
+      <span class="n">newFeatureCallback</span><span class="o">=</span><span class="n">nfcb</span><span class="p">,</span>
+      <span class="n">deletedFeatureCallback</span><span class="o">=</span><span class="n">dfcb</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -206,6 +206,11 @@ the number of web requests needed, which reduces the time taken for most tasks.<
 </section>
 <section id="adding-features">
 <h2>Adding features<a class="headerlink" href="#adding-features" title="Link to this heading">¶</a></h2>
+<p>A word on longitude / latitude sequence:</p>
+<p>caltopo.com expects each point of every type of geometry to have longitude first, followed by latutude, e.g. [120,-39].</p>
+<p>While the code will swap coordinates if needed and if detectable (which is only the case for half of the globe), it’s best to get in the habit of
+specifying points in [lon,lat] sequence.  See the <em>._validatePoints</em> documentation for details.</p>
+<p>This is opposite of the Marker functions, which call for the latitude argument first.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># add a marker</span>
 <span class="n">sts</span><span class="o">.</span><span class="n">addMarker</span><span class="p">(</span><span class="mi">39</span><span class="p">,</span><span class="o">-</span><span class="mi">120</span><span class="p">,</span><span class="s1">&#39;MyMarker&#39;</span><span class="p">)</span>
 

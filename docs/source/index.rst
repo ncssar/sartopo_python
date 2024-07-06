@@ -172,6 +172,15 @@ Getting map data and account data
 Adding features
 ---------------
 
+A word on longitude / latitude sequence:
+
+caltopo.com expects each point of every type of geometry to have longitude first, followed by latutude, e.g. [120,-39].
+
+While the code will swap coordinates if needed and if detectable (which is only the case for half of the globe), it's best to get in the habit of
+specifying points in [lon,lat] sequence.  See the *._validatePoints* documentation for details.
+
+This is opposite of the Marker functions, which call for the latitude argument first. 
+
 .. code-block:: python
 
    # add a marker
