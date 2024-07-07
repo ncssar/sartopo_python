@@ -1,4 +1,4 @@
-<img src='./docs/source/_static/caltopo_python_logo.png' width=200px>
+<img src='https://raw.githubusercontent.com/ncssar/caltopo_python/main/docs/source/_static/caltopo_python_logo.png' width=200px>
 
 # sartopo_python
 
